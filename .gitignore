@@ -1,9 +1,33 @@
-node_modules/
-.next/
-playwright-report/
-test-results/
-coverage/
-.local-edit/
-*.tsbuildinfo
+# Dependencies
+/node_modules/
+
+# Next.js
+/.next/
+/out/
+/next-env.d.ts
+
+# Tests and coverage
+/coverage/
+/playwright-report/
+/test-results/
+
+# Local Mirai projects and diagnostics
+/.local-edit/
+
+# Environment files
 .env*
 !.env.example
+
+# Hosting and tooling
+/.vercel/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Operating systems
+.DS_Store
+Thumbs.db
