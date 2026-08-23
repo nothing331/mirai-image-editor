@@ -1,0 +1,43 @@
+name: Feature proposal
+description: Propose a focused improvement to Mirai
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the user problem before proposing an implementation. Material features are scoped in an issue before development begins.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need or workflow limitation should Mirai address?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should a user be able to do after this change?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or smaller solutions, if any.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add non-sensitive mockups or examples if they materially clarify the proposal.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues for a similar proposal.
+          required: true
+        - label: This proposal contains no secrets or sensitive images, prompts, or diagnostics.
+          required: true
