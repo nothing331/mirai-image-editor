@@ -6,7 +6,7 @@ A local-first AI image editor with selection-aware generation, semantic-fidelity
 
 Edit an image, compare the result, accept or discard it, and undo any accepted change.
 
-![Mirai showing a selection-aware AI image edit](./docs/assets/brand/mirai-social-preview.png)
+![Mirai editor demo showing an image edit from upload through review](./docs/assets/demo/mirai-editor-demo.gif)
 
 ## Features
 
