@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, Copy, Download, FolderOpen, ImagePlus, LoaderCircle, MoreHorizontal, Redo2, RotateCcw, Save, Undo2 } from "lucide-react";
+import Image from "next/image";
 import type { ChangeEvent } from "react";
 import { cn } from "@/lib/utils";
 import { exportVersion } from "../image-data";
@@ -46,8 +47,8 @@ export function WorkspaceHeader({
       <div className="flex min-w-0 items-center gap-1.5">
         <MiraiMark />
         <div className="mr-1 hidden min-w-0 sm:block">
-          <h1 className="truncate text-base font-bold leading-none tracking-[-.035em]">Mirai</h1>
-          <p className="mt-1 hidden font-mono text-[8px] uppercase tracking-[.14em] text-muted xl:block">Image workspace</p>
+          <h1 className="truncate text-lg font-extrabold uppercase leading-[.8] tracking-[-.06em]">MIRAI</h1>
+          <p className="mt-1.5 hidden whitespace-nowrap font-mono text-[7px] uppercase tracking-[.12em] text-muted xl:block">REVERSIBLE AI IMAGE EDITOR</p>
         </div>
         <label className={cn(iconButton, "cursor-pointer")} title={currentVersion ? "Replace image" : "Choose image"}>
           <ImagePlus className="size-4" />
@@ -99,11 +100,8 @@ export function WorkspaceHeader({
 
 function MiraiMark() {
   return (
-    <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden bg-ink text-acid" aria-hidden="true">
-      <svg viewBox="0 0 32 32" className="size-7" fill="none">
-        <path d="M7 23V9l9 9 9-9v14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" strokeLinejoin="miter" />
-        <path d="M22.5 5.5v5M20 8h5" stroke="currentColor" strokeWidth="1.5" />
-      </svg>
+    <span className="grid size-9 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
+      <Image src="/icon.png" width={40} height={40} className="size-9 max-w-none scale-[1.45] object-contain" alt="" />
     </span>
   );
 }
