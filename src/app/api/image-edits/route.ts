@@ -22,7 +22,6 @@ export async function GET() {
     fakeScenarios: provider === "fake",
     quality: provider === "openai" ? (process.env.OPENAI_IMAGE_QUALITY ?? "medium") : null,
     maxInputEdge: provider === "openai" ? parsePositiveInteger(process.env.OPENAI_IMAGE_MAX_EDGE, 1536) : null,
-    maxRealRequestsPerSession: parsePositiveInteger(process.env.OPENAI_MAX_REQUESTS_PER_SESSION, 3),
   });
 }
 
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
     const preservationModeValue = form.get("preservationMode");
     if (!(image instanceof File)) throw new RequestValidationError("A PNG source image is required.");
     if (operation !== "remove" && operation !== "replace" && operation !== "restyle" && operation !== "transform") {
-      throw new RequestValidationError("Choose Remove, Add / replace, Restyle, or Transform.");
+      throw new RequestValidationError("Choose Remove, Replace, Restyle, or Transform.");
     }
     if (boundaryPolicy !== "review" && boundaryPolicy !== "protected") {
       throw new RequestValidationError("Choose review or protected AI edit behavior.");

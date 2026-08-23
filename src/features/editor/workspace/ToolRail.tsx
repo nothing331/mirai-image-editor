@@ -51,9 +51,8 @@ export function ToolRail({ collapsed, disabled, generationDisabled, workflow, on
         <ToolLabel label="Create with AI" />
       </button>
       <div className="flex items-center justify-center md:w-full md:flex-col" role="radiogroup" aria-label="Editor workflows">
-        <RailButton variant="ai" testId="open-lasso-edit" label="Lasso edit" shortcut="L" selected={workflow.kind === "canvas" && workflow.tool === "lasso"} disabled={disabled} onClick={() => onSelectWorkflow({ kind: "canvas", tool: "lasso" })}>
+        <RailButton testId="open-lasso-edit" label="Select & edit" shortcut="L" selected={workflow.kind === "canvas" && workflow.tool === "lasso"} disabled={disabled} onClick={() => onSelectWorkflow({ kind: "canvas", tool: "lasso" })}>
           <LassoSelect className="size-[17px]" />
-          <AiMarker selected={workflow.kind === "canvas" && workflow.tool === "lasso"} />
         </RailButton>
         {aiWorkflowTools.map(({ kind, label, shortcut, icon: Icon, testId }) => (
           <RailButton key={kind} variant="ai" testId={testId} label={label} shortcut={shortcut} selected={workflow.kind === kind} disabled={disabled} onClick={() => onSelectWorkflow({ kind } as WorkspaceWorkflow)}>

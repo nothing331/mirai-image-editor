@@ -17,13 +17,11 @@ const preservationModes: Array<{ value: TransformPreservationMode; label: string
 
 export function TransformInspector({
   providerCapabilities,
-  realRequestsUsed,
   onGenerate,
   onRetry,
   onOpenDiagnostics,
 }: {
   providerCapabilities: ProviderCapabilities | null;
-  realRequestsUsed: number;
   onGenerate: (input: TransformInput) => Promise<boolean>;
   onRetry: () => Promise<boolean>;
   onOpenDiagnostics: () => void;
@@ -40,9 +38,8 @@ export function TransformInspector({
   })));
   const processing = state.generativeState.status === "processing" && state.generativeState.snapshot.operation === "transform";
   const failed = state.generativeState.status === "failed" && state.generativeState.snapshot.operation === "transform";
-  const requestLimitReached = providerCapabilities?.provider === "openai" && realRequestsUsed >= providerCapabilities.maxRealRequestsPerSession;
   const localMonochrome = presetId === "monochrome" && userPrompt.trim().length === 0;
-  const ready = Boolean(presetId || userPrompt.trim()) && !state.paintSession && !state.preview && !processing && (!requestLimitReached || localMonochrome);
+  const ready = Boolean(presetId || userPrompt.trim()) && !state.paintSession && !state.preview && !processing;
 
   async function generate() {
     const preset = presetId ? transformPresets.find((item) => item.id === presetId)! : null;
@@ -121,7 +118,7 @@ export function TransformInspector({
 
       <div className="border-t border-line bg-[#e8e5dc] p-3">
         <div className="mb-2 flex items-center gap-1.5 font-mono text-[7px] uppercase leading-relaxed text-muted">
-          {localMonochrome ? <><Film className="size-3 shrink-0" />No model call</> : <><Sparkles className="size-3 shrink-0" />{providerCapabilities?.provider === "openai" ? `${realRequestsUsed}/${providerCapabilities.maxRealRequestsPerSession} image requests used` : "Deterministic fake pipeline"}</>}
+          {localMonochrome ? <><Film className="size-3 shrink-0" />No model call</> : <><Sparkles className="size-3 shrink-0" />{providerCapabilities?.provider === "openai" ? "Paid image request" : "Deterministic fake pipeline"}</>}
         </div>
         <button type="button" data-testid="generate-transform" className="flex h-10 w-full items-center justify-center gap-2 bg-ink px-3 text-xs font-bold text-paper outline-none hover:bg-acid hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-35" disabled={!ready} onClick={() => void generate()}>{processing ? <><LoaderCircle className="size-4 animate-spin" />Transforming…</> : state.preview ? <><WandSparkles className="size-4" />Review on canvas</> : <><WandSparkles className="size-4" />Generate preview</>}</button>
       </div>

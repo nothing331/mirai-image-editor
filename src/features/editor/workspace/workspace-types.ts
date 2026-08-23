@@ -19,5 +19,4 @@ export interface ProviderCapabilities {
   imageModel: string;
   quality: string | null;
   maxInputEdge: number | null;
-  maxRealRequestsPerSession: number;
 }

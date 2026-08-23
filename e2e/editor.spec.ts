@@ -182,15 +182,19 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Choose an edit" })).toBeVisible();
   await drawSourceSelection(page);
   await page.getByRole("button", { name: "Add area" }).click();
-  await expect(page.getByLabel("Refine size", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Edge softness")).toBeVisible();
+  await expect(page.getByText("Draw another closed dashed shape on the image to add its interior.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Invert selection/ })).toBeVisible();
+  await page.getByRole("button", { name: /Invert selection/ }).click();
+  await expect(page.getByRole("button", { name: "Remove selection" })).toBeVisible();
+  await page.getByRole("button", { name: /Invert selection/ }).click();
+  await expect(page.getByLabel("Refine size", { exact: true })).toHaveCount(0);
   await expect(canvas).toHaveClass(/tool-lasso/);
   await page.getByRole("button", { name: "Collapse inspector" }).click();
   await expect(page.getByTestId("editor-inspector")).toHaveCount(0);
   await page.getByRole("button", { name: "Open inspector" }).click();
   await expect(page.getByTestId("editor-inspector")).toBeVisible();
-  await expect(page.getByRole("radio", { name: "Lasso edit" })).toBeChecked();
-  await canvas.locator("canvas").first().click({ position: { x: initialX + 10, y: initialY + 10 } });
+  await expect(page.getByRole("radio", { name: "Select & edit" })).toBeChecked();
+  await drawSourceSelection(page, 8, 8, 12, 12);
   await page.getByTestId("apply-edit").click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
   await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
@@ -202,7 +206,7 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await page.getByLabel("Project name").fill(projectName);
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByLabel("Open saved project").locator("option", { hasText: projectName })).toHaveCount(1);
-  await page.getByLabel("Recolor").fill("#22cc66");
+  await page.getByRole("textbox", { name: "Recolor selection" }).fill("#22cc66");
   await page.getByTestId("apply-edit").click();
   await expect(page.getByText("Draw a closed selection before previewing the edit.").first()).toBeVisible();
   await expect(page.getByText("1 accepted edit", { exact: true })).toBeVisible();
@@ -226,7 +230,7 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await page.getByRole("button", { name: "Reset view" }).click();
   await expect(canvas).toHaveAttribute("data-viewport-scale", "1");
   await page.keyboard.press("l");
-  await expect(page.getByRole("radio", { name: "Lasso edit" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Select & edit" })).toBeChecked();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export current image" }).click();
@@ -283,7 +287,7 @@ test("brush paint is draft-only until applied and eraser only clears that draft"
   await expect(page.getByTestId("editor-inspector")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Open inspector" })).toHaveCount(0);
   await page.keyboard.press("l");
-  await expect(page.getByRole("radio", { name: "Lasso edit" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Select & edit" })).toBeChecked();
   await expect(page.getByTestId("editor-inspector")).toBeVisible();
 });
 
@@ -363,7 +367,7 @@ test("text, watermark, and crop stay live on canvas and apply without comparison
   await page.mouse.move(cropBounds.x + cropViewportX + (cropX + cropWidth - 50) * cropScale, cropBounds.y + cropViewportY + (cropY + cropHeight - 50) * cropScale, { steps: 8 });
   await page.mouse.up();
   await expect.poll(async () => Number(await editorCanvas.getAttribute("data-draft-width"))).toBeLessThan(cropWidth);
-  await page.getByRole("radio", { name: "Lasso edit" }).click();
+  await page.getByRole("radio", { name: "Select & edit" }).click();
   await expect(page.getByRole("dialog", { name: "Save your crop?" })).toBeVisible();
   await page.getByTestId("save-local-edit").click();
   await expect(page.getByText("150 × 150px", { exact: true })).toBeVisible();
@@ -377,7 +381,7 @@ test("Transform works without a selection for local and generative presets", asy
   await uploadTestImage(page);
 
   const toolRail = page.getByRole("complementary", { name: "Editor tools" });
-  for (const label of ["Lasso edit", "Brush", "Eraser", "Hand", "AI Transform"]) {
+  for (const label of ["Select & edit", "Brush", "Eraser", "Hand", "AI Transform"]) {
     await toolRail.getByLabel(label, { exact: true }).hover();
     await expect(toolRail.locator(`[data-tooltip="${label}"]`)).toBeVisible();
   }
@@ -451,6 +455,14 @@ test("Extend plans a target frame before generating and accepts changed dimensio
   await diagnostics.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Adjust frame" }).click();
   await expect(page.getByTestId("extend-plan-canvas")).toBeVisible();
+  await expect(page.getByTestId("preview-comparison")).toHaveCount(0);
+  await expect(inspector.getByRole("button", { name: "Back to comparison" })).toBeVisible();
+  await inspector.getByRole("button", { name: "Back to comparison" }).click();
+  await expect(page.getByTestId("preview-comparison")).toBeVisible();
+  await expect(page.getByTestId("comparison-candidate")).toBeVisible();
+  await expect(inspector.getByRole("button", { name: "Back to comparison" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Adjust frame" }).click();
+  await expect(page.getByTestId("extend-plan-canvas")).toBeVisible();
   await inspector.getByRole("button", { name: "Generate extension" }).click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
   await page.getByTestId("accept-preview").click();
@@ -497,12 +509,16 @@ test("fake provider supports generative success, retry, and failure states", asy
   await diagnostics.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Discard" }).click();
   await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Remove selection" }).click();
+  await drawSourceSelection(page, 3, 3, 7, 7);
 
-  await page.getByRole("radio", { name: "Add / replace" }).click();
+  await page.getByRole("radio", { name: "Replace" }).click();
   await page.getByLabel("Edit instruction", { exact: true }).fill("add an Indian flag");
   await scenario.selectOption("success");
   await page.getByTestId("generate-edit").click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
+  await expect(page.getByTestId("replace-scope-mismatch")).toContainText("Review the entire image before accepting");
+  await expect(page.getByTestId("accept-preview")).toBeEnabled();
   await page.getByRole("button", { name: "Diagnostics" }).click();
   await expect(diagnostics.getByText("2 recorded calls in this logical request.")).toBeVisible();
   await expect(diagnostics.getByText("Structured edit plan")).toBeVisible();
@@ -550,13 +566,13 @@ test("compact workspace preserves edit configuration when the inspector collapse
   await page.setViewportSize({ width: 393, height: 727 });
   await page.goto("/");
   await uploadTestImage(page);
-  await page.getByRole("radio", { name: "Add / replace" }).click();
+  await page.getByRole("radio", { name: "Replace" }).click();
   await page.getByLabel("Edit instruction", { exact: true }).fill("add a small paper lantern");
   await page.getByRole("button", { name: "Collapse inspector" }).click();
   await expect(page.getByTestId("editor-inspector")).toHaveCount(0);
   await expect(page.getByTestId("editor-canvas")).toBeVisible();
   await page.getByRole("button", { name: "Open inspector" }).click();
   await expect(page.getByLabel("Edit instruction", { exact: true })).toHaveValue("add a small paper lantern");
-  await expect(page.getByRole("radio", { name: "Add / replace" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Replace" })).toBeChecked();
   await expect.poll(() => page.evaluate(() => ({ vertical: document.documentElement.scrollHeight === document.documentElement.clientHeight, horizontal: document.documentElement.scrollWidth === document.documentElement.clientWidth }))).toEqual({ vertical: true, horizontal: true });
 });
