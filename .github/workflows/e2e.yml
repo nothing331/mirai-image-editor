@@ -1,0 +1,64 @@
+name: Playwright E2E
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Chromium browser workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      ASSET_GENERATION_PROVIDER: fake
+      CI: "true"
+      E2E_PORT: "3000"
+      IMAGE_EDIT_PROVIDER: fake
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Check out selected branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Configure fake providers
+        run: cp .env.example .env.local
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Production build
+        run: npm run build
+
+      - name: Run Playwright
+        run: npm run test:e2e
+
+      - name: Confirm generated files are not tracked
+        run: git diff --exit-code
+
+      - name: Upload Playwright results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
