@@ -80,6 +80,8 @@ npm run test:e2e
 
 Tests cover coordinate conversion, masks, protected pixels, edit acceptance, history, persistence, and export.
 
+To run the browser suite on GitHub, open **Actions → Playwright E2E → Run workflow** and choose a branch. Each manual run uses the fake providers and retains its HTML report, failure screenshots, and traces for seven days.
+
 ## Using OpenAI
 
 The deterministic fake provider is enabled by default. To test real generation, copy `.env.example` to `.env.local`, set `IMAGE_EDIT_PROVIDER=openai`, and add `OPENAI_API_KEY`. Credentials remain server-side and must not be committed.
