@@ -81,3 +81,11 @@ export function unionMasks(base: ProcessingMask, addition: ProcessingMask): Proc
   for (let index = 0; index < result.data.length; index += 1) result.data[index] = Math.max(base.data[index], addition.data[index]);
   return result;
 }
+
+/** Removes a closed lasso from an existing selection without mutating either mask. */
+export function subtractMasks(base: ProcessingMask, subtraction: ProcessingMask): ProcessingMask {
+  if (base.width !== subtraction.width || base.height !== subtraction.height) throw new Error("Selection masks must have matching dimensions.");
+  const result = createMask(base.width, base.height);
+  for (let index = 0; index < result.data.length; index += 1) result.data[index] = Math.min(base.data[index], 255 - subtraction.data[index]);
+  return result;
+}

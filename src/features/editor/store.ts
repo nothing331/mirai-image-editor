@@ -2,14 +2,13 @@ import { create } from "zustand";
 import { GenerativeRequestError, requestGenerativeCandidate } from "./generative-client";
 import { pixelsToDataUrl } from "./image-data";
 import { cropPixels, flipPixels, resizePixels, rotatePixels } from "./local-transforms";
-import { cleanRasterMask, unionMasks } from "./mask-cleanup";
-import { createFullImageMask, createGenerativeProviderMask, createMask, fillPolygonMask, maskHasSelection, paintMask } from "./mask";
+import { cleanRasterMask, subtractMasks, unionMasks } from "./mask-cleanup";
+import { createFullImageMask, createGenerativeProviderMask, createMask, fillPolygonMask, invertMask, maskHasSelection, paintMask } from "./mask";
 import { monochromePixels } from "./monochrome";
 import { renderTextOverlay, renderWatermarkOverlay } from "./overlay-renderer";
 import { compositePaintOverlay, createPaintOverlay, paintOverlayMask, paintOverlayStroke } from "./paint";
 import { recolorPixels } from "./recolor";
 import { cleanLassoContour } from "./selection-geometry";
-import { blocksReplaceReviewAcceptance } from "@/shared/edit-boundary";
 import { blocksTransformAcceptance, unavailableTransformFidelityAssessment } from "@/shared/transform-fidelity";
 import { requestExtendCandidate, requestExtendPlan } from "./extend-client";
 import type { EditBoundaryPolicy } from "@/shared/edit-boundary";
@@ -68,6 +67,7 @@ interface EditorState {
   setBoundaryPolicy: (policy: EditBoundaryPolicy) => void;
   setSelectionMode: (mode: SelectionMode) => void;
   fillSelection: (points: SourcePoint[], viewportScale?: number) => void;
+  invertSelection: () => void;
   refineSelection: (from: SourcePoint, to: SourcePoint) => void;
   clearSelection: () => void;
   applyPaintStroke: (points: SourcePoint[], erase?: boolean) => void;
@@ -218,6 +218,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     extendAnalysisCache: {},
     selectionMask: createMask(version.width, version.height),
     selectionId: crypto.randomUUID(),
+    selectionMode: "draw",
     selectionDiagnostics: null,
     lassoVisualization: null,
     paintSession: null,
@@ -247,6 +248,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       lastRequestId: null,
       selectionMask: createMask(current.width, current.height),
       selectionId: crypto.randomUUID(),
+      selectionMode: "draw",
       selectionDiagnostics: null,
       lassoVisualization: null,
       paintSession: null,
@@ -271,9 +273,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!state.selectionMask) return {};
     try {
       const contour = cleanLassoContour(points, viewportScale);
-      const softnessPixels = state.brushSize * state.maskSoftness;
       const empty = createMask(state.selectionMask.width, state.selectionMask.height);
-      const featheredMask = fillPolygonMask(empty, contour.points, softnessPixels);
       const binaryMask = fillPolygonMask(empty, contour.points, 0);
       const radius = Math.min(4, Math.max(1, Math.round(Math.min(empty.width, empty.height) * 0.002)));
       const minimumIslandArea = Math.max(1, Math.round(empty.width * empty.height * 0.00001));
@@ -281,14 +281,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const cleanedMask = createMask(empty.width, empty.height);
       for (let index = 0; index < cleanedMask.data.length; index += 1) {
         if (cleanedBinaryMask.data[index] === 0) continue;
-        cleanedMask.data[index] = binaryMask.data[index] === 0 ? 255 : featheredMask.data[index];
+        cleanedMask.data[index] = 255;
       }
       const warnings: SelectionDiagnostics["warnings"] = [];
       if (contour.selfIntersectionCount > 0) warnings.push("self-intersection");
       if (contour.areaChangeRatio > 0.06) warnings.push("large-auto-correction");
       if (contour.usedRawContour) warnings.push("raw-contour-preserved");
+      const selectionMask = state.selectionMode === "subtract" ? subtractMasks(state.selectionMask, cleanedMask) : unionMasks(state.selectionMask, cleanedMask);
       return {
-        selectionMask: unionMasks(state.selectionMask, cleanedMask),
+        selectionMask,
+        selectionMode: maskHasSelection(selectionMask) ? state.selectionMode : "draw",
         selectionDiagnostics: {
           rawPointCount: contour.rawPoints.length,
           cleanedPointCount: contour.points.length,
@@ -300,11 +302,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         lassoVisualization: { rawPoints: contour.rawPoints, cleanedPoints: contour.points, showRawContour: warnings.length > 0 },
         preview: null,
         generativeState: idleGenerativeState,
-        error: contour.usedRawContour && contour.selfIntersectionCount > 0 ? "The lasso crossed over itself, so the original contour was preserved. Refine it with Add or Subtract." : null,
+        error: contour.usedRawContour && contour.selfIntersectionCount > 0 ? "The lasso crossed over itself, so the original contour was preserved. Add or subtract another closed shape to refine it." : null,
       };
     } catch (error) {
       return { error: error instanceof Error ? error.message : "The closed selection could not be filled." };
     }
+  }),
+  invertSelection: () => set((state) => {
+    if (!state.selectionMask) return {};
+    const selectionMask = invertMask(state.selectionMask);
+    return {
+      selectionMask,
+      selectionMode: maskHasSelection(selectionMask) ? state.selectionMode : "draw",
+      preview: null,
+      generativeState: idleGenerativeState,
+      selectionDiagnostics: null,
+      lassoVisualization: null,
+      error: null,
+    };
   }),
   refineSelection: (from, to) => set((state) => state.selectionMask ? {
     selectionMask: paintMask(state.selectionMask, from, to, state.brushSize / 2, state.selectionMode === "subtract" ? 0 : 255, state.maskSoftness),
@@ -625,10 +640,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const input = state.versions.find((version) => version.id === preview?.inputVersionId);
     if (!preview || !input || state.currentVersionId !== preview.inputVersionId) {
       set({ preview: null, error: "The preview is no longer based on the current image." });
-      return false;
-    }
-    if (preview.method === "generative" && (preview.type === "remove" || preview.type === "replace" || preview.type === "restyle") && blocksReplaceReviewAcceptance(preview.type, preview.parameters.boundaryPolicy, preview.parameters.candidateAnalysis)) {
-      set({ error: "This Replace proposal changed too much outside the selected target. Discard it and generate again, or use protected mode." });
       return false;
     }
     if (preview.method === "generative" && preview.type === "transform" && blocksTransformAcceptance(preview.parameters.preservationMode, preview.parameters.transformFidelityAssessment)) {

@@ -26,8 +26,8 @@ export interface CandidateAnalysis {
   warnings: CandidateAnalysisWarning[];
 }
 
-/** Blocks unsafe review-mode Replace proposals; protected composites remain bounded by construction. */
-export function blocksReplaceReviewAcceptance(
+/** Identifies broad review-mode Replace changes so the UI can warn without altering the proposal. */
+export function isReplaceScopeMismatch(
   operation: "remove" | "replace" | "restyle",
   boundaryPolicy: EditBoundaryPolicy,
   analysis: CandidateAnalysis,
@@ -36,3 +36,5 @@ export function blocksReplaceReviewAcceptance(
     && boundaryPolicy === "review"
     && analysis.classification === "replace-scope-mismatch";
 }
+
+export const blocksReplaceReviewAcceptance = isReplaceScopeMismatch;
