@@ -61,6 +61,12 @@ Use the contextual inspector for persistent options belonging to a tool. Use the
 
 ## Visual language
 
+### Brand identity
+
+- Use the approved transparent Mirai image-editor mark from `src/app/icon.png`; do not redraw it or place it inside another tile.
+- In the application header, pair the mark with an uppercase, extra-bold Manrope `MIRAI` wordmark and the mono uppercase descriptor `REVERSIBLE AI IMAGE EDITOR`.
+- On constrained widths, hide the wordmark before shrinking the mark or displacing project controls.
+
 ### Color
 
 The canonical semantic tokens live in `src/app/globals.css`.
