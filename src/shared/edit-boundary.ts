@@ -36,5 +36,3 @@ export function isReplaceScopeMismatch(
     && boundaryPolicy === "review"
     && analysis.classification === "replace-scope-mismatch";
 }
-
-export const blocksReplaceReviewAcceptance = isReplaceScopeMismatch;

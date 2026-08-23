@@ -3,7 +3,7 @@ import { GenerativeRequestError, requestGenerativeCandidate } from "./generative
 import { pixelsToDataUrl } from "./image-data";
 import { cropPixels, flipPixels, resizePixels, rotatePixels } from "./local-transforms";
 import { cleanRasterMask, subtractMasks, unionMasks } from "./mask-cleanup";
-import { createFullImageMask, createGenerativeProviderMask, createMask, fillPolygonMask, invertMask, maskHasSelection, paintMask } from "./mask";
+import { createFullImageMask, createGenerativeProviderMask, createMask, fillPolygonMask, invertMask, maskHasSelection } from "./mask";
 import { monochromePixels } from "./monochrome";
 import { renderTextOverlay, renderWatermarkOverlay } from "./overlay-renderer";
 import { compositePaintOverlay, createPaintOverlay, paintOverlayMask, paintOverlayStroke } from "./paint";
@@ -68,7 +68,6 @@ interface EditorState {
   setSelectionMode: (mode: SelectionMode) => void;
   fillSelection: (points: SourcePoint[], viewportScale?: number) => void;
   invertSelection: () => void;
-  refineSelection: (from: SourcePoint, to: SourcePoint) => void;
   clearSelection: () => void;
   applyPaintStroke: (points: SourcePoint[], erase?: boolean) => void;
   discardPaintSession: () => void;
@@ -321,13 +320,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       error: null,
     };
   }),
-  refineSelection: (from, to) => set((state) => state.selectionMask ? {
-    selectionMask: paintMask(state.selectionMask, from, to, state.brushSize / 2, state.selectionMode === "subtract" ? 0 : 255, state.maskSoftness),
-    preview: null,
-    generativeState: idleGenerativeState,
-    lassoVisualization: null,
-    error: null,
-  } : {}),
   clearSelection: () => set((state) => state.selectionMask ? {
     selectionMask: createMask(state.selectionMask.width, state.selectionMask.height),
     selectionId: crypto.randomUUID(),
