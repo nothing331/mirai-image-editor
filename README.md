@@ -2,7 +2,7 @@
 
 A local-first AI image editor with selection-aware generation, semantic-fidelity validation, reversible history, and reproducible diagnostics.
 
-[![CI](https://github.com/nothing331/Mirai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nothing331/Mirai/actions/workflows/ci.yml)
+[![CI](https://github.com/nothing331/mirai-image-editor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nothing331/mirai-image-editor/actions/workflows/ci.yml)
 
 Edit an image, compare the result, accept or discard it, and undo any accepted change.
 
@@ -23,12 +23,15 @@ Edit an image, compare the result, accept or discard it, and undo any accepted c
 Mirai supports Node.js 24.19.0 and npm 11.17.0. With `nvm`, run `nvm install` and `nvm use` before installing dependencies.
 
 ```bash
-git clone https://github.com/nothing331/Mirai.git
-cd Mirai && npm ci
+git clone https://github.com/nothing331/mirai-image-editor.git
+cd mirai-image-editor && npm ci
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). No API key is required for the default demo workflow.
+
+> [!WARNING]
+> Mirai v0.1.0 is designed for trusted local use. It has no authentication or tenant isolation, and local diagnostics may contain images and prompts. Do not expose this version directly to the public internet.
 
 ## How it fits together
 
@@ -112,7 +115,9 @@ When OpenAI is enabled, relevant images, masks, and prompts are sent to the conf
 - [Implemented feature behavior](./FEATURE_CONTEXT.md)
 - [Frontend design system](./FRONTEND_DESIGN.md)
 - [Development plan](./LOCAL_DEVELOPMENT_PLAN.md)
+- [Contributing](./CONTRIBUTING.md)
+- [Security policy](./SECURITY.md)
 
 ## License
 
-Portfolio project. The source is publicly viewable for evaluation, but reuse or redistribution is not permitted.
+Licensed under the [Apache License 2.0](./LICENSE).
