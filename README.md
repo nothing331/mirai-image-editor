@@ -1,6 +1,8 @@
-# Mirai  Reversible AI Image Editor
+# Mirai — Reversible AI Image Editor
 
 A local-first AI image editor with selection-aware generation, semantic-fidelity validation, reversible history, and reproducible diagnostics.
+
+[![CI](https://github.com/nothing331/Mirai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nothing331/Mirai/actions/workflows/ci.yml)
 
 Edit an image, compare the result, accept or discard it, and undo any accepted change.
 
@@ -8,19 +10,21 @@ Edit an image, compare the result, accept or discard it, and undo any accepted c
 
 ## Features
 
-- **AI editing** :  Remove, replace, restyle, transform, and extend images.
-- **Precise control** :  Use selections as flexible focus hints or protected edit boundaries.
-- **Safe review** :  Compare generated results before accepting them.
-- **Reversible history** : Undo and redo immutable image versions without changing the original.
-- **Local projects** : Save projects, inspect request diagnostics, and export PNG or JPEG.
+- **AI editing** — Remove, replace, restyle, transform, and extend images.
+- **Precise control** — Use selections as flexible focus hints or protected edit boundaries.
+- **Safe review** — Compare generated results before accepting them.
+- **Reversible history** — Undo and redo immutable image versions without changing the original.
+- **Local projects** — Save projects, inspect request diagnostics, and export PNG or JPEG.
 
 <!-- Add three examples here: selection-aware editing, before/after comparison, and history or diagnostics. -->
 
 ## Quick start
 
+Mirai supports Node.js 24.19.0 and npm 11.17.0. With `nvm`, run `nvm install` and `nvm use` before installing dependencies.
+
 ```bash
 git clone https://github.com/nothing331/Mirai.git
-cd Mirai && npm install
+cd Mirai && npm ci
 npm run dev
 ```
 
@@ -59,11 +63,13 @@ See [PROJECT.md](./PROJECT.md) for the architecture, tradeoffs, and design decis
 Run the standard verification suite:
 
 ```bash
-npm test
-npm run typecheck
 npm run lint
+npm run typecheck
+npm test
 npm run build
 ```
+
+These commands run ESLint, generate and check Next.js and TypeScript types, execute the unit and integration tests, and create a production build.
 
 Install Playwright Chromium once, then run the browser workflow:
 
@@ -77,6 +83,13 @@ Tests cover coordinate conversion, masks, protected pixels, edit acceptance, his
 ## Using OpenAI
 
 The deterministic fake provider is enabled by default. To test real generation, copy `.env.example` to `.env.local`, set `IMAGE_EDIT_PROVIDER=openai`, and add `OPENAI_API_KEY`. Credentials remain server-side and must not be committed.
+
+## Troubleshooting
+
+- **Unsupported Node.js version:** Run `nvm install` and `nvm use`, then confirm `node --version` reports `v24.19.0`.
+- **`npm ci` reports a lockfile mismatch:** Confirm `npm --version` reports `11.17.0`. Regenerate the lockfile only when intentionally updating dependencies.
+- **OpenAI key error:** Keep `IMAGE_EDIT_PROVIDER` and `ASSET_GENERATION_PROVIDER` set to `fake`, or configure a server-side key when intentionally testing OpenAI.
+- **Port 3000 is already in use:** Start the development server with `npm run dev -- --port 3001`.
 
 ## Current limitations
 
