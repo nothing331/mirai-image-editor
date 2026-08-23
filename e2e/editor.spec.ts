@@ -164,7 +164,8 @@ test("upload, select, and recolor an image", async ({ page }) => {
   if (!bounds) throw new Error("Editor canvas has no visible bounds.");
   const initialX = Number(await canvas.getAttribute("data-viewport-x"));
   const initialY = Number(await canvas.getAttribute("data-viewport-y"));
-  await expect(page.getByRole("heading", { name: "Mirai" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "MIRAI", exact: true })).toBeVisible();
+  await expect(page.getByText("REVERSIBLE AI IMAGE EDITOR", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Size", { exact: true })).toHaveCount(0);
   await page.mouse.move(bounds.x + initialX + 2, bounds.y + initialY + 2);
   await page.mouse.down();
