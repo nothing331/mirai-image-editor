@@ -21,6 +21,13 @@ export function createFullImageMask(width: number, height: number): ProcessingMa
   return mask;
 }
 
+/** Inverts a source-resolution selection without changing its dimensions or feathered edge precision. */
+export function invertMask(mask: ProcessingMask): ProcessingMask {
+  const data = new Uint8ClampedArray(mask.data.length);
+  for (let index = 0; index < data.length; index += 1) data[index] = 255 - mask.data[index];
+  return { ...mask, data };
+}
+
 /** Rasterizes a continuous circular brush segment while clipping to image bounds. */
 export function paintMask(
   mask: ProcessingMask,

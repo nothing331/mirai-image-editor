@@ -6,7 +6,7 @@ import { Check, Focus, ImagePlus, LoaderCircle, SlidersHorizontal, Sparkles, X }
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { blocksReplaceReviewAcceptance } from "@/shared/edit-boundary";
+import { isReplaceScopeMismatch } from "@/shared/edit-boundary";
 import type { CandidateAnalysis, EditBoundaryPolicy } from "@/shared/edit-boundary";
 import { blocksTransformAcceptance } from "@/shared/transform-fidelity";
 import type { TransformFidelityAssessment } from "@/shared/transform-fidelity";
@@ -18,7 +18,7 @@ const EditorCanvas = dynamic(() => import("../EditorCanvas").then((module) => mo
   loading: () => <div className="absolute inset-0 grid place-items-center font-mono text-xs text-white">Preparing canvas…</div>,
 });
 
-export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, onAdjustTransform, onAdjustExtend }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void }) {
+export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void }) {
   const [compareWith, setCompareWith] = useState<ComparisonBase>("original");
   const state = useEditorStore(useShallow((editor) => ({
     currentVersion: getCurrentVersion(editor),
@@ -44,7 +44,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
   return (
     <section className="order-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_28px] bg-[#cfcdc5] p-2 pb-0 md:order-2 md:p-3 md:pb-0" aria-label="Image canvas">
       <div className="relative min-h-0 overflow-hidden bg-[#151513] shadow-[0_1px_0_rgba(255,255,255,.35)]">
-        {state.preview && comparisonVersion && state.currentVersion ? (
+        {state.preview && comparisonVersion && state.currentVersion && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") ? (
           <PreviewComparison
             baseLabel={compareWith === "previous" ? "Previous" : "Original"}
             originalUrl={comparisonVersion.dataUrl}
@@ -54,7 +54,8 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
             transformFidelityAssessment={state.preview.method === "generative" && state.preview.type === "transform" ? state.preview.parameters.transformFidelityAssessment : null}
             transformPreview={state.preview.type === "transform"}
             extendPreview={state.preview.type === "extend"}
-            acceptanceBlocked={state.preview.method === "generative" ? state.preview.type === "transform" ? blocksTransformAcceptance(state.preview.parameters.preservationMode, state.preview.parameters.transformFidelityAssessment) : state.preview.type === "extend" ? false : blocksReplaceReviewAcceptance(state.preview.type, state.preview.parameters.boundaryPolicy, state.preview.parameters.candidateAnalysis) : false}
+            scopeMismatch={state.preview.method === "generative" && (state.preview.type === "remove" || state.preview.type === "replace" || state.preview.type === "restyle") ? isReplaceScopeMismatch(state.preview.type, state.preview.parameters.boundaryPolicy, state.preview.parameters.candidateAnalysis) : false}
+            acceptanceBlocked={state.preview.method === "generative" && state.preview.type === "transform" ? blocksTransformAcceptance(state.preview.parameters.preservationMode, state.preview.parameters.transformFidelityAssessment) : false}
             onAccept={state.acceptPreview}
             onDiscard={state.discardPreview}
             onAdjustTransform={onAdjustTransform}
@@ -90,7 +91,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
           {state.currentVersion && <span className="hidden lg:inline">{state.localDraft?.type ?? state.tool}</span>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {state.preview && (
+          {state.preview && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") && (
             <label className="flex items-center gap-1.5">Compare<select aria-label="Comparison base" className="h-6 bg-transparent text-[8px] outline-none focus:ring-1 focus:ring-accent" value={compareWith} onChange={(event) => setCompareWith(event.target.value as ComparisonBase)}><option value="original">Original</option><option value="previous">Previous</option></select></label>
           )}
           <span>{state.operations.length} accepted edit{state.operations.length === 1 ? "" : "s"}</span>
@@ -114,7 +115,7 @@ function ProjectLoadingOverlay() {
 }
 
 /** Shows the immutable base and unaccepted candidate before history advances. */
-function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy, candidateAnalysis, transformFidelityAssessment, transformPreview, extendPreview, acceptanceBlocked, onAccept, onDiscard, onAdjustTransform, onAdjustExtend }: {
+function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy, candidateAnalysis, transformFidelityAssessment, transformPreview, extendPreview, scopeMismatch, acceptanceBlocked, onAccept, onDiscard, onAdjustTransform, onAdjustExtend }: {
   baseLabel: string;
   originalUrl: string;
   previewUrl: string;
@@ -123,6 +124,7 @@ function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy,
   transformFidelityAssessment: TransformFidelityAssessment | null;
   transformPreview: boolean;
   extendPreview: boolean;
+  scopeMismatch: boolean;
   acceptanceBlocked: boolean;
   onAccept: () => boolean;
   onDiscard: () => void;
@@ -150,7 +152,7 @@ function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy,
       </div>
       <div className="flex flex-col gap-2 pt-2 sm:pt-3">
         {transformFidelityAssessment && transformFidelityAssessment.verdict !== "pass" && <p className={transformFidelityAssessment.verdict === "block" ? "bg-[#4a1f1a] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffb5a7]" : "bg-[#443914] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffe78a]"} role="alert" data-testid="transform-fidelity-assessment"><strong className="block uppercase">Transform fidelity {transformFidelityAssessment.verdict}</strong>{transformFidelityAssessment.explanation}</p>}
-        {acceptanceBlocked && !transformFidelityAssessment && <p className="bg-[#4a1f1a] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffb5a7]" role="alert" data-testid="replace-scope-mismatch">Scope mismatch: most changes landed outside the selected target. Discard and generate again, or switch to protected mode.</p>}
+        {scopeMismatch && <p className="bg-[#443914] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffe78a]" role="status" data-testid="replace-scope-mismatch"><strong className="block uppercase">Changes extend beyond the selection</strong>Most detected changes are outside your selection. Review the entire image before accepting, or use protected mode for exact boundaries.</p>}
         <div className="flex justify-end gap-2">
           {transformPreview && <button type="button" className="flex h-9 items-center gap-2 px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustTransform}><SlidersHorizontal className="size-4" />Adjust</button>}
           {extendPreview && <button type="button" className="flex h-9 items-center gap-2 px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustExtend}><SlidersHorizontal className="size-4" />Adjust frame</button>}

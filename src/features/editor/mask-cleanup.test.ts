@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMask } from "./mask";
-import { cleanRasterMask, unionMasks } from "./mask-cleanup";
+import { cleanRasterMask, subtractMasks, unionMasks } from "./mask-cleanup";
 
 describe("raster mask cleanup", () => {
   it("closes a narrow gap without changing source dimensions", () => {
@@ -30,5 +30,16 @@ describe("raster mask cleanup", () => {
     expect([...union.data]).toEqual([255, 128]);
     expect([...base.data]).toEqual([255, 0]);
     expect([...addition.data]).toEqual([0, 128]);
+  });
+
+  it("subtracts a contour while preserving partial alpha and both inputs", () => {
+    const base = createMask(3, 1);
+    const subtraction = createMask(3, 1);
+    base.data.set([255, 200, 0]);
+    subtraction.data.set([255, 96, 255]);
+    const result = subtractMasks(base, subtraction);
+    expect([...result.data]).toEqual([0, 159, 0]);
+    expect([...base.data]).toEqual([255, 200, 0]);
+    expect([...subtraction.data]).toEqual([255, 96, 255]);
   });
 });

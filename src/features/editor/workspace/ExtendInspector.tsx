@@ -1,6 +1,6 @@
 "use client";
 
-import { Expand, LoaderCircle, ScanSearch, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Expand, LoaderCircle, ScanSearch, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { extendPresets, type ExtendPresetId } from "@/shared/extend-presets";
 import type { ExtendInput } from "../types";
 import { useEditorStore } from "../store";
 
-export function ExtendInspector({ onPlan, onGenerate, requestLimitReached }: { onPlan: (input: ExtendInput) => Promise<boolean>; onGenerate: () => Promise<boolean>; requestLimitReached: boolean }) {
+export function ExtendInspector({ onPlan, onGenerate, previewAdjustmentOpen, onReturnToComparison }: { onPlan: (input: ExtendInput) => Promise<boolean>; onGenerate: () => Promise<boolean>; previewAdjustmentOpen: boolean; onReturnToComparison: () => void }) {
   const extendState = useEditorStore(useShallow((state) => state.extendState));
   const [presetId, setPresetId] = useState<ExtendPresetId>(extendState.input?.presetId ?? "instagram-classic");
   const [strategy, setStrategy] = useState<ExtendInput["strategy"]>(extendState.input?.strategy ?? "smart");
@@ -71,10 +71,13 @@ export function ExtendInspector({ onPlan, onGenerate, requestLimitReached }: { o
       </div>
 
       <div className="grid gap-2 border-t border-line p-3">
+        {previewAdjustmentOpen && (
+          <button type="button" data-testid="return-to-extend-comparison" className="flex h-10 items-center justify-center gap-2 border border-ink bg-paper px-3 text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent" onClick={onReturnToComparison}><ArrowLeft className="size-4" />Back to comparison</button>
+        )}
         {!hasCurrentPlan ? (
           <button type="button" className="flex h-10 items-center justify-center gap-2 bg-ink px-3 text-xs font-bold text-paper hover:text-acid disabled:opacity-40" disabled={busy} onClick={() => void onPlan({ ...input, userPrompt: userPrompt.trim() })}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}{processingLabel ?? "Preview smart frame"}</button>
         ) : (
-          <button type="button" className="flex h-10 items-center justify-center gap-2 bg-acid px-3 text-xs font-bold text-ink hover:bg-ink hover:text-acid disabled:opacity-40" disabled={busy || requestLimitReached} onClick={() => void onGenerate()}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{processingLabel ?? "Generate extension"}</button>
+          <button type="button" className="flex h-10 items-center justify-center gap-2 bg-acid px-3 text-xs font-bold text-ink hover:bg-ink hover:text-acid disabled:opacity-40" disabled={busy} onClick={() => void onGenerate()}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{processingLabel ?? "Generate extension"}</button>
         )}
         {processingLabel && <span className="sr-only" role="status" aria-live="polite">{processingLabel}</span>}
         <span className="flex items-center justify-center gap-1.5 font-mono text-[8px] uppercase tracking-[.1em] text-muted"><Expand className="size-3" />{selected.ratio[0]}:{selected.ratio[1]} · GPT Image 2 low</span>

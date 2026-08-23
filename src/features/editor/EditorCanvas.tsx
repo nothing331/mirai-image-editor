@@ -73,7 +73,7 @@ export function EditorCanvas({ version, mask, color, viewResetKey }: { version: 
   const [size, setSize] = useState({ width: 800, height: 600 });
   const image = useHtmlImage(version.dataUrl);
   const maskCanvas = useMemo(() => makeMaskCanvas(mask, color), [mask, color]);
-  const { viewport, tool, selectionMode, selectionId, lassoVisualization, paintSession, brushSize, localDraft, overlayAssets, setViewport, fillSelection, refineSelection, applyPaintStroke, updateLocalDraft } = useEditorStore();
+  const { viewport, tool, selectionMode, selectionId, lassoVisualization, paintSession, brushSize, localDraft, overlayAssets, setViewport, fillSelection, applyPaintStroke, updateLocalDraft } = useEditorStore();
   const paintCanvas = useMemo(() => makePaintCanvas(paintSession?.overlay ?? null), [paintSession?.overlay]);
   const overlayAsset = localDraft?.type === "watermark" ? overlayAssets.find((asset) => asset.id === localDraft.parameters.overlayAssetId) ?? null : null;
   const watermarkImage = useHtmlImage(overlayAsset?.dataUrl ?? null);
@@ -143,11 +143,9 @@ export function EditorCanvas({ version, mask, color, viewResetKey }: { version: 
     if (!point) return;
     drawingRef.current = true;
     lastPointRef.current = point;
-    if (tool === "lasso" && selectionMode === "draw") {
+    if (tool === "lasso") {
       lassoPointsRef.current = [point];
       setLassoPoints([point]);
-    } else if (tool === "lasso") {
-      refineSelection(point, point);
     } else {
       paintPointsRef.current = [point];
       setPaintPoints([point]);
@@ -166,14 +164,12 @@ export function EditorCanvas({ version, mask, color, viewResetKey }: { version: 
     if (!drawingRef.current) return;
     const point = sourcePoint(event.target.getStage()!);
     if (!point || !lastPointRef.current) return;
-    if (tool === "lasso" && selectionMode === "draw") {
+    if (tool === "lasso") {
       const previous = lassoPointsRef.current.at(-1)!;
       if (Math.hypot(point.x - previous.x, point.y - previous.y) >= 2.5 / Math.max(0.05, viewport.scale)) {
         lassoPointsRef.current = [...lassoPointsRef.current, point];
         setLassoPoints(lassoPointsRef.current);
       }
-    } else if (tool === "lasso") {
-      refineSelection(lastPointRef.current, point);
     } else {
       paintPointsRef.current = [...paintPointsRef.current, point];
       setPaintPoints(paintPointsRef.current);
@@ -184,7 +180,7 @@ export function EditorCanvas({ version, mask, color, viewResetKey }: { version: 
   /** Automatically closes and fills a completed lasso before clearing gesture state. */
   function endDraw() {
     if (localDraft) return;
-    if (drawingRef.current && tool === "lasso" && selectionMode === "draw" && lassoPointsRef.current.length >= 3) fillSelection(lassoPointsRef.current, viewport.scale);
+    if (drawingRef.current && tool === "lasso" && lassoPointsRef.current.length >= 3) fillSelection(lassoPointsRef.current, viewport.scale);
     if (drawingRef.current && (tool === "brush" || tool === "eraser")) applyPaintStroke(paintPointsRef.current, tool === "eraser");
     drawingRef.current = false;
     lastPointRef.current = null;
@@ -243,8 +239,8 @@ export function EditorCanvas({ version, mask, color, viewResetKey }: { version: 
             {paintCanvas && !localDraft && <KonvaImage image={paintCanvas} width={version.width} height={version.height} listening={false} />}
             {!localDraft && tool === "lasso" && <KonvaImage image={maskCanvas} width={version.width} height={version.height} listening={false} />}
             {!localDraft && tool === "lasso" && lassoVisualization?.showRawContour && lassoVisualization.rawPoints.length > 1 && <Line points={lassoVisualization.rawPoints.flatMap((point) => [point.x, point.y])} closed stroke="#ffad33" strokeWidth={Math.max(1, 1.5 / viewport.scale)} dash={[4 / viewport.scale, 4 / viewport.scale]} opacity={0.9} listening={false} />}
-            {!localDraft && tool === "lasso" && lassoVisualization && lassoVisualization.cleanedPoints.length > 1 && <Line points={lassoVisualization.cleanedPoints.flatMap((point) => [point.x, point.y])} closed stroke="#d8f441" strokeWidth={Math.max(1, 1.25 / viewport.scale)} opacity={0.9} listening={false} />}
-            {!localDraft && tool === "lasso" && lassoPoints.length > 1 && <Line points={lassoPoints.flatMap((point) => [point.x, point.y])} stroke={color} strokeWidth={Math.max(1, 2 / viewport.scale)} dash={[6 / viewport.scale, 4 / viewport.scale]} listening={false} />}
+            {!localDraft && tool === "lasso" && lassoVisualization && lassoVisualization.cleanedPoints.length > 1 && <Line points={lassoVisualization.cleanedPoints.flatMap((point) => [point.x, point.y])} closed stroke={selectionMode === "subtract" ? "#ef4b32" : "#d8f441"} strokeWidth={Math.max(1, 1.25 / viewport.scale)} opacity={0.9} listening={false} />}
+            {!localDraft && tool === "lasso" && lassoPoints.length > 1 && <Line points={lassoPoints.flatMap((point) => [point.x, point.y])} stroke={selectionMode === "subtract" ? "#ef4b32" : "#d8f441"} strokeWidth={Math.max(1, 2 / viewport.scale)} dash={[6 / viewport.scale, 4 / viewport.scale]} listening={false} />}
             {!localDraft && tool === "brush" && paintPoints.length > 1 && <Line points={paintPoints.flatMap((point) => [point.x, point.y])} stroke={color} strokeWidth={brushSize} lineCap="round" lineJoin="round" opacity={0.85} listening={false} />}
             {!localDraft && tool === "eraser" && paintPoints.length > 1 && <Line points={paintPoints.flatMap((point) => [point.x, point.y])} stroke="#ffffff" strokeWidth={brushSize} lineCap="round" lineJoin="round" dash={[4 / viewport.scale, 3 / viewport.scale]} opacity={0.7} listening={false} />}
             {localDraft?.type === "crop" && <CropDraftOverlay draft={localDraft} imageWidth={version.width} imageHeight={version.height} nodeRef={transformNodeRef} transformerRef={transformerRef} onChange={updateLocalDraft} viewportScale={viewport.scale} />}

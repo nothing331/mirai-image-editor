@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFullImageMask, createGenerativeProviderMask, createMask, deserializeMask, fillPolygonMask, getMaskBounds, paintMask, serializeMask } from "./mask";
+import { createFullImageMask, createGenerativeProviderMask, createMask, deserializeMask, fillPolygonMask, getMaskBounds, invertMask, paintMask, serializeMask } from "./mask";
 
 describe("processing masks", () => {
   it("creates a fully selected source-resolution mask", () => {
@@ -9,6 +9,14 @@ describe("processing masks", () => {
     const mask = createMask(12, 7);
     expect(mask.data).toHaveLength(84);
     expect([mask.width, mask.height]).toEqual([12, 7]);
+  });
+
+  it("inverts binary and feathered alpha without mutating the source mask", () => {
+    const mask = createMask(3, 1);
+    mask.data.set([0, 96, 255]);
+    const inverted = invertMask(mask);
+    expect([...inverted.data]).toEqual([255, 159, 0]);
+    expect([...mask.data]).toEqual([0, 96, 255]);
   });
 
   it("expands and feathers removal masks while leaving replacement masks unchanged", () => {

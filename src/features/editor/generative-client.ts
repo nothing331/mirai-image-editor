@@ -63,9 +63,6 @@ export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnap
   };
   const responseRequestId = payload.requestId ?? response.headers.get("x-request-id") ?? snapshot.requestId;
   if (!response.ok || !payload.candidateBase64 || !payload.providerRequestId || !payload.candidateAnalysis) {
-    if (payload.imageGenerationAttempted === false) {
-      window.dispatchEvent(new CustomEvent("image-generation-skipped", { detail: { requestId: responseRequestId } }));
-    }
     throw new GenerativeRequestError(
       payload.error ?? "The image provider returned an invalid response.",
       payload.retryable ?? false,

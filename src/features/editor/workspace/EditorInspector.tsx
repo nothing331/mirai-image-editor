@@ -16,35 +16,37 @@ import { WatermarkInspector } from "./WatermarkInspector";
 import type { ProviderCapabilities, WorkspaceWorkflow } from "./workspace-types";
 import type { WorkspacePhase } from "./workspace-phase";
 
-const editModes: Array<{ value: EditType; label: string; description: string; accessibleLabel: string }> = [
-  { value: "recolor", label: "Color", description: "Keep texture", accessibleLabel: "Color mode" },
-  { value: "remove", label: "Remove", description: "Fill the gap", accessibleLabel: "Remove" },
-  { value: "replace", label: "Replace", description: "Add new content", accessibleLabel: "Add / replace" },
-  { value: "restyle", label: "Style", description: "Change its look", accessibleLabel: "Restyle" },
+const editModes: Array<{ value: EditType; label: string; description: string; execution: "Local" | "AI"; accessibleLabel: string }> = [
+  { value: "recolor", label: "Recolor", description: "Preserve texture", execution: "Local", accessibleLabel: "Recolor" },
+  { value: "remove", label: "Remove", description: "Rebuild background", execution: "AI", accessibleLabel: "Remove" },
+  { value: "replace", label: "Replace", description: "Add new content", execution: "AI", accessibleLabel: "Replace" },
+  { value: "restyle", label: "Restyle", description: "Change appearance", execution: "AI", accessibleLabel: "Restyle" },
 ];
 
 export function EditorInspector({
   phase,
   providerCapabilities,
-  realRequestsUsed,
   workflow,
   onSelectGeometryEdit,
   onGenerate,
   onGenerateTransform,
   onPlanExtend,
   onGenerateExtend,
+  extendPreviewAdjustmentOpen,
+  onReturnToExtendComparison,
   onRetry,
   onOpenDiagnostics,
 }: {
   phase: WorkspacePhase;
   providerCapabilities: ProviderCapabilities | null;
-  realRequestsUsed: number;
   workflow: WorkspaceWorkflow;
   onSelectGeometryEdit: (editType: GeometryEditType) => void;
   onGenerate: () => void;
   onGenerateTransform: (input: TransformInput) => Promise<boolean>;
   onPlanExtend: (input: import("../types").ExtendInput) => Promise<boolean>;
   onGenerateExtend: () => Promise<boolean>;
+  extendPreviewAdjustmentOpen: boolean;
+  onReturnToExtendComparison: () => void;
   onRetry: () => Promise<boolean>;
   onOpenDiagnostics: () => void;
 }) {
@@ -71,13 +73,13 @@ export function EditorInspector({
     setFakeScenario: editor.setFakeScenario,
     setBoundaryPolicy: editor.setBoundaryPolicy,
     setSelectionMode: editor.setSelectionMode,
+    invertSelection: editor.invertSelection,
     clearSelection: editor.clearSelection,
     commitPaintSession: editor.commitPaintSession,
     discardPaintSession: editor.discardPaintSession,
   })));
   const processing = phase === "processing";
   const hasSelection = phase === "selected" || phase === "processing" || phase === "failed";
-  const requestLimitReached = providerCapabilities?.provider === "openai" && realRequestsUsed >= providerCapabilities.maxRealRequestsPerSession;
 
   if (phase === "empty") {
     return (
@@ -92,9 +94,9 @@ export function EditorInspector({
   if (workflow.kind === "text") return <TextInspector />;
   if (workflow.kind === "watermark") return <WatermarkInspector />;
   if (workflow.kind === "transform") {
-    return <TransformInspector providerCapabilities={providerCapabilities} realRequestsUsed={realRequestsUsed} onGenerate={onGenerateTransform} onRetry={onRetry} onOpenDiagnostics={onOpenDiagnostics} />;
+    return <TransformInspector providerCapabilities={providerCapabilities} onGenerate={onGenerateTransform} onRetry={onRetry} onOpenDiagnostics={onOpenDiagnostics} />;
   }
-  if (workflow.kind === "extend") return <ExtendInspector onPlan={onPlanExtend} onGenerate={onGenerateExtend} requestLimitReached={requestLimitReached} />;
+  if (workflow.kind === "extend") return <ExtendInspector onPlan={onPlanExtend} onGenerate={onGenerateExtend} previewAdjustmentOpen={extendPreviewAdjustmentOpen} onReturnToComparison={onReturnToExtendComparison} />;
 
   if (phase === "preview") {
     return (
@@ -146,14 +148,14 @@ export function EditorInspector({
     <div className="inspector-enter flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
         <div className="sticky top-0 z-10 flex items-center justify-between bg-paper py-3">
-          <InspectorHeading eyebrow="Lasso edit" title={processing ? "Generating" : phase === "failed" ? "Request failed" : hasSelection ? "Edit selected area" : "Choose an edit"} />
+          <InspectorHeading eyebrow="Select & edit" title={processing ? "Generating" : phase === "failed" ? "Request failed" : hasSelection ? "Edit selected area" : "Choose an edit"} />
           <span className={cn("size-2 rounded-full", phase === "selected" ? "bg-acid ring-1 ring-ink" : processing ? "animate-pulse bg-acid" : phase === "failed" ? "bg-accent" : "bg-line")} aria-hidden="true" />
         </div>
 
         <section className="grid gap-3 border-t border-line py-3" aria-labelledby="edit-operation-label">
           <div className="grid gap-1">
             <span id="edit-operation-label" className="font-mono text-[8px] uppercase tracking-[.12em] text-muted">Edit operation</span>
-            <p className="text-[10px] leading-relaxed text-muted">Choose what should happen inside the selected area.</p>
+            <p className="text-[10px] leading-relaxed text-muted">Recolor runs locally. Remove, Replace, and Restyle generate AI previews.</p>
           </div>
           <div className="grid grid-cols-2 gap-1 bg-[#e8e5dc] p-1" role="radiogroup" aria-label="Edit operation">
             {editModes.map((mode) => (
@@ -166,7 +168,7 @@ export function EditorInspector({
                 className={cn("grid min-h-12 content-center gap-0.5 px-2 text-left text-muted outline-none hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent", state.editType === mode.value && "bg-ink text-paper hover:bg-ink hover:text-acid")}
                 onClick={() => state.setEditType(mode.value)}
               >
-                <span className="text-[10px] font-bold">{mode.label}</span>
+                <span className="flex items-center justify-between gap-1 text-[10px] font-bold"><span>{mode.label}</span><span className={cn("font-mono text-[6px] uppercase tracking-[.08em]", state.editType === mode.value ? "text-acid" : "text-muted")}>{mode.execution}</span></span>
                 <span className={cn("font-mono text-[7px] uppercase tracking-[.04em]", state.editType === mode.value ? "text-paper/65" : "text-muted")}>{mode.description}</span>
               </button>
             ))}
@@ -174,7 +176,7 @@ export function EditorInspector({
 
           {state.editType === "recolor" ? (
             <label className="flex h-11 items-center gap-3 bg-[#e8e5dc] px-1.5 font-mono text-[10px]">
-              <input aria-label="Recolor" className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0" type="color" value={state.color} onChange={(event) => state.setColor(event.target.value)} />
+              <input aria-label="Recolor selection" className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0" type="color" value={state.color} onChange={(event) => state.setColor(event.target.value)} />
               <Palette className="size-3.5 text-muted" /><span>{state.color.toUpperCase()}</span>
             </label>
           ) : (
@@ -216,10 +218,8 @@ export function EditorInspector({
                   <button key={value} type="button" aria-pressed={state.selectionMode === value} className={cn("h-9 border border-line bg-paper px-2 font-mono text-[8px] uppercase text-muted outline-none hover:border-ink hover:text-ink focus-visible:ring-2 focus-visible:ring-accent", state.selectionMode === value && "border-ink bg-ink text-paper hover:bg-ink hover:text-acid")} onClick={() => state.setSelectionMode(value)}>{label}</button>
                 ))}
               </div>
-              {state.selectionMode !== "draw" && <>
-                <CompactSlider label="Refine size" value={`${state.brushSize}px`} min={4} max={160} step={1} sliderValue={state.brushSize} onChange={state.setBrushSize} />
-                <CompactSlider label="Edge softness" value={`${Math.round(state.maskSoftness * 100)}%`} min={0} max={0.8} step={0.05} sliderValue={state.maskSoftness} onChange={state.setMaskSoftness} />
-              </>}
+              {state.selectionMode !== "draw" && <p className="border-l-2 border-ink bg-[#e8e5dc] px-3 py-2 text-[9px] leading-relaxed text-muted">Draw another closed dashed shape on the image to {state.selectionMode === "add" ? "add its interior" : "remove its interior"}.</p>}
+              <button type="button" className="h-9 border border-ink bg-paper px-2 text-left text-[9px] font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent" onClick={state.invertSelection}>Invert selection <span className="float-right font-mono text-[7px] uppercase text-muted">Select outside</span></button>
               <div className="grid grid-cols-2 border-t border-line pt-2">
                 <button type="button" className="h-8 text-left font-mono text-[8px] uppercase text-muted outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-accent" onClick={() => { state.clearSelection(); state.setSelectionMode("draw"); }}>Redraw selection</button>
                 <button type="button" className="h-8 text-right font-mono text-[8px] uppercase text-muted outline-none hover:text-accent focus-visible:ring-2 focus-visible:ring-accent" onClick={() => { state.clearSelection(); state.setSelectionMode("draw"); }}>Clear selection</button>
@@ -265,7 +265,7 @@ export function EditorInspector({
               )}
               {providerCapabilities?.provider === "openai" && (
                 <div className="grid gap-1 bg-[#fff0c7] p-2.5 text-[10px] text-[#6f4300]" role="status">
-                  <strong>OpenAI · {realRequestsUsed}/{providerCapabilities.maxRealRequestsPerSession} requests</strong>
+                  <strong>OpenAI image generation</strong>
                   <span>{providerCapabilities.quality} quality · max {providerCapabilities.maxInputEdge}px</span>
                 </div>
               )}
@@ -291,7 +291,7 @@ export function EditorInspector({
         {state.editType === "recolor" ? (
           <button type="button" data-testid="apply-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45" disabled={Boolean(state.paintSession)} onClick={onGenerate}><Sparkles className="size-4" />Preview color</button>
         ) : (
-          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45" disabled={processing || requestLimitReached || Boolean(state.paintSession)} onClick={onGenerate}>
+          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45" disabled={processing || Boolean(state.paintSession)} onClick={onGenerate}>
             {processing ? <><Sparkles className="size-4 animate-pulse" />Processing…</> : <><WandSparkles className="size-4" />Generate preview</>}
           </button>
         )}

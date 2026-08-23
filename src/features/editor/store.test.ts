@@ -20,6 +20,7 @@ const original: ImageVersion = {
   dataUrl: "data:image/png;base64,original",
 };
 const firstPixelContour: SourcePoint[] = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+const secondPixelContour: SourcePoint[] = [{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 1, y: 1 }];
 const candidateAnalysis = {
   differenceThreshold: 12,
   changedPixels: 1,
@@ -59,7 +60,10 @@ describe("filled selection preview and acceptance", () => {
     vi.mocked(requestExtendPlan).mockReset();
     vi.mocked(requestExtendCandidate).mockReset();
     useEditorStore.getState().loadImage(original);
+    useEditorStore.getState().setEditType("recolor");
+    useEditorStore.getState().setPrompt("");
     useEditorStore.getState().setBoundaryPolicy("review");
+    useEditorStore.getState().setSelectionMode("draw");
     useEditorStore.getState().setBrushSize(1);
     useEditorStore.getState().setMaskSoftness(0);
   });
@@ -206,7 +210,7 @@ describe("filled selection preview and acceptance", () => {
     expect(useEditorStore.getState().error).toContain("did not preserve");
   });
 
-  it("blocks a review-mode Replace scope mismatch without advancing history", async () => {
+  it("allows a review-mode Replace scope mismatch when the user accepts it", async () => {
     useEditorStore.getState().fillSelection(firstPixelContour);
     useEditorStore.getState().setEditType("replace");
     useEditorStore.getState().setPrompt("replace the selected strawberry with an orange");
@@ -214,11 +218,11 @@ describe("filled selection preview and acceptance", () => {
 
     await useEditorStore.getState().requestGenerativePreview();
 
-    expect(useEditorStore.getState().acceptPreview()).toBe(false);
-    expect(useEditorStore.getState().preview).not.toBeNull();
-    expect(useEditorStore.getState().versions).toHaveLength(1);
-    expect(useEditorStore.getState().operations).toHaveLength(0);
-    expect(useEditorStore.getState().error).toContain("changed too much outside");
+    const preview = useEditorStore.getState().preview;
+    expect(preview?.method === "generative" && preview.type === "replace" ? preview.parameters.candidateAnalysis.classification : null).toBe("replace-scope-mismatch");
+    expect(useEditorStore.getState().acceptPreview()).toBe(true);
+    expect(useEditorStore.getState().versions).toHaveLength(2);
+    expect(useEditorStore.getState().operations).toHaveLength(1);
   });
 
   it("allows a protected Replace composite even when its raw candidate has a scope mismatch", async () => {
@@ -311,8 +315,8 @@ describe("filled selection preview and acceptance", () => {
     expect(accepted.maskAssets).toHaveLength(1);
     expect(accepted.selectionMask?.data.every((alpha) => alpha === 0)).toBe(true);
     const capturedMask = [...accepted.maskAssets[0].data];
-    accepted.setSelectionMode("subtract");
-    accepted.refineSelection({ x: 0, y: 0 }, { x: 0, y: 0 });
+    accepted.setSelectionMode("add");
+    accepted.fillSelection(secondPixelContour);
     expect([...useEditorStore.getState().maskAssets[0].data]).toEqual(capturedMask);
   });
 
@@ -329,8 +333,28 @@ describe("filled selection preview and acceptance", () => {
     useEditorStore.getState().fillSelection(firstPixelContour);
     useEditorStore.getState().createPreview();
     useEditorStore.getState().setSelectionMode("add");
-    useEditorStore.getState().refineSelection({ x: 2, y: 0 }, { x: 2, y: 0 });
+    useEditorStore.getState().fillSelection(secondPixelContour);
     expect(useEditorStore.getState().preview).toBeNull();
+  });
+
+  it("adds and subtracts closed contours from the source-resolution selection", () => {
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    useEditorStore.getState().setSelectionMode("add");
+    useEditorStore.getState().fillSelection(secondPixelContour);
+    expect([...useEditorStore.getState().selectionMask!.data]).toEqual([255, 255, 255]);
+
+    useEditorStore.getState().setSelectionMode("subtract");
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    expect([...useEditorStore.getState().selectionMask!.data]).toEqual([0, 255, 255]);
+  });
+
+  it("inverts the selected interior and exterior without changing source dimensions", () => {
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    useEditorStore.getState().invertSelection();
+
+    const mask = useEditorStore.getState().selectionMask!;
+    expect([mask.width, mask.height]).toEqual([3, 1]);
+    expect([...mask.data]).toEqual([0, 255, 255]);
   });
 
   it("returns to closed-shape drawing when a refined selection is cleared", () => {
