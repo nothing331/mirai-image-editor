@@ -6,7 +6,7 @@ A local-first AI image editor with selection-aware generation, semantic-fidelity
 
 Edit an image, compare the result, accept or discard it, and undo any accepted change.
 
-<!-- Add a hero image or short Upload → Select → Generate → Compare → Accept GIF here. -->
+![Mirai showing a selection-aware AI image edit](./docs/assets/brand/mirai-social-preview.png)
 
 ## Features
 
