@@ -1,6 +1,6 @@
 # Wave A P01 feasibility report
 
-**Status:** In progress; local implementation checks and live Supabase structural verification recorded. Render and two-user Supabase behavior evidence remain pending.
+**Status:** In progress; local implementation checks and live Supabase proof recorded. Render runtime evidence remains pending.
 **Scope:** Synthetic fixtures only, fake AI only, no production data.
 **Target:** Render Free web service plus Supabase Free database/Auth/Storage.
 
@@ -55,7 +55,16 @@ The user applied `20260906142411_cloud_spike_foundation.sql` through the Supabas
 | Storage ownership policies | `3` |
 | Spike bucket private | `true` |
 
-This proves that the intended objects and privilege shape exist in the live project. It does not replace the two-user behavior proof: owner success, foreign-user denial, anonymous denial, signed transfer, and cleanup still need to run through the public Supabase APIs using real user sessions.
+This proves that the intended objects and privilege shape exist in the live project. Structural presence alone does not prove behavior, so the separate two-user API proof below tests owner success, foreign-user denial, anonymous denial, signed transfer, and cleanup using real user sessions.
+
+### Live Supabase behavior proof
+
+Date: 6 September 2026.
+Fixture run: `d807cd89-5bab-4e9c-97db-c9c07ef19b4d`.
+
+The public Supabase APIs were exercised with two temporary authenticated users and one synthetic 64 × 64 PNG. The owner metadata insert/read passed; the foreign-user read returned no row; a forged-owner insert was rejected; the signed upload and owner download passed; and foreign-user and anonymous object reads were rejected. The fixture contained 267 bytes.
+
+The proof's `finally` cleanup removed the object, metadata row, and both Auth users. A separate read-only SQL query then confirmed zero probe rows, zero objects in `mirai-cloud-spike`, and zero Auth users carrying the spike fixture marker. No production data or paid provider was used.
 
 ## Pending evidence
 
@@ -66,9 +75,9 @@ This proves that the intended objects and privilege shape exist in the live proj
 - [ ] Protected Render probe at 2,048 × 2,048, or a bounded failure/restart observation.
 - [ ] Render cold-start, warm-start, and restart observations.
 - [x] Live Supabase migration applied to the isolated project; catalog structure verified read-only.
-- [ ] Two-user RLS metadata isolation proof.
-- [ ] Private Storage signed upload/read/delete and foreign/anonymous denial proof.
-- [ ] Test-fixture cleanup confirmation.
+- [x] Two-user RLS metadata isolation proof.
+- [x] Private Storage signed upload/read/delete and foreign/anonymous denial proof.
+- [x] Test-fixture cleanup confirmation.
 - [ ] Final supported-envelope and request-execution verdict.
 
 ## Provisional risk
