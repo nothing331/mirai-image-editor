@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 
 const bucket = "mirai-cloud-spike";
-const requiredVariables = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+const requiredVariables = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"];
 
 for (const name of requiredVariables) {
   if (!process.env[name]) throw new Error(`Missing required environment variable: ${name}`);
@@ -14,9 +14,9 @@ if (process.env.CLOUD_SPIKE_CONFIRM !== "synthetic-only") {
 
 const url = process.env.SUPABASE_URL;
 const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const secretKey = process.env.SUPABASE_SECRET_KEY;
 const runId = randomUUID();
-const admin = client(serviceRoleKey);
+const admin = client(secretKey);
 const createdUserIds = [];
 let ownerClient;
 let ownerPath;
