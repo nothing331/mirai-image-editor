@@ -12,6 +12,10 @@ No supported image limit is approved from local measurements alone. P01 remains 
 
 ## Evidence log
 
+### Pinned Linux CI
+
+GitHub Actions run `34039713831` completed successfully on Ubuntu 24.04 using `.nvmrc` and the locked npm installation. Lint, generated Next.js types/type-check, all 154 tests, the production build, and the clean-generated-files check passed. This proves the pinned Linux build but not Render startup or memory behavior.
+
 ### Local protected HTTP probes
 
 Date: 6 September 2026.
@@ -35,7 +39,8 @@ Every case completed and returned `replace-scope-mismatch`, as expected for the 
 
 ## Pending evidence
 
-- [ ] Render production build/start using pinned Node 24.19.0 and npm 11.17.x.
+- [x] Pinned Node 24.19.0 Linux dependency installation and production build in GitHub CI.
+- [ ] Render production start using pinned Node 24.19.0 and npm 11.17.x.
 - [ ] Protected Render probe at 1,024 × 1,024.
 - [ ] Protected Render probe at 1,536 × 1,536.
 - [ ] Protected Render probe at 2,048 × 2,048, or a bounded failure/restart observation.
