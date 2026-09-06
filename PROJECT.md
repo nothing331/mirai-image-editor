@@ -279,7 +279,7 @@ Undo and redo move the current-version pointer. Arbitrary operation toggling and
 
 ## Implementation plan
 
-Implemented feature behavior, ownership, and verification references live in [FEATURE_CONTEXT.md](./FEATURE_CONTEXT.md). Build order, milestone status, concrete deliverables, and verification gates live in [LOCAL_DEVELOPMENT_PLAN.md](./LOCAL_DEVELOPMENT_PLAN.md). This separation keeps architecture stable while allowing feature context and the execution plan to change at their appropriate rates.
+Implemented feature behavior, ownership, and verification references live in [FEATURE_CONTEXT.md](./FEATURE_CONTEXT.md). Completed local build order and verification live in [LOCAL_DEVELOPMENT_PLAN.md](./LOCAL_DEVELOPMENT_PLAN.md). The approved cloud direction and staged release gates live in [docs/CLOUD_IMPLEMENTATION_PLAN.md](./docs/CLOUD_IMPLEMENTATION_PLAN.md); [docs/CLOUD_WAVE_A_SPEC.md](./docs/CLOUD_WAVE_A_SPEC.md) owns the current foundation spike. This separation keeps architecture stable while allowing feature context and execution evidence to change at their appropriate rates.
 
 ## Current decisions
 
@@ -293,6 +293,7 @@ These decisions are intentionally kept here until the project becomes large enou
 | Edit routing | Prefer deterministic local processing | Accepted |
 | AI integration | Application-owned provider interface | Provisional |
 | Development storage | SQLite and local filesystem | Provisional |
+| Zero-billing cloud target | Next.js on Render Free with Supabase Free Auth, Postgres, and private Storage; no payment-method-backed object store | Accepted; Wave A validation in progress |
 | Request diagnostics | Structured local manifests plus directly inspectable artifacts | Accepted |
 | Replace intent planning | Structured multimodal plan before image generation | Accepted |
 | Generative selection semantics | Approximate focus by default; explicit protected boundary available | Accepted |
