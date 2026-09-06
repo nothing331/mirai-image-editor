@@ -1,6 +1,6 @@
 # Wave A P01 feasibility report
 
-**Status:** In progress; local implementation checks recorded, Render and Supabase evidence pending.
+**Status:** In progress; local implementation checks and live Supabase structural verification recorded. Render and two-user Supabase behavior evidence remain pending.
 **Scope:** Synthetic fixtures only, fake AI only, no production data.
 **Target:** Render Free web service plus Supabase Free database/Auth/Storage.
 
@@ -37,6 +37,26 @@ Fresh production server for each fixture:
 
 Every case completed and returned `replace-scope-mismatch`, as expected for the deliberately broad fake edit. The production-server measurements are substantially lower than the initial development-server observation (770,506,752-byte peak RSS at 2,048), confirming that development overhead cannot determine the host envelope. The 2,048 production case still needs the real Render Linux measurement because platform memory accounting and the pinned runtime differ.
 
+### Live Supabase migration structure
+
+Date: 6 September 2026.
+Environment: isolated Supabase Free project `vfpafxzczdblsbsslhcg`.
+
+The user applied `20260906142411_cloud_spike_foundation.sql` through the Supabase SQL Editor. A subsequent read-only catalog query confirmed:
+
+| Check | Observed |
+|---|---:|
+| Metadata-table RLS enabled | `true` |
+| `authenticated` can select | `true` |
+| `authenticated` can insert | `true` |
+| `authenticated` can update | `false` |
+| `authenticated` can delete | `true` |
+| Metadata ownership policies | `3` |
+| Storage ownership policies | `3` |
+| Spike bucket private | `true` |
+
+This proves that the intended objects and privilege shape exist in the live project. It does not replace the two-user behavior proof: owner success, foreign-user denial, anonymous denial, signed transfer, and cleanup still need to run through the public Supabase APIs using real user sessions.
+
 ## Pending evidence
 
 - [x] Pinned Node 24.19.0 Linux dependency installation and production build in GitHub CI.
@@ -45,7 +65,7 @@ Every case completed and returned `replace-scope-mismatch`, as expected for the 
 - [ ] Protected Render probe at 1,536 × 1,536.
 - [ ] Protected Render probe at 2,048 × 2,048, or a bounded failure/restart observation.
 - [ ] Render cold-start, warm-start, and restart observations.
-- [ ] Live Supabase migration applied to the isolated project.
+- [x] Live Supabase migration applied to the isolated project; catalog structure verified read-only.
 - [ ] Two-user RLS metadata isolation proof.
 - [ ] Private Storage signed upload/read/delete and foreign/anonymous denial proof.
 - [ ] Test-fixture cleanup confirmation.
