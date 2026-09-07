@@ -101,6 +101,8 @@ Directories should be introduced with their first real behavior. Do not create s
 - Diagnostics observe the edit pipeline but cannot create operations, versions, or provider requests.
 - Diagnostic failures never change the result or status of the edit they observe.
 - Shared code remains small and cannot become a generic utility directory.
+- Cloud modes must validate their complete environment before serving traffic. Until authenticated Supabase persistence exists, staging and beta keep project persistence disabled and expose only non-sensitive health routes; they never fall back to SQLite or filesystem assets on Render.
+- Database migrations are reviewed release operations, separate from application startup and application rollback.
 
 ### Workspace UI boundary
 
@@ -293,7 +295,8 @@ These decisions are intentionally kept here until the project becomes large enou
 | Edit routing | Prefer deterministic local processing | Accepted |
 | AI integration | Application-owned provider interface | Provisional |
 | Development storage | SQLite and local filesystem | Provisional |
-| Zero-billing cloud target | Next.js on Render Free with Supabase Free Auth, Postgres, and private Storage; no payment-method-backed object store | Accepted; Wave A validation in progress |
+| Zero-billing cloud target | Next.js on Render Free with Supabase Free Auth, Postgres, and private Storage; no payment-method-backed object store | Accepted; P01 validated and P02 live walkthrough complete |
+| Cloud runtime safety | Explicit local/CI/staging/beta modes; fail closed before authenticated Supabase persistence exists; migrations separate from startup | Accepted in Wave A P02 |
 | Request diagnostics | Structured local manifests plus directly inspectable artifacts | Accepted |
 | Replace intent planning | Structured multimodal plan before image generation | Accepted |
 | Generative selection semantics | Approximate focus by default; explicit protected boundary available | Accepted |

@@ -89,12 +89,20 @@ To run the browser suite on GitHub, open **Actions → Playwright E2E → Run wo
 
 The deterministic fake provider is enabled by default. To test real generation, copy `.env.example` to `.env.local`, set `IMAGE_EDIT_PROVIDER=openai`, and add `OPENAI_API_KEY`. Credentials remain server-side and must not be committed.
 
+## Cloud foundation
+
+Wave A uses an explicit, fail-closed staging configuration. `npm run start:cloud` validates the environment before starting Next.js; staging exposes liveness and readiness only and cannot use local SQLite or filesystem persistence. Real accounts and cloud projects are intentionally not enabled yet.
+
+See the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for the environment matrix, Render setup, health checks, protected Supabase migration path, troubleshooting, and rollback procedure.
+
 ## Troubleshooting
 
 - **Unsupported Node.js version:** Run `nvm install` and `nvm use`, then confirm `node --version` reports `v24.19.0`.
 - **`npm ci` reports a lockfile mismatch:** Confirm `npm --version` reports `11.17.0`. Regenerate the lockfile only when intentionally updating dependencies.
 - **OpenAI key error:** Keep `IMAGE_EDIT_PROVIDER` and `ASSET_GENERATION_PROVIDER` set to `fake`, or configure a server-side key when intentionally testing OpenAI.
 - **Port 3000 is already in use:** Start the development server with `npm run dev -- --port 3001`.
+- **Cloud startup refuses to run:** Follow the named variable errors and compare the service with the P02 environment matrix. Do not bypass validation by selecting local persistence on Render.
+- **Cloud readiness returns 503:** Verify the Supabase project is active and the browser-safe URL/publishable key are correct. The public response intentionally omits upstream details.
 
 ## Current limitations
 
