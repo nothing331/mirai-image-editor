@@ -40,7 +40,7 @@ export class RuntimeEnvironmentError extends Error {
 }
 
 export function readRuntimeEnvironment(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
 ): RuntimeEnvironment {
   const issues: string[] = [];
   const mode = parseChoice("MIRAI_APP_MODE", environment.MIRAI_APP_MODE ?? "local", applicationModes, issues);

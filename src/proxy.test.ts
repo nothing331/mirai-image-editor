@@ -4,6 +4,35 @@ import { proxy } from "./proxy";
 
 afterEach(() => {
   delete process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT;
+  delete process.env.MIRAI_APP_MODE;
+});
+
+describe("cloud foundation API isolation", () => {
+  it.each(["/api/health/live", "/api/health/ready"])("allows %s in staging", (pathname) => {
+    process.env.MIRAI_APP_MODE = "staging";
+
+    const response = proxy(new NextRequest(`https://example.com${pathname}`));
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each(["staging", "beta"])("hides unfinished APIs in %s", async (mode) => {
+    process.env.MIRAI_APP_MODE = mode;
+
+    const response = proxy(new NextRequest("https://example.com/api/projects"));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({ error: "Not found." });
+  });
+
+  it("does not allow the retired spike flag to expose its route in staging", async () => {
+    process.env.MIRAI_APP_MODE = "staging";
+
+    const response = proxy(new NextRequest("https://example.com/api/internal/cloud-spike"));
+
+    expect(response.status).toBe(404);
+  });
 });
 
 describe("cloud spike API isolation", () => {
