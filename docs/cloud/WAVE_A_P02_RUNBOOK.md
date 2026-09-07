@@ -106,12 +106,13 @@ Application rollback is independent of database migration execution:
 |---|---|
 | P02 application commit | `9bb678fcec43b170c938c1eb37a719d3035d8eef` |
 | Render deployment ID | `dep-daf6i88enrgs73e49ggg` |
+| Follow-up clean release | `ea4081dfb8e1efd5608c8b44482bb46b3b5eec77`; live, ready, and route-boundary checks passed |
 | Previous rollback deployment | `dep-daf680bbc2fs73csvabg` (`7abe43e`) |
 | Liveness | HTTP 200, `status=live`, matching release ID, `Cache-Control: no-store` |
 | Readiness | HTTP 200, `status=ready`, `mode=staging`, matching release ID, `Cache-Control: no-store` |
 | Unsafe-route denial | `/api/projects` returned HTTP 404 with `Cache-Control: no-store` |
 | Clean local verification | 38 files / 182 tests, lint, typecheck, and production build passed |
-| GitHub CI | Pending P02 pull request |
+| GitHub CI | PR #21 passed lint, typecheck, tests, production build, and cloud configuration validation |
 
 ## Resource and cost posture
 

@@ -1,6 +1,6 @@
 # Cloud Wave A implementation-readiness specification
 
-**Status:** P01 accepted; P02 implementation and live clean-deployment walkthrough complete, with pull-request CI remaining before Wave A closes.
+**Status:** Wave A complete; P01 is accepted and P02 passed implementation, clean-deployment walkthrough, and pull-request CI.
 **Prepared:** 6 September 2026.
 **Parent plan:** [CLOUD_IMPLEMENTATION_PLAN.md](./CLOUD_IMPLEMENTATION_PLAN.md)
 **Confirmed scope:** **Wave A — Confirm the foundation**.
@@ -255,7 +255,7 @@ P02 updates `PROJECT.md` only for approved project-wide cloud architecture decis
 - [x] Cloud mode cannot silently use local SQLite/filesystem persistence.
 - [x] Liveness is cheap; readiness is bounded and non-sensitive.
 - [x] Deployment from a clean checkout is repeatable with AI disabled.
-- [ ] CI uses synthetic/disposable fixtures and contains no beta secrets/data. (Local workflow-equivalent verification passes; pull-request CI pending.)
+- [x] CI uses synthetic/disposable fixtures and contains no beta secrets/data.
 - [x] Migration execution is protected and separate from app startup.
 - [x] Release ID, rollback target, and verification result are recorded.
 - [x] A second clean-deployment walkthrough succeeds from the documentation.
