@@ -20,6 +20,20 @@ Each feature entry should cover:
 
 Keep entries focused on current behavior. Link to project-wide decisions instead of duplicating them.
 
+## Isolated cloud feasibility deployment
+
+**Outcome.** An operator can deploy the Wave A feasibility benchmark without exposing Mirai's existing local project, diagnostic, or AI routes to the public internet.
+
+**Working flow.** The deployment sets `CLOUD_SPIKE_ISOLATED_DEPLOYMENT=true`. Next.js Proxy examines every `/api/*` request before route handling, allows only the exact `/api/internal/cloud-spike` path, and returns a non-cacheable 404 for every other API path. The benchmark route separately requires its feature flag and bearer secret; after measurements, `CLOUD_SPIKE_ENABLED=false` disables it while leaving the public editor shell available for deployment checks.
+
+**Ownership and rules.** `src/proxy.ts` owns only the temporary deployment-surface boundary. It does not add authentication to existing routes and is disabled by default so local behavior is unchanged. The benchmark route owns feature enablement, token validation, input limits, and synthetic processing. Real AI, real user data, and Render filesystem durability are outside this spike.
+
+**Failures and recovery.** A missing or false isolation flag preserves ordinary local behavior. In an isolated deployment, an unknown or disallowed API path fails closed with HTTP 404 and `Cache-Control: no-store`; the benchmark also fails closed when disabled or incorrectly authorized. Removing the isolation flag without first implementing the later cloud authentication boundary would expose local-only routes and is therefore not a valid beta configuration.
+
+**Dependencies and limits.** This is P01 measurement infrastructure, not the finished cloud security model. It relies on Render environment configuration and Next.js Proxy. P02 must add explicit environment modes and validation; later phases add real sessions and route authorization.
+
+**Code and verification.** `src/proxy.ts`, `src/proxy.test.ts`, `src/app/api/internal/cloud-spike/route.ts`, adjacent route/benchmark tests, and `docs/cloud/WAVE_A_P01_REPORT.md`.
+
 ## Image intake and project lifecycle
 
 **Outcome.** A user can upload a PNG or JPEG, begin an editing project, persist it locally, reopen it, and retain the original as an immutable asset.

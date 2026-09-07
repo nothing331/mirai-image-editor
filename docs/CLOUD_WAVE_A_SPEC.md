@@ -1,6 +1,6 @@
 # Cloud Wave A implementation-readiness specification
 
-**Status:** Approved; P01 implementation started. GitHub, Render, region, and Supabase provisioning are complete.
+**Status:** P01 evidence complete; verdict awaits the required user checkpoint before P02.
 **Prepared:** 6 September 2026.
 **Parent plan:** [CLOUD_IMPLEMENTATION_PLAN.md](./CLOUD_IMPLEMENTATION_PLAN.md)
 **Confirmed scope:** **Wave A — Confirm the foundation**.
@@ -236,17 +236,17 @@ P02 updates `PROJECT.md` only for approved project-wide cloud architecture decis
 
 ### P01 acceptance
 
-- [ ] Pinned dependency installation and production build succeed on the target Linux runtime.
-- [ ] Next.js starts on the assigned host/port and survives a controlled restart.
-- [ ] Sharp processes every accepted synthetic fixture; over-limit work fails safely.
-- [ ] Peak memory and timing are recorded for each envelope case.
-- [ ] Cold-start and longest fake-pipeline behavior are recorded.
-- [ ] A private object can be uploaded, verified, read with authorization, and deleted using the approved storage service.
-- [ ] Anonymous and wrong-scope object access fail.
-- [ ] A Supabase metadata/auth ownership proof succeeds and a foreign-user read fails.
-- [ ] No paid AI call, production data, or local-disk durability is used.
-- [ ] Cleanup succeeds and leaves no unexplained test resources.
-- [ ] The report gives a supported-envelope and request-execution verdict.
+- [x] Pinned dependency installation and production build succeed on the target Linux runtime.
+- [x] Next.js starts on the assigned host/port and survives a controlled restart.
+- [x] Sharp processes every accepted synthetic fixture; over-limit work fails safely.
+- [x] Peak memory and timing are recorded for each envelope case.
+- [x] Cold-start and longest fake-pipeline behavior are recorded.
+- [x] A private object can be uploaded, verified, read with authorization, and deleted using the approved storage service.
+- [x] Anonymous and wrong-scope object access fail.
+- [x] A Supabase metadata/auth ownership proof succeeds and a foreign-user read fails.
+- [x] No paid AI call, production data, or local-disk durability is used.
+- [x] Cleanup succeeds and leaves no unexplained test resources.
+- [x] The report gives a supported-envelope and request-execution verdict.
 
 ### P02 acceptance
 
