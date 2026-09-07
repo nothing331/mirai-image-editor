@@ -1,0 +1,52 @@
+name: Apply Supabase migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Protected GitHub environment to update
+        required: true
+        type: choice
+        options:
+          - staging
+          - beta
+      confirmation:
+        description: Type apply-staging or apply-beta
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migrations-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Plan and apply migrations
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.target }}
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Confirm the protected target
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          TARGET: ${{ inputs.target }}
+        run: test "$CONFIRMATION" = "apply-$TARGET"
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Link the selected project
+        run: npx --yes supabase@2.116.0 link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Preview pending migrations
+        run: npx --yes supabase@2.116.0 db push --linked --dry-run --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Apply pending migrations once
+        run: npx --yes supabase@2.116.0 db push --linked --password "$SUPABASE_DB_PASSWORD"

@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: mirai-image-editor
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:cloud
+    healthCheckPath: /api/health/live
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: MIRAI_APP_MODE
+        value: staging
+      - key: MIRAI_PERSISTENCE_MODE
+        value: disabled
+      - key: MIRAI_AI_ENABLED
+        value: false
+      - key: IMAGE_EDIT_PROVIDER
+        value: fake
+      - key: ASSET_GENERATION_PROVIDER
+        value: fake
+      - key: CLOUD_SPIKE_ENABLED
+        value: false
+      - key: CLOUD_SPIKE_ISOLATED_DEPLOYMENT
+        value: false
+      - key: MIRAI_MAX_SOURCE_EDGE
+        value: 2048
+      - key: MIRAI_MAX_SOURCE_PIXELS
+        value: 4194304
+      - key: MIRAI_HEAVY_REQUEST_CONCURRENCY
+        value: 1
+      - key: MIRAI_REQUEST_TIMEOUT_MS
+        value: 60000
+      - key: MIRAI_READINESS_TIMEOUT_MS
+        value: 3000
+      - key: MIRAI_CANONICAL_URL
+        sync: false
+      - key: MIRAI_ALLOWED_ORIGINS
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
