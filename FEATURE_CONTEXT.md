@@ -34,6 +34,20 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Code and verification.** `src/proxy.ts`, `src/proxy.test.ts`, `src/app/api/internal/cloud-spike/route.ts`, adjacent route/benchmark tests, and `docs/cloud/WAVE_A_P01_REPORT.md`.
 
+## Cloud runtime foundation
+
+**Outcome.** An operator can reproduce a safe Wave A staging process whose mode, limits, dependency configuration, health, release identity, and rollback boundary are explicit.
+
+**Working flow.** `npm run start:cloud` validates configuration before starting Next.js, and instrumentation repeats the validation inside the server process. Liveness reports only process status and release identity. Readiness revalidates configuration and, in cloud modes, performs a publishable-key Supabase Auth health request with a short abort deadline. Next.js Proxy permits those exact health routes but returns a non-cacheable 404 for unfinished APIs in staging and beta.
+
+**Ownership and rules.** The runtime environment module owns parsing and cross-variable safety rules. Local and CI retain disposable local persistence; staging and beta require persistence to remain explicitly disabled until a Supabase project repository exists. Wave A cloud modes require HTTPS canonical/origin configuration, fake providers, AI and benchmark shutdown, the P01 resource ceiling, a release identifier, and browser-safe Supabase settings. A privileged Supabase key with a `NEXT_PUBLIC_` name is rejected. `render.yaml` owns the reproducible free-service skeleton; migrations are absent from app startup and run only through a manual target-confirmed GitHub workflow.
+
+**Failures and recovery.** Unsafe startup throws variable-name-only errors before the application starts. Readiness dependency or configuration failure returns a generic 503 without leaking URLs, keys, or upstream bodies. Liveness remains dependency-free. Rollback selects a recorded Render release and never automatically reverses database migrations or falls back to local disk.
+
+**Dependencies and limits.** Staging uses Render Free and a Supabase Free project, so cold starts and project pauses remain possible. Readiness proves reachability, not complete Auth/Storage behavior. Existing project and editing APIs are deliberately unavailable in cloud modes; P03 and later phases replace this temporary closed surface with authenticated, durable behavior.
+
+**Code and verification.** `src/server/config/runtime-environment.ts`, `src/instrumentation.ts`, `src/app/api/health/`, `src/proxy.ts`, `render.yaml`, `.github/workflows/`, adjacent tests, and `docs/cloud/WAVE_A_P02_RUNBOOK.md`.
+
 ## Image intake and project lifecycle
 
 **Outcome.** A user can upload a PNG or JPEG, begin an editing project, persist it locally, reopen it, and retain the original as an immutable asset.

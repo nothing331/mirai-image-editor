@@ -1,6 +1,6 @@
 # Cloud Wave A implementation-readiness specification
 
-**Status:** P01 evidence complete; verdict awaits the required user checkpoint before P02.
+**Status:** P01 accepted; P02 implementation and live clean-deployment walkthrough complete, with pull-request CI remaining before Wave A closes.
 **Prepared:** 6 September 2026.
 **Parent plan:** [CLOUD_IMPLEMENTATION_PLAN.md](./CLOUD_IMPLEMENTATION_PLAN.md)
 **Confirmed scope:** **Wave A — Confirm the foundation**.
@@ -250,15 +250,15 @@ P02 updates `PROJECT.md` only for approved project-wide cloud architecture decis
 
 ### P02 acceptance
 
-- [ ] Local, CI, staging, and beta modes are explicit and documented.
-- [ ] Configuration fails fast and safely for missing or conflicting values.
-- [ ] Cloud mode cannot silently use local SQLite/filesystem persistence.
-- [ ] Liveness is cheap; readiness is bounded and non-sensitive.
-- [ ] Deployment from a clean checkout is repeatable with AI disabled.
-- [ ] CI uses synthetic/disposable fixtures and contains no beta secrets/data.
-- [ ] Migration execution is protected and separate from app startup.
-- [ ] Release ID, rollback target, and verification result are recorded.
-- [ ] A second clean-deployment walkthrough succeeds from the documentation.
+- [x] Local, CI, staging, and beta modes are explicit and documented.
+- [x] Configuration fails fast and safely for missing or conflicting values.
+- [x] Cloud mode cannot silently use local SQLite/filesystem persistence.
+- [x] Liveness is cheap; readiness is bounded and non-sensitive.
+- [x] Deployment from a clean checkout is repeatable with AI disabled.
+- [ ] CI uses synthetic/disposable fixtures and contains no beta secrets/data. (Local workflow-equivalent verification passes; pull-request CI pending.)
+- [x] Migration execution is protected and separate from app startup.
+- [x] Release ID, rollback target, and verification result are recorded.
+- [x] A second clean-deployment walkthrough succeeds from the documentation.
 
 ## 10. Deliverables
 

@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A P01 evidence is complete; its feasibility verdict awaits user acceptance before P02 begins. Later cloud features remain planned, not implemented.
+**Status:** Wave A P01 is accepted and the P02 reproducible cloud foundation has passed its live walkthrough; P02 pull-request CI remains before Wave A closes. Later cloud features remain planned, not implemented.
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -622,8 +622,8 @@ Each numbered unit is one cohesive feature or repository concern, with its own P
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
 | P00 | Product direction agreed; D10 allowance semantics carried to P14 and documentation reconciliation tracked separately | Decision record updated; proceed to P01 without claiming deferred work is complete |
-| P01 | Evidence complete; isolated Render/Supabase database/Storage feasibility spike with synthetic fixtures measured pinned runtime, Sharp, maximum image and longest fake pipeline. Awaiting user acceptance of the verdict before P02. | Build/start/transfers/auth proof, peak memory/timing report, verdict on supported envelope and HTTP execution |
-| P02 | Reproducible environments, configuration validation, deployment skeleton, health and required CI | Repeatable isolated deploy with AI off; no production data/secrets in tests |
+| P01 | Complete and accepted; isolated Render/Supabase database/Storage feasibility spike measured the pinned runtime, Sharp, maximum image and longest fake pipeline. | Build/start/transfers/auth proof, peak memory/timing report, verdict on supported envelope and HTTP execution |
+| P02 | Live walkthrough complete; reproducible modes, fail-closed configuration, deployment/migration skeletons, health routes and CI contract implemented. Pull-request CI remains. | Repeatable isolated deploy with AI off; no production data/secrets in tests |
 
 P01 must not expose existing unauthenticated local routes or enable paid calls. If the host fails, select another measured runtime or revise scope before integration work assumes it works.
 
