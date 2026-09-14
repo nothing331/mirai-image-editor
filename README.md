@@ -91,9 +91,9 @@ The deterministic fake provider is enabled by default. To test real generation, 
 
 ## Cloud foundation
 
-Wave A uses an explicit, fail-closed staging configuration. `npm run start:cloud` validates the environment before starting Next.js; staging exposes liveness and readiness only and cannot use local SQLite or filesystem persistence. Real accounts and cloud projects are intentionally not enabled yet.
+Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B P03 adds Google sign-in and controlled-beta eligibility while keeping unfinished project, storage, diagnostic, and AI APIs closed. `npm run start:cloud` still refuses unsafe configuration and never falls back to Render's ephemeral disk.
 
-See the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for the environment matrix, Render setup, health checks, protected Supabase migration path, troubleshooting, and rollback procedure.
+Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations. Use the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for migrations, Google/Supabase configuration, owner bootstrap, and account verification.
 
 ## Troubleshooting
 
@@ -103,6 +103,7 @@ See the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for the environ
 - **Port 3000 is already in use:** Start the development server with `npm run dev -- --port 3001`.
 - **Cloud startup refuses to run:** Follow the named variable errors and compare the service with the P02 environment matrix. Do not bypass validation by selecting local persistence on Render.
 - **Cloud readiness returns 503:** Verify the Supabase project is active and the browser-safe URL/publishable key are correct. The public response intentionally omits upstream details.
+- **Cloud authentication will not start:** When `MIRAI_AUTH_ENABLED=true`, configure `MIRAI_OWNER_EMAILS`, `SUPABASE_SECRET_KEY`, and the public Supabase URL/publishable key. Never prefix the secret key with `NEXT_PUBLIC_`.
 
 ## Current limitations
 

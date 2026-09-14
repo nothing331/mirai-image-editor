@@ -17,6 +17,8 @@ services:
         value: disabled
       - key: MIRAI_AI_ENABLED
         value: false
+      - key: MIRAI_AUTH_ENABLED
+        value: true
       - key: IMAGE_EDIT_PROVIDER
         value: fake
       - key: ASSET_GENERATION_PROVIDER
@@ -42,4 +44,8 @@ services:
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: MIRAI_OWNER_EMAILS
+        sync: false
+      - key: SUPABASE_SECRET_KEY
         sync: false

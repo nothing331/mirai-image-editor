@@ -297,6 +297,7 @@ These decisions are intentionally kept here until the project becomes large enou
 | Development storage | SQLite and local filesystem | Provisional |
 | Zero-billing cloud target | Next.js on Render Free with Supabase Free Auth, Postgres, and private Storage; no payment-method-backed object store | Accepted; P01 validated and P02 live walkthrough complete |
 | Cloud runtime safety | Explicit local/CI/staging/beta modes; fail closed before authenticated Supabase persistence exists; migrations separate from startup | Accepted in Wave A P02 |
+| Cloud identity and eligibility | Google identity through Supabase Auth; application profile status and server-configured owner role separately gate access; approval/invitation grants one fixed five-image allowance | Accepted in Wave B P03 |
 | Request diagnostics | Structured local manifests plus directly inspectable artifacts | Accepted |
 | Replace intent planning | Structured multimodal plan before image generation | Accepted |
 | Generative selection semantics | Approximate focus by default; explicit protected boundary available | Accepted |
