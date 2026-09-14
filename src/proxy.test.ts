@@ -5,13 +5,14 @@ import { proxy } from "./proxy";
 afterEach(() => {
   delete process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT;
   delete process.env.MIRAI_APP_MODE;
+  delete process.env.MIRAI_AUTH_ENABLED;
 });
 
 describe("cloud foundation API isolation", () => {
-  it.each(["/api/health/live", "/api/health/ready"])("allows %s in staging", (pathname) => {
+  it.each(["/api/health/live", "/api/health/ready"])("allows %s in staging", async (pathname) => {
     process.env.MIRAI_APP_MODE = "staging";
 
-    const response = proxy(new NextRequest(`https://example.com${pathname}`));
+    const response = await proxy(new NextRequest(`https://example.com${pathname}`));
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
@@ -19,7 +20,7 @@ describe("cloud foundation API isolation", () => {
   it.each(["staging", "beta"])("hides unfinished APIs in %s", async (mode) => {
     process.env.MIRAI_APP_MODE = mode;
 
-    const response = proxy(new NextRequest("https://example.com/api/projects"));
+    const response = await proxy(new NextRequest("https://example.com/api/projects"));
 
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -29,23 +30,23 @@ describe("cloud foundation API isolation", () => {
   it("does not allow the retired spike flag to expose its route in staging", async () => {
     process.env.MIRAI_APP_MODE = "staging";
 
-    const response = proxy(new NextRequest("https://example.com/api/internal/cloud-spike"));
+    const response = await proxy(new NextRequest("https://example.com/api/internal/cloud-spike"));
 
     expect(response.status).toBe(404);
   });
 });
 
 describe("cloud spike API isolation", () => {
-  it("does not change local API routing by default", () => {
-    const response = proxy(new NextRequest("http://localhost/api/projects"));
+  it("does not change local API routing by default", async () => {
+    const response = await proxy(new NextRequest("http://localhost/api/projects"));
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("keeps the protected benchmark route reachable in an isolated deployment", () => {
+  it("keeps the protected benchmark route reachable in an isolated deployment", async () => {
     process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT = "true";
 
-    const response = proxy(new NextRequest("https://example.com/api/internal/cloud-spike?edge=1024"));
+    const response = await proxy(new NextRequest("https://example.com/api/internal/cloud-spike?edge=1024"));
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
@@ -60,7 +61,7 @@ describe("cloud spike API isolation", () => {
   ])("hides %s in an isolated deployment", async (pathname) => {
     process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT = "true";
 
-    const response = proxy(new NextRequest(`https://example.com${pathname}`));
+    const response = await proxy(new NextRequest(`https://example.com${pathname}`));
 
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("no-store");

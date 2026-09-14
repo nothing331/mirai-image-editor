@@ -15,6 +15,7 @@ describe("runtime environment", () => {
       mode: "local",
       persistence: "local",
       aiEnabled: false,
+      auth: { enabled: false, ownerEmails: [] },
       imageEditProvider: "fake",
       assetGenerationProvider: "fake",
       releaseId: "local",
@@ -33,6 +34,42 @@ describe("runtime environment", () => {
     expect(configuration.persistence).toBe("disabled");
     expect(configuration.canonicalUrl?.origin).toBe("https://mirai.example");
     expect(configuration.supabase?.url.origin).toBe("https://project.supabase.co");
+  });
+
+  it("accepts authentication only with server-side owner and admin configuration", () => {
+    const configuration = readRuntimeEnvironment({
+      ...stagingEnvironment(),
+      MIRAI_AUTH_ENABLED: "true",
+      MIRAI_OWNER_EMAILS: "Owner@Example.com, second@example.com",
+      SUPABASE_SECRET_KEY: "server-only-secret-key-placeholder",
+    });
+
+    expect(configuration.auth).toEqual({
+      enabled: true,
+      ownerEmails: ["owner@example.com", "second@example.com"],
+    });
+  });
+
+  it.each([
+    ["owner allowlist", { MIRAI_OWNER_EMAILS: "" }, "MIRAI_OWNER_EMAILS"],
+    ["server credential", { SUPABASE_SECRET_KEY: "" }, "SUPABASE_SECRET_KEY"],
+  ])("rejects enabled cloud authentication without its %s", (_label, changes, expectedIssue) => {
+    expect(() => readRuntimeEnvironment({
+      ...stagingEnvironment(),
+      MIRAI_AUTH_ENABLED: "true",
+      MIRAI_OWNER_EMAILS: "owner@example.com",
+      SUPABASE_SECRET_KEY: "server-only-secret-key-placeholder",
+      ...changes,
+    })).toThrow(expectedIssue);
+  });
+
+  it("rejects a malformed owner allowlist without echoing its value", () => {
+    expect(() => readRuntimeEnvironment({
+      ...stagingEnvironment(),
+      MIRAI_AUTH_ENABLED: "true",
+      MIRAI_OWNER_EMAILS: "not-an-email",
+      SUPABASE_SECRET_KEY: "server-only-secret-key-placeholder",
+    })).toThrow("MIRAI_OWNER_EMAILS");
   });
 
   it.each([
