@@ -13,6 +13,10 @@ export interface RuntimeEnvironment {
   canonicalUrl: URL | null;
   allowedOrigins: string[];
   aiEnabled: boolean;
+  auth: {
+    enabled: boolean;
+    ownerEmails: string[];
+  };
   imageEditProvider: string;
   assetGenerationProvider: string;
   releaseId: string;
@@ -53,6 +57,8 @@ export function readRuntimeEnvironment(
   const canonicalUrl = parseOptionalUrl("MIRAI_CANONICAL_URL", environment.MIRAI_CANONICAL_URL, issues);
   const allowedOrigins = parseOrigins(environment.MIRAI_ALLOWED_ORIGINS, issues);
   const aiEnabled = parseBoolean("MIRAI_AI_ENABLED", environment.MIRAI_AI_ENABLED ?? "false", issues);
+  const authEnabled = parseBoolean("MIRAI_AUTH_ENABLED", environment.MIRAI_AUTH_ENABLED ?? "false", issues);
+  const ownerEmails = parseEmails(environment.MIRAI_OWNER_EMAILS, issues);
   const imageEditProvider = environment.IMAGE_EDIT_PROVIDER ?? "fake";
   const assetGenerationProvider = environment.ASSET_GENERATION_PROVIDER ?? "fake";
   const releaseId = environment.MIRAI_RELEASE_ID ?? environment.RENDER_GIT_COMMIT ?? environment.GITHUB_SHA ?? "local";
@@ -70,6 +76,21 @@ export function readRuntimeEnvironment(
     issues.push("Supabase privileged keys must never use a NEXT_PUBLIC_ variable name");
   }
 
+  if (authEnabled) {
+    if (ownerEmails.length === 0) {
+      issues.push("MIRAI_OWNER_EMAILS must contain at least one owner when authentication is enabled");
+    }
+    if ((environment.SUPABASE_SECRET_KEY?.trim().length ?? 0) < 20) {
+      issues.push("SUPABASE_SECRET_KEY is required server-side when authentication is enabled");
+    }
+    if (!supabaseUrl) {
+      issues.push("NEXT_PUBLIC_SUPABASE_URL is required when authentication is enabled");
+    }
+    if (publishableKey.length < 20) {
+      issues.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required when authentication is enabled");
+    }
+  }
+
   if (cloudModes.has(mode)) {
     if (persistence !== "disabled") {
       issues.push("MIRAI_PERSISTENCE_MODE must be disabled until cloud project persistence is implemented");
@@ -82,12 +103,12 @@ export function readRuntimeEnvironment(
     } else if (canonicalUrl && !allowedOrigins.includes(canonicalUrl.origin)) {
       issues.push("MIRAI_ALLOWED_ORIGINS must include the MIRAI_CANONICAL_URL origin");
     }
-    if (aiEnabled) issues.push("MIRAI_AI_ENABLED must remain false during Wave A");
+    if (aiEnabled) issues.push("MIRAI_AI_ENABLED must remain false until cloud AI admission is implemented");
     if (imageEditProvider !== "fake" || assetGenerationProvider !== "fake") {
-      issues.push("IMAGE_EDIT_PROVIDER and ASSET_GENERATION_PROVIDER must both be fake during Wave A");
+      issues.push("IMAGE_EDIT_PROVIDER and ASSET_GENERATION_PROVIDER must both be fake until cloud AI admission is implemented");
     }
     if (environment.OPENAI_API_KEY) {
-      issues.push("OPENAI_API_KEY must not be installed in a Wave A cloud environment");
+      issues.push("OPENAI_API_KEY must not be installed before cloud AI admission is implemented");
     }
     if (environment.CLOUD_SPIKE_ENABLED === "true") {
       issues.push("CLOUD_SPIKE_ENABLED must be false after P01");
@@ -111,12 +132,26 @@ export function readRuntimeEnvironment(
     canonicalUrl,
     allowedOrigins,
     aiEnabled,
+    auth: { enabled: authEnabled, ownerEmails },
     imageEditProvider,
     assetGenerationProvider,
     releaseId,
     limits,
     supabase: supabaseUrl && publishableKey ? { url: supabaseUrl, publishableKey } : null,
   };
+}
+
+function parseEmails(value: string | undefined, issues: string[]): string[] {
+  if (!value) return [];
+  const emails = new Set<string>();
+  for (const candidate of value.split(",").map((part) => part.trim().toLowerCase()).filter(Boolean)) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(candidate) || candidate.length > 320) {
+      issues.push("MIRAI_OWNER_EMAILS must contain comma-separated email addresses");
+      continue;
+    }
+    emails.add(candidate);
+  }
+  return [...emails];
 }
 
 export function isCloudMode(mode: ApplicationMode): boolean {

@@ -48,6 +48,20 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Code and verification.** `src/server/config/runtime-environment.ts`, `src/instrumentation.ts`, `src/app/api/health/`, `src/proxy.ts`, `render.yaml`, `.github/workflows/`, adjacent tests, and `docs/cloud/WAVE_A_P02_RUNBOOK.md`.
 
+## Cloud accounts and eligibility
+
+**Outcome.** A visitor can sign in with Google, request controlled-beta access or claim an email-bound invitation, and see a clear pending, rejected, revoked, or approved state. An owner can approve or reject requests, create invitations, and revoke members from a responsive account interface. Authentication alone never grants operational product access.
+
+**Working flow.** Supabase Auth completes Google OAuth through `/auth/callback`, where Mirai exchanges the one-time code, verifies the resulting user, and idempotently creates the application profile. A verified email listed in the server-only owner configuration can be bootstrapped as the first owner. Other identities remain pending until an owner-approved request or matching invitation activates the profile. Both approval paths converge on one transactional grant of five initial AI images. The root account landing routes signed-out, pending, active, and owner accounts to the appropriate surface.
+
+**Ownership and rules.** Supabase owns identity and encrypted session cookies; Mirai's profile tables own eligibility and role. Server account helpers verify claims and enforce authenticated, eligible, or owner requirements. Authorization-sensitive transitions are PostgreSQL functions with fixed search paths, explicit role grants, transaction boundaries, owner checks, and audit records. Row-level security limits ordinary reads to the current account and prevents direct profile status or role changes. Raw invitation tokens are returned once while only SHA-256 hashes are stored. Browser components submit server actions and never assign roles or allowances themselves.
+
+**Failures and recovery.** OAuth cancellation, incomplete callbacks, account-setup failures, invalid or mismatched invitations, and request failures return to a retryable account page without granting access. Repeated profile setup, requests, invitation claims, and approvals are idempotent; approving twice cannot create ten images. Revoked users may still authenticate but cannot request or regain eligibility without a later explicit operator decision. Authenticated responses and callback redirects are private and non-cacheable. Unsafe return URLs fall back to the access page.
+
+**Dependencies and limits.** This feature requires Google OAuth configured in Supabase, the reviewed database migration, a Supabase publishable key, a server-only Supabase secret key, and at least one server-configured owner email. The local editor remains unchanged when `MIRAI_AUTH_ENABLED=false`. P03 establishes accounts only: cloud projects, private image assets, account switching cache cleanup, allowance consumption, email delivery, account deletion, and real AI remain later delivery units. A real staging OAuth walkthrough is an operational completion step documented in the runbook.
+
+**Code and verification.** `supabase/migrations/20260914044852_accounts_and_access.sql`, `supabase/tests/accounts_and_access_test.sql`, `src/server/auth/`, `src/server/supabase/`, `src/app/auth/`, `src/app/sign-in/`, `src/app/access/`, `src/app/welcome/`, `src/app/admin/access/`, `src/features/account/`, `src/proxy.ts`, adjacent unit tests, `e2e/account.spec.ts`, and `docs/cloud/WAVE_B_P03_RUNBOOK.md`.
+
 ## Image intake and project lifecycle
 
 **Outcome.** A user can upload a PNG or JPEG, begin an editing project, persist it locally, reopen it, and retain the original as an immutable asset.

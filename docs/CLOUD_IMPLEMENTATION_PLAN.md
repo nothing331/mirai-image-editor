@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A complete: P01 is accepted and the P02 reproducible cloud foundation passed its live walkthrough and pull-request CI. Later cloud features remain planned, not implemented.
+**Status:** Wave A complete. Wave B P03 accounts and eligibility are implemented and locally verified; applying the reviewed migration and completing the real staging Google OAuth walkthrough remain before P03 is accepted. P04 and later cloud features remain planned.
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -631,7 +631,7 @@ P01 must not expose existing unauthenticated local routes or enable paid calls. 
 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
-| P03 | Accounts and eligibility: OAuth, sessions, invitations/access requests/owner approval/profile, protected route helpers; after P02 | No user-count cap; idempotent grants/approval, ineligible-user denial, sign-out/account-switch and callback recovery |
+| P03 | Implemented locally; staging activation pending. Accounts and eligibility: Google OAuth, verified sessions, invitations/access requests/owner approval/profile, audit records, protected route helpers; after P02 | Database/RLS tests, unit tests and signed-out browser checks pass; complete real first/repeat login, invitation/approval, revocation, callback recovery and account-switch walkthrough in staging |
 | P04 | Private asset foundation: Supabase Storage staging/finalization, quotas, original/base normalization; after P03 | Upload retries, size enforcement, immutability, anonymous/foreign access denial, cleanup record |
 | P05 | Cloud project creation/read with minimal My projects list and stable editor URL; after P04 | Upload → saved original → logout/login → reopen original |
 | P06 | Durable acceptance and incremental save: transactional operation/version, receipts, pending UI; after P05 | Local edit → exactly one cloud operation/version → refresh → same pixels; lost acknowledgement test |
