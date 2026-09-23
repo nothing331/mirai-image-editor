@@ -126,6 +126,7 @@ Record the Render deployment, application commit, successful identities by anony
 ## Failure and rollback
 
 - **Google reports a redirect mismatch:** compare the Google callback URI and Supabase redirect allowlist character for character, including scheme and path.
+- **A callback redirects to `localhost` on Render:** verify the deployment includes the canonical-origin callback fix and that `MIRAI_CANONICAL_URL` is the exact public Render origin. The application must not derive post-callback redirects from Render's internal request origin.
 - **Sign-in returns `provider`:** verify the Google provider is enabled and its client credentials are current in Supabase.
 - **Sign-in returns `callback`:** start again; the PKCE code may be missing, expired, or already consumed.
 - **Sign-in returns `setup`:** verify the migration was applied and the Render secret key is for the same Supabase project.
