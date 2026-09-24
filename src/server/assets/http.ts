@@ -13,7 +13,7 @@ export const reservationInput = z.object({
 
 export async function authorizedAssetOwner(request: Request, mutation: boolean, requirement: "eligible" | "owner" = "eligible"): Promise<string> {
   const environment = readRuntimeEnvironment();
-  if (!environment.auth.enabled || (environment.mode !== "staging" && environment.mode !== "beta")) {
+  if (!environment.auth.enabled || environment.mode === "ci") {
     throw new AssetError("not-found", "Not found.");
   }
   if (mutation) {
