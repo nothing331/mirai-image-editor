@@ -41,9 +41,9 @@ Upload → canvas → manual mask → local recolor → generative edit → hist
 
 ### Deferred
 
-- authentication and payments
+- payments
 - collaboration
-- cloud storage and background queues
+- cloud project/history persistence and background queues
 - microservices
 - multiple AI providers
 - arbitrary independent layers
@@ -64,6 +64,7 @@ Upload → canvas → manual mask → local recolor → generative edit → hist
 - Sharp for server-side provider input normalization
 - SQLite via the portable `sql.js` runtime for local metadata
 - local filesystem asset storage during development
+- Supabase Auth/PostgreSQL and private Storage for the separately gated cloud account and original-asset foundation
 - image-edit and asset-generation providers behind application-owned interfaces
 
 This starts as a feature-oriented modular monolith. A small Python segmentation service may be introduced later if automatic object selection requires it.

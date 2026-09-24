@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A complete. Wave B P03 accounts and eligibility are implemented and locally verified; applying the reviewed migration and completing the real staging Google OAuth walkthrough remain before P03 is accepted. P04 and later cloud features remain planned.
+**Status:** Wave A complete. P03 accounts and P04 private original-asset foundation are implemented and locally verified. Their reviewed migrations and real staging OAuth/Storage walkthroughs remain before acceptance. P05 and later cloud features remain planned.
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -339,15 +339,15 @@ This is best-effort local recovery; users can clear browser data and the browser
 ### 6.1 Original/upload durability
 
 1. Browser checks format, file size, and dimensions for fast feedback; server verification remains authoritative.
-2. Server verifies eligibility, project/storage allowance, limits, and intended asset role; reserves bytes and returns an expiring staging upload permission.
-3. Browser uploads directly to private staging storage. It cannot select or write a committed asset key.
+2. Server verifies eligibility and storage allowance, then reserves source plus worst-case normalized-base bytes in Postgres. Project-count checks begin at P05.
+3. For P04, the browser sends the original through a bounded authenticated server upload route to private staging storage. The browser cannot select or write a committed asset key. Direct signed transfer remains a later option only after an enforceable cost bound is proven.
 4. Finalization verifies actual size, file signature/decodability, supported frame count, dimensions/pixel budget, checksum, and reservation ownership. Bound streaming and decoding; a declared content type is not proof.
 5. Preserve exact source bytes. Build a lossless normalized editor base with explicit orientation/color-space handling; strip unnecessary metadata from derived previews. Do not silently resize the retained original to make it fit.
 6. Promote verified content to a new immutable key inaccessible to the client's upload token. A reusable staging PUT must never overwrite an accepted original/version after verification. Bind promotion to the verified object/checksum and defend against concurrent staging replacement.
-7. Commit project/original/base-version/asset references and storage usage atomically in Postgres, then return a creation receipt.
+7. P04 commits an asset receipt and actual storage usage atomically in Postgres. P05 will attach the receipt to a project and base version transactionally.
 8. If storage succeeds and the database fails, retry finalization idempotently. Expired unreferenced staging/promoted assets are reconciled later; they do not become visible projects.
 
-Signed URLs are bearer access with finite lifetime, not single-use permissions. Browser transfers require tested authorization and CORS behavior. Use the documented [Supabase signed upload URL mechanism](https://supabase.com/docs/reference/javascript/storage-from-createsigneduploadurl) and [private-bucket access model](https://supabase.com/docs/guides/storage/security/access-control). Handle an expired URL even when the browser cannot read its error body.
+Signed read URLs are bearer access with finite lifetime, not single-use permissions. Browser reads require tested authorization and CORS behavior. A future direct-upload variant may use the documented [Supabase signed upload URL mechanism](https://supabase.com/docs/reference/javascript/storage-from-createsigneduploadurl) with the [private-bucket access model](https://supabase.com/docs/guides/storage/security/access-control) only after proving upload-size enforcement.
 
 **Abuse boundary:** verification after upload alone does not cap uploaded bytes. Before enabling direct browser PUT, prove an enforceable size/rate bound for the chosen mechanism. If unavailable, use a bounded upload gateway for the small beta or explicitly limit access to trusted invitees with aggregate reservations and cleanup; do not describe unbounded signed PUT as a hard cost cap. Replayed staging uploads and abandoned parts belong in cost tests.
 
@@ -632,7 +632,7 @@ P01 must not expose existing unauthenticated local routes or enable paid calls. 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
 | P03 | Implemented locally; staging activation pending. Accounts and eligibility: Google OAuth, verified sessions, invitations/access requests/owner approval/profile, audit records, protected route helpers; after P02 | Database/RLS tests, unit tests and signed-out browser checks pass; complete real first/repeat login, invitation/approval, revocation, callback recovery and account-switch walkthrough in staging |
-| P04 | Private asset foundation: Supabase Storage staging/finalization, quotas, original/base normalization; after P03 | Upload retries, size enforcement, immutability, anonymous/foreign access denial, cleanup record |
+| P04 | Implemented locally; private staging/finalization, quotas, exact original and normalized base, bounded upload gateway, cleanup; staging activation pending after P03 | Local database and Storage checks pass; complete real staging upload/retry, anonymous/foreign denial, cleanup and quota walkthrough |
 | P05 | Cloud project creation/read with minimal My projects list and stable editor URL; after P04 | Upload → saved original → logout/login → reopen original |
 | P06 | Durable acceptance and incremental save: transactional operation/version, receipts, pending UI; after P05 | Local edit → exactly one cloud operation/version → refresh → same pixels; lost acknowledgement test |
 | P07 | Lazy history and durable undo/redo/original navigation; after P06 | Large-history memory test, dimension-changing undo, valid-source and redo replacement tests |
