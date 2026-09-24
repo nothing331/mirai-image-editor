@@ -8,7 +8,7 @@ import { createAdminSupabaseClient } from "@/server/supabase/admin-client";
 import { cancelOriginalUpload, finalizeOriginalUpload, reconcileExpiredOriginalUploads, reserveOriginalUpload, signedOriginalRead, uploadOriginalBytes } from "./original-assets";
 
 it.runIf(process.env.MIRAI_ASSET_INTEGRATION === "1")("stores a private immutable source and editor base in local Supabase", async () => {
-  const status = JSON.parse(execFileSync("npx", ["--yes", "supabase", "status", "-o", "json"], { encoding: "utf8" })) as Record<string, string>;
+  const status = JSON.parse(execFileSync("npx", ["--yes", "supabase@2.116.0", "status", "-o", "json"], { encoding: "utf8" })) as Record<string, string>;
   process.env.NEXT_PUBLIC_SUPABASE_URL = status.API_URL;
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = status.PUBLISHABLE_KEY;
   process.env.SUPABASE_SECRET_KEY = status.SECRET_KEY;
