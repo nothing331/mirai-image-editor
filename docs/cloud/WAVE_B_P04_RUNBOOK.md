@@ -37,7 +37,7 @@ MIRAI_OWNER_EMAILS=<your verified Google email>
 MIRAI_AI_ENABLED=false
 ```
 
-Use `npx --yes supabase@2.116.0 status -o json` to inspect local API URL and keys without copying them into source. The selected Supabase project must have the P03 and P04 migrations. Browser sign-in also requires the Google provider and exact `http://localhost:3000/auth/callback` redirect to be configured for that project; a fresh local Supabase stack does not supply Google credentials automatically. Start the app with `npm run dev`, sign in as an active account, then exercise the P04 routes from that origin. A same-origin browser `fetch` of a `File` body supplies `Content-Length`; do not attempt to set this forbidden header manually. The local editor/project API remains separate from cloud asset receipts until P05.
+Use `npx --yes supabase@2.116.0 status -o json` to inspect local API URL and keys without copying them into source. The selected Supabase project must have the P03 and P04 migrations. Browser sign-in also requires its Google provider and `http://localhost:3000/**` in **Authentication → URL Configuration → Redirect URLs**. Mirai's callback includes a `next` query parameter; the bare `/auth/callback` URL may not match. The Supabase Site URL may remain the deployed Render URL. A fresh local Supabase stack does not supply Google credentials automatically. Start the app with `npm run dev`, sign in as an active account, then exercise the P04 routes from that origin. A same-origin browser `fetch` of a `File` body supplies `Content-Length`; do not attempt to set this forbidden header manually. The local editor/project API remains separate from cloud asset receipts until P05.
 
 ## Recovery and boundaries
 

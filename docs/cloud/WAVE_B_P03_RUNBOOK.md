@@ -57,7 +57,7 @@ In **Supabase Dashboard → Authentication → URL Configuration** set:
 
 - Site URL to the exact Render origin;
 - an exact production redirect URL ending in `/auth/callback`;
-- the exact local callback URL, such as `http://localhost:3000/auth/callback`, for development.
+- `http://localhost:3000/**` in **Redirect URLs** for local development. Mirai's callback includes a `next` query parameter, so allowing only the bare `/auth/callback` URL can miss the actual redirect. Keep the production Render callback exact.
 
 Avoid wildcard production redirects. Google may keep an external consent screen in testing mode until its publishing requirements are satisfied; list each intended staging tester when Google requires it.
 
