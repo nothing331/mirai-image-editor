@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { initializeAuthenticatedAccount, resolveCurrentAccount } from "@/server/auth/account";
-import { safeReturnPath } from "@/server/auth/return-path";
+import { authorizedAccountReturnPath, safeReturnPath } from "@/server/auth/return-path";
 import { readRuntimeEnvironment } from "@/server/config/runtime-environment";
 import { readPublicSupabaseConfiguration } from "@/server/supabase/configuration";
 
@@ -35,9 +35,7 @@ export async function GET(request: NextRequest) {
   try {
     await initializeAuthenticatedAccount(userData.user);
     const account = await resolveCurrentAccount(supabase);
-    const destination = account?.profile.status === "active"
-      ? (returnPath === "/access" ? "/welcome" : returnPath)
-      : returnPath;
+    const destination = authorizedAccountReturnPath(account, returnPath);
     const successfulResponse = redirectResponse(redirectOrigin, destination);
     response.cookies.getAll().forEach((cookie) => successfulResponse.cookies.set(cookie));
     copyPrivateCacheHeaders(response, successfulResponse);
