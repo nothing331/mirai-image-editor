@@ -33,13 +33,13 @@ The original is stored byte for byte. The derived PNG applies EXIF orientation, 
 With local Docker/Supabase running:
 
 ```bash
-npx --yes supabase db reset --local
-npx --yes supabase db lint --local --schema public,mirai_private --level warning --fail-on error
-npx --yes supabase db advisors --local --type security --level warn --fail-on error
-npx --yes supabase test db --local supabase/tests/private_asset_foundation_test.sql
+npx --yes supabase@2.116.0 db reset --local
+npx --yes supabase@2.116.0 db lint --local --schema public,mirai_private --level warning --fail-on error
+npx --yes supabase@2.116.0 db advisors --local --type security --level warn --fail-on error
+npx --yes supabase@2.116.0 test db --local supabase/tests/private_asset_foundation_test.sql
 MIRAI_ASSET_INTEGRATION=1 npx vitest run src/server/assets/original-assets.integration.test.ts
 npx vitest run src/server/assets/original-assets.test.ts
 npm run lint && npm run typecheck && npm run build
 ```
 
-The local Storage integration checks exact source bytes, idempotent reserve/finalize, staging deletion, anonymous read denial, and foreign owner denial. Remote rollout remains a separate acceptance gate because local tests cannot prove Render transfer behavior or real staging OAuth.
+CI also runs the P04 pgTAP and Storage checks against its fresh local Supabase stack. The Storage integration checks exact source bytes, idempotent reserve/finalize, staging deletion, anonymous read denial, foreign owner denial, expiry cleanup, and cancellation. Remote rollout remains a separate acceptance gate because local tests cannot prove Render transfer behavior or real staging OAuth.
