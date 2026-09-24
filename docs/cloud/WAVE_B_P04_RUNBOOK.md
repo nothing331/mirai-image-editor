@@ -20,6 +20,25 @@ The original is stored byte for byte. The derived PNG applies EXIF orientation, 
 6. Test anonymous access and a second active account against the row, both read roles, and the Storage keys. They must fail. Test an over-limit body, malformed file, expired reservation, same request key with different metadata, and concurrent reservations near quota.
 7. Call owner-only `POST /api/internal/assets-cleanup` after creating an expired synthetic reservation. Confirm storage objects are removed before quota is released. Until P18 schedules maintenance, invoke this endpoint during staging operations and monitor stale reservations. Never delete a `ready` source or base through cleanup.
 
+## Exercise the HTTP routes at localhost
+
+The automated Storage integration test supplies its own local Supabase credentials. To make browser requests through `http://localhost:3000/api/original-uploads`, enable account access in a local-only `.env` (leave the real values uncommitted):
+
+```text
+MIRAI_APP_MODE=local
+MIRAI_PERSISTENCE_MODE=local
+MIRAI_AUTH_ENABLED=true
+MIRAI_CANONICAL_URL=http://localhost:3000
+MIRAI_ALLOWED_ORIGINS=http://localhost:3000
+NEXT_PUBLIC_SUPABASE_URL=<local Supabase API URL or staging project URL>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<matching publishable key>
+SUPABASE_SECRET_KEY=<matching server-only secret key>
+MIRAI_OWNER_EMAILS=<your verified Google email>
+MIRAI_AI_ENABLED=false
+```
+
+Use `npx --yes supabase@2.116.0 status -o json` to inspect local API URL and keys without copying them into source. The selected Supabase project must have the P03 and P04 migrations. Browser sign-in also requires the Google provider and exact `http://localhost:3000/auth/callback` redirect to be configured for that project; a fresh local Supabase stack does not supply Google credentials automatically. Start the app with `npm run dev`, sign in as an active account, then exercise the P04 routes from that origin. A same-origin browser `fetch` of a `File` body supplies `Content-Length`; do not attempt to set this forbidden header manually. The local editor/project API remains separate from cloud asset receipts until P05.
+
 ## Recovery and boundaries
 
 - An interrupted PUT may be retried with the same bytes. A stale `uploading` record becomes retryable after five minutes. Storage keys are never overwritten.
