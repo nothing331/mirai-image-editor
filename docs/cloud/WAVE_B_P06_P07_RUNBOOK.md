@@ -1,6 +1,6 @@
 # Wave B P06/P07 cloud editing and history
 
-**Status:** Implemented and locally verified on the combined review branch. Staging migration, deployment, and real-account walkthrough are pending.
+**Status:** Implemented and locally verified on the combined review branch. Staging migration and the primary real-account editing/history walkthrough passed on 2026-09-26; the remaining hosted cases below are still pending.
 
 P06 accepts deterministic browser edits as private immutable PNG versions with one operation and one idempotent receipt per save. P07 stores the selected current version and exposes undo, redo, original, and paged history. The existing editor canvas and direct-edit inspectors are reused at `/projects/[id]`; AI actions remain disabled in cloud mode.
 
@@ -29,6 +29,15 @@ npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 The Storage integration test reads local Supabase connection settings via the CLI and creates disposable fixture rows. The optional browser test also needs the local Supabase URL, publishable key, and secret key from `supabase status -o json`, plus `MIRAI_APP_MODE=local`, `MIRAI_AUTH_ENABLED=true`, `MIRAI_CANONICAL_URL=http://127.0.0.1:3000`, `MIRAI_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000`, `MIRAI_PERSISTENCE_MODE=local`, `MIRAI_AI_ENABLED=false`, and `E2E_CLOUD=1`. Then run `npx playwright test e2e/cloud-editor.spec.ts`. Reset the disposable database before running older pgTAP suites that assume no integration fixtures.
+
+## Staging verification, 2026-09-26
+
+- The protected [migration workflow](https://github.com/nothing331/mirai-image-editor/actions/runs/36260369047) succeeded from branch `codex/p06-p07-cloud-edit-history` at commit `9f8ed08`. Render liveness/readiness reported the same release. The hosted history API returned the original version metadata after migration.
+- In Chrome, an approved account reopened its existing 674 × 850 project. The cloud editor loaded with **Saved to cloud**. Monochrome preview displayed a side-by-side comparison; accepting it showed a pending-save comparison and then **Saved to cloud**.
+- History showed the original and one accepted `transform` version. After a full page reload, Undo remained available and the accepted monochrome pixels displayed. Undo restored the color original; after reload, Redo remained available. Redo displayed the accepted monochrome version, and **Go to original** restored the original as the current version.
+- A separate signed-out Chrome window received **Sign in to continue** from the hosted history API. The existing project was left pointing to its original; the accepted test edit remains in redo history and continues to count toward storage.
+
+The hosted walkthrough did not inspect operation/receipt/asset row counts directly, test a second account or revoked/pending account, inject a lost save response, exercise redo replacement, or save a dimension-changing edit. Local database, Storage, and Playwright suites cover those behaviors. Do not present them as hosted observations.
 
 ## Recovery and limits
 
