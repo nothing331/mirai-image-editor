@@ -3,13 +3,13 @@ import type { AccountSnapshot } from "@/server/auth/account";
 import { AuthShell } from "./AuthShell";
 
 export function CloudLanding({ account }: { account: AccountSnapshot | null }) {
-  const destination = !account ? "/sign-in" : account.profile.status === "active" ? "/welcome" : "/access";
-  const action = !account ? "Sign in with Google" : account.profile.status === "active" ? "Open account" : "View access status";
+  const destination = !account ? "/sign-in?next=/projects" : account.profile.status === "active" ? "/projects" : "/access";
+  const action = !account ? "Sign in with Google" : account.profile.status === "active" ? "Open my projects" : "View access status";
   return (
     <AuthShell
       eyebrow="ONE IMAGE · EVERY VERSION REVERSIBLE"
       title="Edit boldly. Keep the original."
-      description="Mirai is becoming a private cloud image editor. Sign in to join the controlled beta; project storage and editing will open in the next Wave B steps."
+      description="Mirai is becoming a private cloud image editor. Approved beta accounts can save and reopen their original images in My projects."
       secondary={account ? <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">{account.profile.email}</span> : null}
     >
       <div className="max-w-md">

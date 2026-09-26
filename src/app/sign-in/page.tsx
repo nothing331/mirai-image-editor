@@ -14,7 +14,7 @@ interface SignInPageProps {
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const parameters = await searchParams;
   const account = await resolveCurrentAccount();
-  if (account) redirect(account.profile.status === "active" ? "/welcome" : "/access");
+  if (account) redirect(account.profile.status === "active" ? safeReturnPath(parameters.next, "/projects") : "/access");
   const error = errorMessage(parameters.error);
   return (
     <AuthShell eyebrow="SECURE ACCOUNT" title="Continue with Google." description="Supabase handles your Google identity and encrypted session. Mirai never receives or stores your Google password.">
