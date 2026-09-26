@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Download, History, LoaderCircle, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { exportVersion } from "@/features/editor/image-data";
 import { getCurrentVersion, useEditorStore } from "@/features/editor/store";
 import { CanvasFrame } from "@/features/editor/workspace/CanvasFrame";
 import { EditorInspector } from "@/features/editor/workspace/EditorInspector";
@@ -14,11 +14,14 @@ import { deriveWorkspacePhase } from "@/features/editor/workspace/workspace-phas
 import type { GeometryEditType } from "@/features/editor/types";
 import { cn } from "@/lib/utils";
 import { loadCloudHistory, loadCloudVersion, saveCloudEdit, selectCloudVersion, type CloudVersionSummary } from "./cloud-edit-client";
+import { CloudExportDialog } from "./CloudExportDialog";
+import { activateCloudDraftAccount, clearCloudDraft, loadCloudDraft, saveCloudDraft, type CloudDraftSnapshot } from "./cloud-draft-cache";
 
-export function CloudEditorWorkspace({ projectId, projectName, originalVersionId, initialCurrentVersionId, initialHeadVersionId }: {
-  projectId: string; projectName: string; originalVersionId: string;
+export function CloudEditorWorkspace({ ownerId, projectId, projectName, originalVersionId, initialCurrentVersionId, initialHeadVersionId }: {
+  ownerId: string; projectId: string; projectName: string; originalVersionId: string;
   initialCurrentVersionId: string; initialHeadVersionId: string;
 }) {
+  const router = useRouter();
   const editor = useEditorStore(useShallow((state) => ({
     currentVersionId: state.currentVersionId,
     currentVersion: getCurrentVersion(state),
@@ -27,6 +30,7 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
     paintSession: state.paintSession, selectionMask: state.selectionMask,
     generativeState: state.generativeState, error: state.error,
     loadCloudProject: state.loadCloudProject, setCloudCurrentVersion: state.setCloudCurrentVersion,
+    restoreCloudDraft: state.restoreCloudDraft,
     confirmPendingAcceptance: state.confirmPendingAcceptance, discardPendingAcceptance: state.discardPendingAcceptance,
     discardLocalDraft: state.discardLocalDraft, discardPreview: state.discardPreview,
     discardPaintSession: state.discardPaintSession, beginLocalDraft: state.beginLocalDraft,
@@ -39,6 +43,10 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
   const [history, setHistory] = useState<CloudVersionSummary[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [draftOffer, setDraftOffer] = useState<CloudDraftSnapshot | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"stored" | "unavailable" | null>(null);
   const [workflow, setWorkflow] = useState<WorkspaceWorkflow>({ kind: "canvas", tool: "lasso" });
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
@@ -69,12 +77,76 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
         setHistory(page.versions);
         setNextCursor(page.nextCursor);
         setStatus("saved");
+        try {
+          await activateCloudDraftAccount(ownerId);
+          const saved = await loadCloudDraft(ownerId, projectId, current.summary.id);
+          if (!cancelled) { setDraftOffer(saved); setDraftReady(!saved); }
+        } catch { if (!cancelled) { setDraftStatus("unavailable"); setDraftReady(true); } }
       } catch (error) {
         if (!cancelled) { setStatus("failed"); setEditorError(error instanceof Error ? error.message : "The project could not be opened."); }
       }
     })();
     return () => { cancelled = true; };
-  }, [projectId, projectName, originalVersionId, initialCurrentVersionId, loadCloudProject, setEditorError]);
+  }, [ownerId, projectId, projectName, originalVersionId, initialCurrentVersionId, loadCloudProject, setEditorError]);
+
+  const persistDraft = useCallback(async () => {
+    const state = useEditorStore.getState();
+    if (state.acceptanceMode !== "cloud" || state.projectId !== projectId || !state.currentVersionId) return false;
+    const hasSelection = state.selectionMask?.data.some((alpha) => alpha !== 0) ?? false;
+    if (!state.localDraftDirty && !state.paintSession && !state.preview && !state.pendingAcceptance && !hasSelection) {
+      await clearCloudDraft(ownerId, projectId).catch(() => {});
+      setDraftStatus(null);
+      return true;
+    }
+    const pending = state.pendingAcceptance;
+    const snapshot: CloudDraftSnapshot = {
+      schema: 1, ownerId, projectId, inputVersionId: state.currentVersionId, savedAt: Date.now(),
+      localDraft: state.localDraftDirty ? state.localDraft : null, paintSession: state.paintSession,
+      selectionMask: state.selectionMask, preview: state.preview, pendingAcceptance: pending,
+      overlayAssets: state.overlayAssets, commitKeys: pending ? saveKeys.current.get(pending.operation.id) ?? null : null,
+    };
+    try { await saveCloudDraft(snapshot); setDraftStatus("stored"); return true; }
+    catch { setDraftStatus("unavailable"); return false; }
+  }, [ownerId, projectId]);
+
+  useEffect(() => {
+    if (!draftReady || status === "loading") return;
+    let timer: number | null = null;
+    const unsubscribe = useEditorStore.subscribe(() => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => { void persistDraft(); }, 800);
+    });
+    return () => { unsubscribe(); if (timer !== null) window.clearTimeout(timer); void persistDraft(); };
+  }, [draftReady, persistDraft, status]);
+
+  useEffect(() => {
+    const guard = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const destination = new URL(anchor.href);
+      if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname) return;
+      const state = useEditorStore.getState();
+      if (state.projectId !== projectId || state.acceptanceMode !== "cloud") return;
+      if (state.pendingAcceptance || status === "saving") {
+        event.preventDefault();
+        state.setError("Finish or retry the pending save before leaving this project.");
+        return;
+      }
+      if (!state.localDraftDirty && !state.paintSession && !state.preview
+        && !(state.selectionMask?.data.some((alpha) => alpha !== 0))) return;
+      event.preventDefault();
+      void (async () => {
+        const stored = await persistDraft();
+        const message = stored ? "Leave the editor? Your draft is stored on this device and can be restored when you return."
+          : "Draft storage is unavailable. Leaving may lose your unfinished work. Leave anyway?";
+        if (window.confirm(message)) router.push(`${destination.pathname}${destination.search}${destination.hash}`);
+      })();
+    };
+    document.addEventListener("click", guard, true);
+    return () => document.removeEventListener("click", guard, true);
+  }, [projectId, status, persistDraft, router]);
 
   const attemptSave = useCallback(async () => {
     const pending = useEditorStore.getState().pendingAcceptance;
@@ -91,6 +163,13 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
       keys = { requestKey: crypto.randomUUID(), assetId: crypto.randomUUID() };
       saveKeys.current.set(operationId, keys);
     }
+    const state = useEditorStore.getState();
+    try {
+      await saveCloudDraft({ schema: 1, ownerId, projectId, inputVersionId: pending.input.id, savedAt: Date.now(),
+        localDraft: null, paintSession: null, selectionMask: state.selectionMask, preview: state.preview,
+        pendingAcceptance: pending, overlayAssets: state.overlayAssets, commitKeys: keys });
+      setDraftStatus("stored");
+    } catch { setDraftStatus("unavailable"); }
     setStatus("saving");
     editor.setError(null);
     try {
@@ -112,7 +191,7 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
       setStatus("failed");
       editor.setError(error instanceof Error ? error.message : "The edit could not be saved. Retry without changing the pending image.");
     }
-  }, [projectId, headVersionId, status, editor, refreshHistory]);
+  }, [ownerId, projectId, headVersionId, status, editor, refreshHistory]);
 
   useEffect(() => {
     const operationId = editor.pendingAcceptance?.operation.id;
@@ -202,10 +281,13 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
 
   const busy = status === "saving" || status === "loading" || historyBusy;
   return <section className="grid h-[calc(100dvh-56px)] min-h-[440px] grid-rows-[56px_minmax(0,1fr)] bg-[#cfcdc5] text-ink" aria-label="Cloud editor">
+    {draftOffer && <div className="absolute left-1/2 top-20 z-50 w-[min(90vw,420px)] -translate-x-1/2 border border-ink bg-paper p-4 shadow-[5px_5px_0_#d8f441]" role="dialog" aria-label="Stored browser draft"><strong className="text-sm">Draft stored on this device</strong><p className="mt-2 text-xs leading-5 text-muted">This draft matches the current saved version. It has not been saved to the cloud.</p><div className="mt-4 flex gap-3"><button type="button" className="min-h-10 bg-acid px-3 text-xs font-bold" onClick={() => { if (draftOffer.pendingAcceptance && draftOffer.commitKeys) saveKeys.current.set(draftOffer.pendingAcceptance.operation.id, draftOffer.commitKeys); if (!editor.restoreCloudDraft(draftOffer)) editor.setError("The stored draft no longer matches this image."); if (draftOffer.localDraft) setWorkflow(draftOffer.localDraft.type === "text" ? { kind: "text" } : draftOffer.localDraft.type === "watermark" ? { kind: "watermark" } : { kind: "size-position" }); else if (draftOffer.paintSession) setWorkflow({ kind: "canvas", tool: "brush" }); setDraftOffer(null); setDraftReady(true); }}>Restore draft</button><button type="button" className="min-h-10 px-3 text-xs underline" onClick={() => { void clearCloudDraft(ownerId, projectId); setDraftOffer(null); setDraftReady(true); }}>Discard draft</button></div></div>}
     <header className="flex min-w-0 items-center gap-2 border-b border-line bg-paper px-3">
       <Link href="/projects" className="shrink-0 font-mono text-[9px] uppercase text-muted underline underline-offset-4 hover:text-ink">← Projects</Link>
       <h1 className="min-w-0 flex-1 truncate text-sm font-bold" title={projectName}>{projectName}</h1>
       <span role="status" aria-live="polite" className={cn("hidden shrink-0 font-mono text-[9px] uppercase sm:inline", status === "failed" ? "text-accent" : "text-muted")}>{status === "loading" ? "Opening" : status === "saving" ? "Saving…" : status === "failed" ? "Save needs attention" : "Saved to cloud"}</span>
+      {draftStatus === "stored" && <span className="hidden font-mono text-[9px] uppercase text-muted lg:inline">Draft on device</span>}
+      {draftStatus === "unavailable" && <span className="hidden font-mono text-[9px] uppercase text-accent lg:inline">Draft cache unavailable</span>}
       {editor.pendingAcceptance && <>
         <button type="button" className="h-8 bg-ink px-2 text-[10px] font-bold text-paper disabled:opacity-40" disabled={busy} onClick={() => void attemptSave()}>Retry save</button>
         <button type="button" className="h-8 px-2 text-[10px] text-muted hover:text-accent" disabled={busy} onClick={() => { editor.discardPendingAcceptance(); setStatus("saved"); }}>Discard edit</button>
@@ -214,7 +296,7 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
       <button type="button" aria-label="Undo" title="Undo" className="grid size-8 place-items-center hover:bg-white/70 disabled:opacity-30" disabled={busy || !currentSummary?.parentVersionId || Boolean(editor.pendingAcceptance)} onClick={() => currentSummary?.parentVersionId && void selectSavedVersion(currentSummary.parentVersionId)}><Undo2 className="size-4" /></button>
       <button type="button" aria-label="Redo" title="Redo" className="grid size-8 place-items-center hover:bg-white/70 disabled:opacity-30" disabled={busy || !currentSummary?.nextVersionId || Boolean(editor.pendingAcceptance)} onClick={() => currentSummary?.nextVersionId && void selectSavedVersion(currentSummary.nextVersionId)}><Redo2 className="size-4" /></button>
       <button type="button" aria-label="Go to original" title="Go to original" className="grid size-8 place-items-center hover:bg-white/70 disabled:opacity-30" disabled={busy || currentSummary?.id === originalVersionId || Boolean(editor.pendingAcceptance)} onClick={() => void selectSavedVersion(originalVersionId)}><RotateCcw className="size-4" /></button>
-      <button type="button" aria-label="Export current image" title="Export current image" className="grid size-8 place-items-center hover:bg-white/70 disabled:opacity-30" disabled={busy || !editor.currentVersion} onClick={() => editor.currentVersion && exportVersion(editor.currentVersion, "image/png")}><Download className="size-4" /></button>
+      <button type="button" aria-label="Export accepted image" title="Export accepted image" className="grid size-8 place-items-center hover:bg-white/70 disabled:opacity-30" disabled={busy || !editor.currentVersion || Boolean(editor.pendingAcceptance)} onClick={() => setExportOpen(true)}><Download className="size-4" /></button>
       <button type="button" aria-label="History" aria-expanded={historyOpen} className="flex h-8 items-center gap-1 px-2 font-mono text-[9px] uppercase hover:bg-white/70" onClick={() => setHistoryOpen((open) => !open)}><History className="size-4" /><span className="hidden sm:inline">History</span></button>
     </header>
     <div className={cn("grid min-h-0 min-w-0", historyOpen ? "lg:grid-cols-[minmax(0,1fr)_280px]" : "grid-cols-1")}>
@@ -244,5 +326,6 @@ export function CloudEditorWorkspace({ projectId, projectName, originalVersionId
       </aside>}
     </div>
     {editor.error && <div role="alert" className="absolute bottom-3 left-3 right-3 z-50 max-w-xl border border-accent bg-paper p-3 text-xs text-accent shadow-lg">{editor.error}</div>}
+    {exportOpen && editor.currentVersion && <CloudExportDialog projectId={projectId} projectName={projectName} version={editor.currentVersion} onClose={() => setExportOpen(false)} />}
   </section>;
 }
