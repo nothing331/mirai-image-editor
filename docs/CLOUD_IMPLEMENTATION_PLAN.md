@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A complete. P03 accounts are implemented; the owner confirmed staging login and invitations, while the remaining P03 account walkthrough is tracked separately. P04 private original assets passed local checks and the Render/Supabase staging walkthrough on 2026-09-26. P05 cloud project creation/reopening is implemented locally; staging verification is pending. P06 and later cloud features remain planned.
+**Status:** Wave A complete. P03 accounts and invitations are working on staging; the remaining account walkthrough is tracked separately. P04 private original assets and P05 project creation/reopening passed local and Render/Supabase staging checks on 2026-09-26. P06/P07 cloud editing and history are implemented on the combined review branch with local automated verification; staging migration, deployment, and walkthrough remain pending. P08 and later cloud features remain planned.
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -631,11 +631,11 @@ P01 must not expose existing unauthenticated local routes or enable paid calls. 
 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
-| P03 | Implemented locally; staging activation pending. Accounts and eligibility: Google OAuth, verified sessions, invitations/access requests/owner approval/profile, audit records, protected route helpers; after P02 | Database/RLS tests, unit tests and signed-out browser checks pass; complete real first/repeat login, invitation/approval, revocation, callback recovery and account-switch walkthrough in staging |
+| P03 | Implemented; staging login/invitation working. Accounts and eligibility: Google OAuth, verified sessions, invitations/access requests/owner approval/profile, audit records, protected route helpers; after P02 | Database/RLS tests, unit tests and signed-out browser checks pass; complete remaining revocation, callback recovery and account-switch walkthrough in staging |
 | P04 | Implemented and staging verified; private staging/finalization, quotas, exact original and normalized base, bounded upload gateway, cleanup | Local database and Storage checks plus real Render/Supabase upload, retry, anonymous/foreign denial, cleanup, and quota walkthrough passed on 2026-09-26 |
-| P05 | Implemented locally; cloud project creation/read with minimal My projects list and stable project URL; staging verification pending | Upload → saved original → logout/login → reopen original |
-| P06 | Durable acceptance and incremental save: transactional operation/version, receipts, pending UI; after P05 | Local edit → exactly one cloud operation/version → refresh → same pixels; lost acknowledgement test |
-| P07 | Lazy history and durable undo/redo/original navigation; after P06 | Large-history memory test, dimension-changing undo, valid-source and redo replacement tests |
+| P05 | Implemented and staging verified; cloud project creation/read with minimal My projects list and stable project URL | Upload → saved original → logout/login → reopen original |
+| P06 | Implemented on combined P06/P07 review branch; staging pending. Durable deterministic acceptance and incremental save: transactional operation/version, receipts, pending UI; after P05 | Local edit → exactly one cloud operation/version → refresh → same pixels; lost acknowledgement test |
+| P07 | Implemented on combined P06/P07 review branch; staging pending. Paged metadata history and durable undo/redo/original navigation; after P06 | Bounded history read, dimension-changing undo, valid-source and redo replacement tests |
 
 At this checkpoint the main vertical slice is usable with local/fake edits. Deploy only to controlled testing; lifecycle and launch gates still remain.
 

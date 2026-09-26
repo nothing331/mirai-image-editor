@@ -2,7 +2,7 @@
 
 **Status:** Implemented and verified locally and on staging. Hosted migration, the primary account walkthrough, and second-account project denial passed on 2026-09-26.
 
-P05 saves a finalized P04 upload as one owned project and initial immutable version. Approved accounts see a minimal My projects list at `/projects` and reopen the normalized original at `/projects/[id]`. The project view is read-only until P06 saves edits; local SQLite editing remains unavailable in staging/beta.
+P05 saves a finalized P04 upload as one owned project and initial immutable version. Approved accounts see a minimal My projects list at `/projects` and reopen the normalized original at `/projects/[id]`. P06/P07 extend that project view with cloud editing and history; local SQLite editing remains unavailable in staging/beta.
 
 ## Release sequence
 
@@ -45,4 +45,4 @@ Hosted interrupted-transfer/retry and five-project-cap behavior were not exercis
 - Browser retries preserve a finalized or finalizing upload ID in account-scoped tab session storage. Retry with the same project name. The server's database attach function is idempotent and transactional.
 - A transfer stopped before finalization can be cancelled; expired reservations are reconciled by the P04 owner cleanup path. A finalized upload that never attaches still counts toward storage quota until later orphan cleanup work. Check project capacity before uploading; the database enforces the final count under concurrency.
 - List/read APIs return metadata only to the active owner. Image reads use a 60-second signed URL and `no-store` page/API responses. A project URL remains stable even though the image URL changes.
-- P08 adds richer library controls, P06 adds durable edit saving, and P07 adds cloud history. Do not present P05's read-only view as an editing surface.
+- P08 adds richer library controls. The P06/P07 editor and history release procedure is in [its runbook](./WAVE_B_P06_P07_RUNBOOK.md).

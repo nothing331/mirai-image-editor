@@ -7,6 +7,7 @@ import { createAdminSupabaseClient } from "@/server/supabase/admin-client";
 const rowSchema = z.object({
   id: z.uuid(), owner_id: z.uuid(), name: z.string(), status: z.literal("active"),
   original_upload_id: z.uuid(), current_version_id: z.uuid(), revision: z.number().int(),
+  head_version_id: z.uuid(),
   created_at: z.string(), updated_at: z.string(),
 });
 
@@ -15,6 +16,7 @@ export interface CloudProject {
   name: string;
   originalUploadId: string;
   currentVersionId: string;
+  headVersionId: string;
   revision: number;
   createdAt: string;
   width: number;
@@ -39,7 +41,7 @@ function projectWithUpload(row: unknown, upload: unknown): CloudProject {
   const original = uploadSchema.parse(upload);
   return {
     id: project.id, name: project.name, originalUploadId: project.original_upload_id,
-    currentVersionId: project.current_version_id, revision: project.revision,
+    currentVersionId: project.current_version_id, headVersionId: project.head_version_id, revision: project.revision,
     createdAt: project.created_at, width: original.width, height: original.height,
     originalName: original.original_name,
   };
@@ -72,7 +74,7 @@ export async function createCloudProject(ownerId: string, uploadId: string, name
 export async function listCloudProjects(ownerId: string): Promise<CloudProject[]> {
   const client = createAdminSupabaseClient();
   const { data, error } = await client.from("cloud_projects")
-    .select("id,owner_id,name,status,original_upload_id,current_version_id,revision,created_at,updated_at")
+    .select("id,owner_id,name,status,original_upload_id,current_version_id,head_version_id,revision,created_at,updated_at")
     .eq("owner_id", ownerId).eq("status", "active")
     .order("created_at", { ascending: false }).order("id", { ascending: true }).limit(6);
   if (error || !data) throw new CloudProjectError("unavailable", "Projects could not be loaded.");
@@ -90,7 +92,7 @@ export async function listCloudProjects(ownerId: string): Promise<CloudProject[]
 export async function getCloudProject(ownerId: string, projectId: string): Promise<CloudProject> {
   const client = createAdminSupabaseClient();
   const { data, error } = await client.from("cloud_projects")
-    .select("id,owner_id,name,status,original_upload_id,current_version_id,revision,created_at,updated_at")
+    .select("id,owner_id,name,status,original_upload_id,current_version_id,head_version_id,revision,created_at,updated_at")
     .eq("id", projectId).eq("owner_id", ownerId).eq("status", "active").maybeSingle();
   if (error) throw new CloudProjectError("unavailable", "The project could not be opened.");
   if (!data) throw new CloudProjectError("not-found", "Project not found.");
