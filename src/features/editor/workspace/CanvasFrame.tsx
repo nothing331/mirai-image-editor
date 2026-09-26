@@ -18,7 +18,7 @@ const EditorCanvas = dynamic(() => import("../EditorCanvas").then((module) => mo
   loading: () => <div className="absolute inset-0 grid place-items-center font-mono text-xs text-white">Preparing canvas…</div>,
 });
 
-export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void }) {
+export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend, cloudMode = false }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void; cloudMode?: boolean }) {
   const [compareWith, setCompareWith] = useState<ComparisonBase>("original");
   const state = useEditorStore(useShallow((editor) => ({
     currentVersion: getCurrentVersion(editor),
@@ -27,6 +27,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
     currentVersionId: editor.currentVersionId,
     operations: editor.operations,
     preview: editor.preview,
+    pendingAcceptance: editor.pendingAcceptance,
     localDraft: editor.localDraft,
     selectionMask: editor.selectionMask,
     color: editor.color,
@@ -39,14 +40,22 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
     extendState: editor.extendState,
   })));
   const currentIndex = state.versions.findIndex((version) => version.id === state.currentVersionId);
-  const comparisonVersion = compareWith === "previous" && currentIndex > 0 ? state.versions[currentIndex - 1] : state.originalVersion;
+  const comparisonVersion = !cloudMode && compareWith === "previous" && currentIndex > 0 ? state.versions[currentIndex - 1] : state.originalVersion;
 
   return (
     <section className="order-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_28px] bg-[#cfcdc5] p-2 pb-0 md:order-2 md:p-3 md:pb-0" aria-label="Image canvas">
       <div className="relative min-h-0 overflow-hidden bg-[#151513] shadow-[0_1px_0_rgba(255,255,255,.35)]">
-        {state.preview && comparisonVersion && state.currentVersion && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") ? (
+        {cloudMode && state.pendingAcceptance && state.currentVersion ? (
+          <div className="absolute inset-0 grid grid-rows-[auto_minmax(0,1fr)] gap-3 bg-[#151513] p-3 text-paper" data-testid="cloud-pending-comparison">
+            <p className="font-mono text-[9px] uppercase tracking-wider text-acid">Edited pixels pending cloud save</p>
+            <div className="grid min-h-0 grid-cols-2 gap-3">
+              <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-white/20"><figcaption className="p-2 font-mono text-[9px] uppercase">Current saved</figcaption><div className="relative min-h-0"><Image src={state.currentVersion.dataUrl} alt="Current saved version" fill unoptimized sizes="50vw" className="object-contain" /></div></figure>
+              <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-acid"><figcaption className="p-2 font-mono text-[9px] uppercase text-acid">Pending edit</figcaption><div className="relative min-h-0"><Image src={state.pendingAcceptance.output.dataUrl} alt="Pending edited version" fill unoptimized sizes="50vw" className="object-contain" /></div></figure>
+            </div>
+          </div>
+        ) : state.preview && comparisonVersion && state.currentVersion && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") ? (
           <PreviewComparison
-            baseLabel={compareWith === "previous" ? "Previous" : "Original"}
+            baseLabel={!cloudMode && compareWith === "previous" ? "Previous" : "Original"}
             originalUrl={comparisonVersion.dataUrl}
             previewUrl={state.preview.dataUrl}
             boundaryPolicy={state.preview.method === "generative" && (state.preview.type === "remove" || state.preview.type === "replace" || state.preview.type === "restyle") ? state.preview.parameters.boundaryPolicy : null}
@@ -91,10 +100,10 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
           {state.currentVersion && <span className="hidden lg:inline">{state.localDraft?.type ?? state.tool}</span>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {state.preview && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") && (
+          {!cloudMode && state.preview && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") && (
             <label className="flex items-center gap-1.5">Compare<select aria-label="Comparison base" className="h-6 bg-transparent text-[8px] outline-none focus:ring-1 focus:ring-accent" value={compareWith} onChange={(event) => setCompareWith(event.target.value as ComparisonBase)}><option value="original">Original</option><option value="previous">Previous</option></select></label>
           )}
-          <span>{state.operations.length} accepted edit{state.operations.length === 1 ? "" : "s"}</span>
+          <span>{cloudMode ? "Cloud history" : `${state.operations.length} accepted edit${state.operations.length === 1 ? "" : "s"}`}</span>
           <button type="button" aria-label="Reset view" title="Reset view" className="grid size-6 place-items-center hover:bg-white/50 hover:text-ink disabled:opacity-30" disabled={!state.currentVersion} onClick={state.requestViewReset}><Focus className="size-3" /></button>
         </div>
       </div>
