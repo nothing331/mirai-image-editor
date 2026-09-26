@@ -5,6 +5,7 @@ import { refreshSupabaseSession } from "@/server/supabase/session-proxy";
 const cloudSpikePath = "/api/internal/cloud-spike";
 const cloudHealthPaths = new Set(["/api/health/live", "/api/health/ready"]);
 const cloudAssetPath = /^\/api\/original-uploads(?:\/|$)/;
+const cloudProjectsPath = /^\/api\/cloud-projects(?:\/|$)/;
 const cloudAssetCleanupPath = "/api/internal/assets-cleanup";
 
 export async function proxy(request: NextRequest) {
@@ -25,6 +26,7 @@ export async function proxy(request: NextRequest) {
     (process.env.MIRAI_APP_MODE === "staging" || process.env.MIRAI_APP_MODE === "beta") &&
     !cloudHealthPaths.has(request.nextUrl.pathname) &&
     !cloudAssetPath.test(request.nextUrl.pathname) &&
+    !cloudProjectsPath.test(request.nextUrl.pathname) &&
     request.nextUrl.pathname !== cloudAssetCleanupPath
   ) {
     return Response.json(
