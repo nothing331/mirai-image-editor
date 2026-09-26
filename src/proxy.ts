@@ -6,6 +6,7 @@ const cloudSpikePath = "/api/internal/cloud-spike";
 const cloudHealthPaths = new Set(["/api/health/live", "/api/health/ready"]);
 const cloudAssetPath = /^\/api\/original-uploads(?:\/|$)/;
 const cloudProjectsPath = /^\/api\/cloud-projects(?:\/|$)/;
+const cloudAccountPath = /^\/api\/account(?:\/|$)/;
 const cloudAssetCleanupPath = "/api/internal/assets-cleanup";
 
 export async function proxy(request: NextRequest) {
@@ -27,6 +28,7 @@ export async function proxy(request: NextRequest) {
     !cloudHealthPaths.has(request.nextUrl.pathname) &&
     !cloudAssetPath.test(request.nextUrl.pathname) &&
     !cloudProjectsPath.test(request.nextUrl.pathname) &&
+    !cloudAccountPath.test(request.nextUrl.pathname) &&
     request.nextUrl.pathname !== cloudAssetCleanupPath
   ) {
     return Response.json(

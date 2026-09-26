@@ -1,6 +1,6 @@
 import type { AccountSnapshot } from "./account";
 
-const allowedDestinations = new Set(["/", "/access", "/welcome", "/admin/access"]);
+const allowedDestinations = new Set(["/", "/access", "/welcome", "/admin/access", "/settings", "/projects/trash"]);
 const projectDestination = /^\/projects\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function safeReturnPath(candidate: string | null | undefined, fallback = "/access"): string {
