@@ -1,6 +1,6 @@
 # Wave B P05 cloud projects
 
-**Status:** Implemented and verified locally. Hosted migration, branch deployment, and real sign-out/sign-in walkthrough remain staging gates.
+**Status:** Implemented, locally verified, and deployed to staging. Hosted migration and the primary account walkthrough passed on 2026-09-26. A second approved account is still needed for the live cross-account denial check.
 
 P05 saves a finalized P04 upload as one owned project and initial immutable version. Approved accounts see a minimal My projects list at `/projects` and reopen the normalized original at `/projects/[id]`. The project view is read-only until P06 saves edits; local SQLite editing remains unavailable in staging/beta.
 
@@ -26,6 +26,18 @@ npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 For browser testing at `http://localhost:3000`, set `MIRAI_APP_MODE=local`, `MIRAI_AUTH_ENABLED=true`, `MIRAI_CANONICAL_URL=http://localhost:3000`, `MIRAI_ALLOWED_ORIGINS=http://localhost:3000`, the matching Supabase URL/publishable and secret keys, and `MIRAI_OWNER_EMAILS` in a local-only `.env`. Keep `MIRAI_PERSISTENCE_MODE=local` for the standalone local editor. Google OAuth must allow the localhost callback with its `next` query parameter; the local Supabase stack does not supply Google credentials automatically. See the [P04 runbook](./WAVE_B_P04_RUNBOOK.md) for the full local environment matrix.
+
+## Staging verification, 2026-09-26
+
+- Render readiness returned HTTP 200 in staging for release `d67f80e2cdc737d4b1ee0a43054b12c042ee7526` with `Cache-Control: no-store`.
+- Supabase project `vfpafxzczdblsbsslhcg` reports migration `20260926072932_cloud_projects` applied.
+- An approved account uploaded one JPEG through the hosted UI. My projects showed one entry, and its stable project URL displayed the normalized original at 674 × 850 pixels. The image remained visible after a fresh page load.
+- Signing out redirected to sign-in. Opening that project URL while signed out redirected to `/sign-in?next=/projects/{id}`; Google sign-in returned to the same project. The My projects list still showed one project.
+- Anonymous `GET /api/cloud-projects` and `GET /api/cloud-projects/{id}` returned 401. The legacy `/api/projects` route returned 404.
+- A read-only hosted database check found one project, one initial version, one ready upload, and a valid owner/project/current-version relationship for the uploaded project.
+- Both PR CI jobs passed, including cloud migration, RLS, Storage, and pgTAP tests. The pgTAP suite covers unfinished uploads, foreign-owner attach, idempotent retry, immutable initial versions, and the five-project cap.
+
+**Still to verify with a second approved account:** the first account's project URL and `GET /api/cloud-projects/{id}` return no project. Hosted interrupted-transfer/retry and five-project-cap behavior were not exercised against the real user's account; they are covered by automated tests.
 
 ## Recovery and limits
 
