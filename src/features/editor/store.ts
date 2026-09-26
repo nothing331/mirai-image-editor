@@ -13,6 +13,7 @@ import { blocksTransformAcceptance, unavailableTransformFidelityAssessment } fro
 import { requestExtendCandidate, requestExtendPlan } from "./extend-client";
 import type { EditBoundaryPolicy } from "@/shared/edit-boundary";
 import type { ProjectOrigin } from "@/shared/asset-generation";
+import type { CloudDraftSnapshot } from "@/features/cloud-projects/cloud-draft-cache";
 import { solveSmartReframe, type ExtendSceneAnalysis } from "@/shared/extend-plan";
 import { getExtendPreset } from "@/shared/extend-presets";
 import type { CropRatio, EditOperation, EditPreview, EditType, ExtendDraftState, ExtendInput, FakeScenario, GenerativePreviewState, GenerativeRequestSnapshot, GeometryEditType, ImageVersion, LassoVisualization, LocalEditDraft, MaskAsset, OverlayImageAsset, PaintSession, ProcessingMask, SelectionDiagnostics, SelectionMode, SourcePoint, Tool, TransformInput, Viewport } from "./types";
@@ -55,6 +56,7 @@ interface EditorState {
   lastRequestId: string | null;
   loadImage: (version: ImageVersion, options?: { projectId?: string; projectName?: string; projectOrigin?: ProjectOrigin; lastRequestId?: string | null }) => void;
   loadCloudProject: (project: { id: string; name: string; original: ImageVersion; current: ImageVersion }) => void;
+  restoreCloudDraft: (draft: CloudDraftSnapshot) => boolean;
   setCloudCurrentVersion: (version: ImageVersion) => void;
   confirmPendingAcceptance: () => boolean;
   discardPendingAcceptance: () => void;
@@ -259,6 +261,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     lassoVisualization: null, generativeState: idleGenerativeState, extendState: idleExtendState,
     viewResetKey: state.viewResetKey + 1, error: null, lastRequestId: null,
   })),
+  restoreCloudDraft: (draft) => {
+    const state = get();
+    const current = getCurrentVersion(state);
+    if (state.acceptanceMode !== "cloud" || state.projectId !== draft.projectId
+      || !current || current.id !== draft.inputVersionId
+      || draft.selectionMask && (draft.selectionMask.width !== current.width || draft.selectionMask.height !== current.height
+        || draft.selectionMask.data.length !== current.width * current.height)
+      || draft.localDraft && draft.localDraft.inputVersionId !== current.id
+      || draft.paintSession && draft.paintSession.baseVersionId !== current.id
+      || draft.pendingAcceptance && draft.pendingAcceptance.input.id !== current.id) return false;
+    set({ localDraft: draft.localDraft, localDraftDirty: Boolean(draft.localDraft),
+      paintSession: draft.paintSession, selectionMask: draft.selectionMask,
+      preview: draft.preview, pendingAcceptance: draft.pendingAcceptance,
+      overlayAssets: draft.overlayAssets, error: null });
+    return true;
+  },
   setCloudCurrentVersion: (version) => set((state) => {
     if (state.acceptanceMode !== "cloud" || !state.originalVersionId || state.pendingAcceptance) return {};
     const original = state.versions.find((item) => item.id === state.originalVersionId);

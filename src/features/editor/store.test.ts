@@ -105,6 +105,22 @@ describe("filled selection preview and acceptance", () => {
     expect(state.preview).toBeNull();
   });
 
+  it("restores a same-version browser draft without accepting history and rejects a stale base", () => {
+    useEditorStore.getState().loadCloudProject({ id: "cloud-project", name: "Cloud", original, current: original });
+    useEditorStore.getState().beginLocalDraft("rotate");
+    const localDraft = useEditorStore.getState().localDraft;
+    const snapshot = { schema: 1 as const, ownerId: "owner", projectId: "cloud-project",
+      inputVersionId: original.id, savedAt: Date.now(), localDraft,
+      paintSession: null, selectionMask: useEditorStore.getState().selectionMask,
+      preview: null, pendingAcceptance: null, overlayAssets: [], commitKeys: null };
+    useEditorStore.getState().loadCloudProject({ id: "cloud-project", name: "Cloud", original, current: original });
+    expect(useEditorStore.getState().restoreCloudDraft(snapshot)).toBe(true);
+    expect(useEditorStore.getState().localDraft?.type).toBe("rotate");
+    expect(useEditorStore.getState().operations).toHaveLength(0);
+    expect(useEditorStore.getState().versions).toHaveLength(1);
+    expect(useEditorStore.getState().restoreCloudDraft({ ...snapshot, inputVersionId: "other" })).toBe(false);
+  });
+
   it("plans and accepts a dimension-changing Extend as one immutable edit", async () => {
     const analysis = {
       primarySubjects: [{ label: "subject", bounds: { x: 0.3, y: 0.1, width: 0.4, height: 0.8 }, importance: 1, touchesEdge: false, mustPreserve: true }],
