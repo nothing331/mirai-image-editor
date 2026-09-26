@@ -1,4 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
@@ -8,6 +13,7 @@ const enabled = process.env.E2E_CLOUD === "1";
 test.skip(!enabled, "Runs only against disposable local Supabase with E2E_CLOUD=1.");
 
 let projectId = "";
+let ownerId = "";
 let originalVersionId = "";
 let cookies: Array<{ name: string; value: string }> = [];
 
@@ -16,6 +22,7 @@ test.beforeAll(async () => {
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
   const admin = createClient(url, process.env.SUPABASE_SECRET_KEY!, { auth: { autoRefreshToken: false, persistSession: false } });
   const userId = randomUUID();
+  ownerId = userId;
   const email = `${userId}@example.test`;
   const password = randomUUID() + randomUUID();
   expect((await admin.auth.admin.createUser({ id: userId, email, password, email_confirm: true })).error).toBeNull();
@@ -106,4 +113,110 @@ test("accepts an edit, reopens it, and persists undo/redo and redo replacement",
   expect(latest.project.currentVersionId).not.toBe(first.project.currentVersionId);
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.getByRole("complementary", { name: "Project history" }).getByRole("button")).toHaveCount(2);
+});
+
+test("searches, renames, exports, trashes, and restores an owned project", async ({ page, context }) => {
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
+  await page.goto("/projects");
+  await expect(page.getByRole("heading", { name: "My projects" })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByPlaceholder("Search project names").fill("not here");
+  await expect(page.getByText("No projects match that search.")).toBeVisible();
+  await page.getByPlaceholder("Search project names").fill("Cloud editor");
+  await page.getByRole("button", { name: "Rename project" }).click();
+  await page.getByRole("dialog", { name: "Rename project" }).getByLabel("Project name").fill("Cloud library check");
+  await page.getByRole("dialog", { name: "Rename project" }).getByRole("button", { name: "Save name" }).click();
+  await expect(page.getByText("Cloud library check")).toBeVisible();
+  await page.getByRole("link", { name: /Cloud library check/ }).click();
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  await page.getByRole("button", { name: "Export accepted image" }).click();
+  await expect(page.getByRole("dialog", { name: "Export image" })).toBeVisible();
+  await page.getByRole("radio", { name: "JPEG" }).check();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download accepted version" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("Cloud library check.jpg");
+  const original = await page.request.get(`/api/cloud-projects/${projectId}/original-file`);
+  expect(original.ok()).toBe(true);
+  expect(original.headers()["content-type"]).toBe("image/png");
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.goto("/projects");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Move to trash" }).click();
+  await expect(page.getByText("No saved originals yet")).toBeVisible();
+  await page.getByRole("link", { name: "View trash" }).click();
+  await expect(page.getByText("Cloud library check")).toBeVisible();
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(page.getByText("Trash is empty.")).toBeVisible();
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+});
+
+test("offers a browser draft only for the same saved version", async ({ page, context }) => {
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  const before = await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId);
+  await page.getByRole("button", { name: "Preview monochrome edit" }).click();
+  await expect(page.getByTestId("preview-comparison")).toBeVisible();
+  await expect(page.getByText("Draft on device")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.reload();
+  await expect(page.getByRole("dialog", { name: "Stored browser draft" })).toBeVisible();
+  await page.getByRole("button", { name: "Restore draft" }).click();
+  await expect(page.getByTestId("preview-comparison")).toBeVisible();
+  const after = await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId);
+  expect(after.project.currentVersionId).toBe(before.project.currentVersionId);
+});
+
+test("prepares portable data and completes fenced account deletion", async ({ page, context }) => {
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByLabel("Display name").fill("Export test owner");
+  await page.getByRole("button", { name: "Save name" }).click();
+  await expect(page.getByLabel("Display name")).toHaveValue("Export test owner");
+  await page.getByRole("button", { name: "Prepare data export" }).click();
+  await expect.poll(async () => (await page.evaluate(async () => fetch("/api/account/export").then((response) => response.json()))).export?.status).toBe("pending");
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  execFileSync("node", ["scripts/cloud-maintenance/run.mjs"], {
+    cwd: process.cwd(), env: { ...process.env, SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL! },
+  });
+  await expect.poll(async () => (await page.evaluate(async () => fetch("/api/account/export").then((response) => response.json()))).export?.status).toBe("complete");
+  const exportResponse = await page.evaluate(async () => fetch("/api/account/export").then((response) => response.json()));
+  const archiveResponse = await page.request.get(exportResponse.export.downloadUrl);
+  expect(archiveResponse.ok()).toBe(true);
+  const archive = await archiveResponse.body();
+  const directory = mkdtempSync(join(tmpdir(), "mirai-export-test-"));
+  try {
+    const path = join(directory, "account.tar.gz");
+    writeFileSync(path, archive);
+    const entries = execFileSync("tar", ["-tzf", path], { encoding: "utf8" });
+    expect(entries).toContain("manifest.json");
+    expect(entries).toContain(`projects/${projectId}/normalized.png`);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+  const tar = gunzipSync(archive);
+  expect(tar.subarray(0, 100).toString("utf8")).toContain("manifest.json");
+  expect(tar.toString("utf8")).toContain("Export test owner");
+  expect(tar.toString("utf8")).toContain(projectId);
+  await page.getByLabel("Type DELETE to confirm").fill("DELETE");
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByRole("heading", { name: "Deletion requested." })).toBeVisible();
+  const profile = await admin.from("profiles").select("status").eq("id", ownerId).single();
+  expect(profile.data?.status).toBe("revoked");
+  expect((await admin.from("mirai_maintenance_tasks")
+    .update({ next_attempt_at: new Date().toISOString() }).eq("owner_id", ownerId)
+    .eq("kind", "account-purge")).error).toBeNull();
+  execFileSync("node", ["scripts/cloud-maintenance/run.mjs"], {
+    cwd: process.cwd(), env: { ...process.env, SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL! },
+  });
+  expect((await admin.from("cloud_projects").select("id").eq("owner_id", ownerId)).data).toHaveLength(0);
+  expect((await admin.from("asset_uploads").select("id").eq("owner_id", ownerId)).data).toHaveLength(0);
+  expect((await admin.from("profiles").select("id").eq("id", ownerId)).data).toHaveLength(0);
 });

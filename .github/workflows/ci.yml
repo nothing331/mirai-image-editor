@@ -99,6 +99,12 @@ jobs:
       - name: Test cloud project transactions and access
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/cloud_projects_test.sql
 
+      - name: Test project lifecycle and maintenance fence
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/wave_c_lifecycle_test.sql
+
+      - name: Test recent sign-in and account lifecycle
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/wave_c_account_test.sql
+
       - name: Test cloud edit transactions and history
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/cloud_edit_history_test.sql
 
