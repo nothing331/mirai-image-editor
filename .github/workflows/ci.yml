@@ -62,7 +62,7 @@ jobs:
         run: git diff --exit-code
 
   account-database:
-    name: Account migration, RLS, and pgTAP
+    name: Cloud migration, RLS, Storage, and pgTAP
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -75,13 +75,16 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Install dependencies for Storage integration
+        run: npm ci
+
       - name: Start local Supabase
         run: npx --yes supabase@2.116.0 start
 
       - name: Rebuild from migrations
         run: npx --yes supabase@2.116.0 db reset --local
 
-      - name: Lint account schemas
+      - name: Lint cloud schemas
         run: npx --yes supabase@2.116.0 db lint --local --schema public,mirai_private --level warning --fail-on error
 
       - name: Run security advisors
@@ -89,6 +92,12 @@ jobs:
 
       - name: Test account authorization
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/accounts_and_access_test.sql
+
+      - name: Test private asset quotas and access
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/private_asset_foundation_test.sql
+
+      - name: Test private Storage integration
+        run: MIRAI_ASSET_INTEGRATION=1 npx vitest run src/server/assets/original-assets.integration.test.ts
 
       - name: Stop local Supabase
         if: always()

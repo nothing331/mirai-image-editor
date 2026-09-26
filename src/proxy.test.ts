@@ -17,6 +17,17 @@ describe("cloud foundation API isolation", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it.each([
+    "/api/original-uploads",
+    "/api/original-uploads/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "/api/original-uploads/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/finalize",
+    "/api/internal/assets-cleanup",
+  ])("passes P04's %s route to its account checks in staging", async (pathname) => {
+    process.env.MIRAI_APP_MODE = "staging";
+    const response = await proxy(new NextRequest(`https://example.com${pathname}`));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it.each(["staging", "beta"])("hides unfinished APIs in %s", async (mode) => {
     process.env.MIRAI_APP_MODE = mode;
 
@@ -58,6 +69,8 @@ describe("cloud spike API isolation", () => {
     "/api/image-edits",
     "/api/asset-generations",
     "/api/image-extends/plan",
+    "/api/original-uploads",
+    "/api/internal/assets-cleanup",
   ])("hides %s in an isolated deployment", async (pathname) => {
     process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT = "true";
 

@@ -62,6 +62,20 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Code and verification.** `supabase/migrations/20260914044852_accounts_and_access.sql`, `supabase/tests/accounts_and_access_test.sql`, `src/server/auth/`, `src/server/supabase/`, `src/app/auth/`, `src/app/sign-in/`, `src/app/access/`, `src/app/welcome/`, `src/app/admin/access/`, `src/features/account/`, `src/proxy.ts`, adjacent unit tests, `e2e/account.spec.ts`, and `docs/cloud/WAVE_B_P03_RUNBOOK.md`.
 
+## Private cloud original assets
+
+**Outcome.** An active invited account can reserve space for a PNG/JPEG original, transfer it through a bounded server route, finalize an immutable exact source plus lossless editor base, and obtain a short-lived private read URL. This is the P04 asset foundation; P05 will attach a finalized receipt to a cloud project and provide the user-facing upload flow.
+
+**Working flow.** `POST /api/original-uploads` accepts an idempotency key, name, media type, and exact byte count. A Postgres function serializes quota reservations per account and globally. `PUT /api/original-uploads/[id]` requires a matching Content-Length, bounds the streamed body to 10 MiB, checks the file signature, and writes once to a private staging bucket. `POST /api/original-uploads/[id]/finalize` reads the staged bytes, verifies size and decodability, rejects animation and oversized dimensions, hashes the source, applies EXIF orientation and sRGB conversion, and writes a source-sized PNG base without overwriting the original. It promotes both to new private immutable keys, commits a receipt and actual usage, then removes staging. `GET /api/original-uploads/[id]?role=source|base` issues a 60-second read URL only to the active owner. `DELETE` cancels an unfinished upload. An owner-only cleanup endpoint reconciles abandoned uploads and unfinished staging deletion.
+
+**Ownership and rules.** The server checks session eligibility and request origin before every mutation. Browser clients cannot choose storage keys, call service-role functions, or access the private asset buckets directly. `asset_uploads` owns reservation state, idempotency, checksums, dimensions, and cleanup status. Active and cleaning reservations continue to count against quotas until object removal is confirmed. Exact original bytes and the normalized base are distinct immutable objects. No project/history row is created by P04.
+
+**Failures and recovery.** A repeated reservation key returns the same record. Repeated upload or finalization verifies existing immutable bytes before accepting a lost acknowledgement. A stalled upload can be retried after five minutes; expired uploads and partial promotions remain charged until cleanup removes them. Invalid files, quota exhaustion, another account's asset, and unfinished transfers fail without a project or accepted history change. The bounded upload gateway is a deliberate initial transport choice because signed direct PUTs do not provide the same proven request-size bound in this deployment.
+
+**Dependencies and limits.** P03 active accounts, the reviewed P04 migration, Supabase Storage, and the server-only secret key are required. The asset routes run in staging/beta and in local mode when account authentication is enabled; CI mode remains closed. The initial limits are 10 MiB source, 2,048 pixels per edge, 4,194,304 pixels, 30 MiB editor base, 100 MiB per account, and 700 MiB in managed global reservations/assets. These are beta controls, not a promise that arbitrary 10 MiB images will normalize under the base limit. The current local editor and project API do not consume cloud asset receipts yet. Cleanup is manually invokable until the P18 maintenance scheduler exists. The Render/Supabase staging walkthrough passed on 2026-09-26.
+
+**Code and verification.** `supabase/migrations/20260924083937_private_asset_foundation.sql`, `supabase/tests/private_asset_foundation_test.sql`, `src/server/assets/`, `src/app/api/original-uploads/`, `src/app/api/internal/assets-cleanup/route.ts`, `src/proxy.ts`, and `docs/cloud/WAVE_B_P04_RUNBOOK.md`.
+
 ## Image intake and project lifecycle
 
 **Outcome.** A user can upload a PNG or JPEG, begin an editing project, persist it locally, reopen it, and retain the original as an immutable asset.
@@ -70,7 +84,7 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Ownership and rules.** `EditorWorkspace` coordinates project commands and provider authorization; the workspace header exposes upload, open, save, export, and identity controls. The editor store owns temporary browser state. The project route is the server boundary, and the repository owns durable metadata/assets. The original and all accepted version assets are immutable. Unsupported or invalid input fails without creating usable project history.
 
-**Limitations.** Storage is local-development infrastructure; authentication, collaboration, and cloud storage are deferred.
+**Limitations.** This editor flow still stores projects on local-development infrastructure. P03 account eligibility and P04 private asset storage exist separately; cloud project creation and history integration are deferred to P05–P07.
 
 **Code and verification.** `src/features/editor/EditorWorkspace.tsx`, `src/features/editor/project-client.ts`, `src/features/editor/store.ts`, `src/app/api/projects/route.ts`, `src/server/storage/project-repository.ts`, `src/features/editor/store.test.ts`, and `e2e/editor.spec.ts`.
 
