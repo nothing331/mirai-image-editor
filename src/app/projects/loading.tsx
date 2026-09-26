@@ -1,0 +1,3 @@
+export default function ProjectsLoading() {
+  return <main className="public-page min-h-dvh bg-paper text-ink"><div className="h-14 border-b border-line" /><div className="mx-auto max-w-6xl border-x border-line"><div className="border-b border-line px-6 py-10 sm:px-10"><div className="h-3 w-28 animate-pulse bg-line" /><div className="mt-4 h-10 w-56 animate-pulse bg-line" /></div><div className="grid gap-px bg-line sm:grid-cols-2">{[0, 1, 2, 3].map((item) => <div key={item} className="bg-paper p-4"><div className="h-44 animate-pulse bg-[#e8e5dc]" /><div className="mt-4 h-5 w-2/3 animate-pulse bg-line" /></div>)}</div></div></main>;
+}
