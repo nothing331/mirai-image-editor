@@ -43,7 +43,7 @@ Upload → canvas → manual mask → local recolor → generative edit → hist
 
 - payments
 - collaboration
-- cloud edit/history persistence and background queues
+- cloud AI processing queues
 - microservices
 - multiple AI providers
 - arbitrary independent layers
@@ -64,7 +64,7 @@ Upload → canvas → manual mask → local recolor → generative edit → hist
 - Sharp for server-side provider input normalization
 - SQLite via the portable `sql.js` runtime for local metadata
 - local filesystem asset storage during development
-- Supabase Auth/PostgreSQL and private Storage for cloud accounts, original assets, and initial cloud projects
+- Supabase Auth/PostgreSQL and private Storage for cloud accounts, originals, accepted versions, lifecycle tasks, and portable exports
 - image-edit and asset-generation providers behind application-owned interfaces
 
 This starts as a feature-oriented modular monolith. A small Python segmentation service may be introduced later if automatic object selection requires it.
@@ -102,7 +102,7 @@ Directories should be introduced with their first real behavior. Do not create s
 - Diagnostics observe the edit pipeline but cannot create operations, versions, or provider requests.
 - Diagnostic failures never change the result or status of the edit they observe.
 - Shared code remains small and cannot become a generic utility directory.
-- Cloud modes validate their complete environment before serving traffic. P05 opens only owned project creation/read routes backed by Supabase PostgreSQL and private Storage; the local SQLite project/editing API stays closed in staging and beta. Render never falls back to local disk for cloud projects.
+- Cloud modes validate their complete environment before serving traffic. Owned project creation, deterministic editing, immutable history, library actions, export, and account lifecycle use Supabase PostgreSQL and private Storage; the local SQLite project/editing API stays closed in staging and beta. Render never falls back to local disk for cloud projects. A protected maintenance workflow performs delayed object cleanup, project/account purge, and bounded account archives outside the web request.
 - Database migrations are reviewed release operations, separate from application startup and application rollback.
 
 ### Workspace UI boundary
@@ -299,6 +299,7 @@ These decisions are intentionally kept here until the project becomes large enou
 | Zero-billing cloud target | Next.js on Render Free with Supabase Free Auth, Postgres, and private Storage; no payment-method-backed object store | Accepted; P01 validated and P02 live walkthrough complete |
 | Cloud runtime safety | Explicit local/CI/staging/beta modes; fail closed before authenticated Supabase persistence exists; migrations separate from startup | Accepted in Wave A P02 |
 | Cloud identity and eligibility | Google identity through Supabase Auth; application profile status and server-configured owner role separately gate access; approval/invitation grants one fixed five-image allowance | Accepted in Wave B P03 |
+| Cloud personal workspace | Five active owned projects, immutable deterministic edit/history chain, browser draft cache, exact-original and accepted-version export, trash, account deletion, and portable account archive | Implemented in Waves B/C; staged rollout requires the Wave C hosted checklist |
 | Request diagnostics | Structured local manifests plus directly inspectable artifacts | Accepted |
 | Replace intent planning | Structured multimodal plan before image generation | Accepted |
 | Generative selection semantics | Approximate focus by default; explicit protected boundary available | Accepted |

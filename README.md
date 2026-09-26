@@ -14,7 +14,7 @@ Edit an image, compare the result, accept or discard it, and undo any accepted c
 - **Precise control** — Use selections as flexible focus hints or protected edit boundaries.
 - **Safe review** — Compare generated results before accepting them.
 - **Reversible history** — Undo and redo immutable image versions without changing the original.
-- **Local projects** — Save projects, inspect request diagnostics, and export PNG or JPEG.
+- **Projects** — Save immutable edits locally, or use approved cloud accounts for private projects, browser draft recovery, export, and trash.
 
 <!-- Add three examples here: selection-aware editing, before/after comparison, and history or diagnostics. -->
 
@@ -91,9 +91,9 @@ The deterministic fake provider is enabled by default. To test real generation, 
 
 ## Cloud foundation
 
-Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B P03 adds Google sign-in and controlled-beta eligibility, P04 adds private original storage, and P05 adds owned project creation and reopening. Unfinished local editing, diagnostic, and AI APIs remain closed in cloud modes. `npm run start:cloud` still refuses unsafe configuration and never falls back to Render's ephemeral disk.
+Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B adds controlled-beta accounts, private originals, owned projects, deterministic cloud edits, and immutable history. Wave C adds a searchable thumbnail library, browser draft recovery, accepted-version/original downloads, trash, account settings/deletion, portable account export, and protected maintenance. Local-only diagnostic and real-AI APIs remain closed in cloud modes. `npm run start:cloud` refuses unsafe configuration and never falls back to Render's ephemeral disk. Wave C requires its migration and maintenance secrets before hosted rollout.
 
-Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations, the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for authentication, and the [P05 runbook](./docs/cloud/WAVE_B_P05_RUNBOOK.md) for project migration and upload/reopen verification.
+Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations, the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for authentication, the [P06/P07 runbook](./docs/cloud/WAVE_B_P06_P07_RUNBOOK.md) for cloud editing/history, and the [Wave C runbook](./docs/cloud/WAVE_C_RUNBOOK.md) for personal-product migration and lifecycle verification.
 
 ## Troubleshooting
 
@@ -107,7 +107,7 @@ Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and
 
 ## Current limitations
 
-- The local editor remains single-user; cloud accounts and read-only projects are separate until durable cloud editing arrives
+- Cloud AI editing and creation remain disabled; cloud editing currently uses deterministic tools and local Monochrome
 - Linear history; no independent layers or history branches
 - Real AI edits require an OpenAI API key and may incur usage costs
 - Semantic checks reduce unintended changes but cannot guarantee perfect results
