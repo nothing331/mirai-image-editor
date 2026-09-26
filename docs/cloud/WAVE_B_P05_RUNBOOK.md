@@ -1,6 +1,6 @@
 # Wave B P05 cloud projects
 
-**Status:** Implemented, locally verified, and deployed to staging. Hosted migration and the primary account walkthrough passed on 2026-09-26. A second approved account is still needed for the live cross-account denial check.
+**Status:** Implemented and verified locally and on staging. Hosted migration, the primary account walkthrough, and second-account project denial passed on 2026-09-26.
 
 P05 saves a finalized P04 upload as one owned project and initial immutable version. Approved accounts see a minimal My projects list at `/projects` and reopen the normalized original at `/projects/[id]`. The project view is read-only until P06 saves edits; local SQLite editing remains unavailable in staging/beta.
 
@@ -35,9 +35,10 @@ For browser testing at `http://localhost:3000`, set `MIRAI_APP_MODE=local`, `MIR
 - Signing out redirected to sign-in. Opening that project URL while signed out redirected to `/sign-in?next=/projects/{id}`; Google sign-in returned to the same project. The My projects list still showed one project.
 - Anonymous `GET /api/cloud-projects` and `GET /api/cloud-projects/{id}` returned 401. The legacy `/api/projects` route returned 404.
 - A read-only hosted database check found one project, one initial version, one ready upload, and a valid owner/project/current-version relationship for the uploaded project.
+- The product owner reported that opening the first account's project from a second approved account was denied. The second-account API request was not separately observed by the agent; the read query filters by authenticated owner, and automated checks cover foreign-owner attach and direct table access.
 - Both PR CI jobs passed, including cloud migration, RLS, Storage, and pgTAP tests. The pgTAP suite covers unfinished uploads, foreign-owner attach, idempotent retry, immutable initial versions, and the five-project cap.
 
-**Still to verify with a second approved account:** the first account's project URL and `GET /api/cloud-projects/{id}` return no project. Hosted interrupted-transfer/retry and five-project-cap behavior were not exercised against the real user's account; they are covered by automated tests.
+Hosted interrupted-transfer/retry and five-project-cap behavior were not exercised against the real user's account; they are covered by automated tests.
 
 ## Recovery and limits
 
