@@ -91,9 +91,9 @@ The deterministic fake provider is enabled by default. To test real generation, 
 
 ## Cloud foundation
 
-Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B P03 adds Google sign-in and controlled-beta eligibility while keeping unfinished project, storage, diagnostic, and AI APIs closed. `npm run start:cloud` still refuses unsafe configuration and never falls back to Render's ephemeral disk.
+Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B P03 adds Google sign-in and controlled-beta eligibility, P04 adds private original storage, and P05 adds owned project creation and reopening. Unfinished local editing, diagnostic, and AI APIs remain closed in cloud modes. `npm run start:cloud` still refuses unsafe configuration and never falls back to Render's ephemeral disk.
 
-Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations. Use the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for migrations, Google/Supabase configuration, owner bootstrap, and account verification.
+Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations, the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for authentication, and the [P05 runbook](./docs/cloud/WAVE_B_P05_RUNBOOK.md) for project migration and upload/reopen verification.
 
 ## Troubleshooting
 
@@ -107,7 +107,7 @@ Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and
 
 ## Current limitations
 
-- Local single-user application; no authentication or collaboration
+- The local editor remains single-user; cloud accounts and read-only projects are separate until durable cloud editing arrives
 - Linear history; no independent layers or history branches
 - Real AI edits require an OpenAI API key and may incur usage costs
 - Semantic checks reduce unintended changes but cannot guarantee perfect results
