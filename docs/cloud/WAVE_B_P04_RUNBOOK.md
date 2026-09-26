@@ -1,6 +1,6 @@
 # Wave B P04 private original assets
 
-**Status:** Implemented and verified locally; staging rollout remains after P03 activation.
+**Status:** Implemented and verified locally and on Render/Supabase staging on 2026-09-26.
 
 P04 stores an uploaded original and a normalized editor base as two private immutable assets. It does not yet create a cloud project or connect the existing editor. P05 consumes the finalized receipt.
 
@@ -61,4 +61,6 @@ npx vitest run src/server/assets/original-assets.test.ts
 npm run lint && npm run typecheck && npm run build
 ```
 
-CI also runs the P04 pgTAP and Storage checks against its fresh local Supabase stack. The Storage integration checks exact source bytes, idempotent reserve/finalize, staging deletion, anonymous read denial, foreign owner denial, expiry cleanup, and cancellation. Remote rollout remains a separate acceptance gate because local tests cannot prove Render transfer behavior or real staging OAuth.
+CI also runs the P04 pgTAP and Storage checks against its fresh local Supabase stack. The Storage integration checks exact source bytes, idempotent reserve/finalize, staging deletion, anonymous read denial, foreign owner denial, expiry cleanup, and cancellation.
+
+The 2026-09-26 staging walkthrough used the P04 branch on Render and the migrated hosted Supabase project. An active member reserved, uploaded, and finalized a synthetic PNG through Render; source bytes and both receipt hashes matched the downloaded private assets, and the derived base retained its 8 × 6 dimensions. Repeated reserve/finalize returned the same receipt. Anonymous and second-account reads, direct Storage downloads, and member cleanup were denied. Changed metadata for a reused request key, an over-10-MiB declaration, malformed PNG bytes, and the third near-quota reservation were rejected. An owner-only cleanup removed an expired synthetic staging object and marked its reservation expired. Temporary test accounts and all synthetic asset records/objects were removed after verification. P04 still has no upload UI or automatic cleanup scheduler.

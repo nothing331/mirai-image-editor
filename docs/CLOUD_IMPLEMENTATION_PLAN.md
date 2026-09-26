@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A complete. P03 accounts and P04 private original-asset foundation are implemented and locally verified. Their reviewed migrations and real staging OAuth/Storage walkthroughs remain before acceptance. P05 and later cloud features remain planned.
+**Status:** Wave A complete. P03 accounts are implemented; the owner confirmed staging login and invitations, while the remaining P03 account walkthrough is tracked separately. P04 private original assets passed local checks and the Render/Supabase staging walkthrough on 2026-09-26. P05 and later cloud features remain planned.
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -632,7 +632,7 @@ P01 must not expose existing unauthenticated local routes or enable paid calls. 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
 | P03 | Implemented locally; staging activation pending. Accounts and eligibility: Google OAuth, verified sessions, invitations/access requests/owner approval/profile, audit records, protected route helpers; after P02 | Database/RLS tests, unit tests and signed-out browser checks pass; complete real first/repeat login, invitation/approval, revocation, callback recovery and account-switch walkthrough in staging |
-| P04 | Implemented locally; private staging/finalization, quotas, exact original and normalized base, bounded upload gateway, cleanup; staging activation pending after P03 | Local database and Storage checks pass; complete real staging upload/retry, anonymous/foreign denial, cleanup and quota walkthrough |
+| P04 | Implemented and staging verified; private staging/finalization, quotas, exact original and normalized base, bounded upload gateway, cleanup | Local database and Storage checks plus real Render/Supabase upload, retry, anonymous/foreign denial, cleanup, and quota walkthrough passed on 2026-09-26 |
 | P05 | Cloud project creation/read with minimal My projects list and stable editor URL; after P04 | Upload → saved original → logout/login → reopen original |
 | P06 | Durable acceptance and incremental save: transactional operation/version, receipts, pending UI; after P05 | Local edit → exactly one cloud operation/version → refresh → same pixels; lost acknowledgement test |
 | P07 | Lazy history and durable undo/redo/original navigation; after P06 | Large-history memory test, dimension-changing undo, valid-source and redo replacement tests |
