@@ -43,7 +43,7 @@ Upload → canvas → manual mask → local recolor → generative edit → hist
 
 - payments
 - collaboration
-- cloud project/history persistence and background queues
+- cloud edit/history persistence and background queues
 - microservices
 - multiple AI providers
 - arbitrary independent layers
@@ -64,7 +64,7 @@ Upload → canvas → manual mask → local recolor → generative edit → hist
 - Sharp for server-side provider input normalization
 - SQLite via the portable `sql.js` runtime for local metadata
 - local filesystem asset storage during development
-- Supabase Auth/PostgreSQL and private Storage for the separately gated cloud account and original-asset foundation
+- Supabase Auth/PostgreSQL and private Storage for cloud accounts, original assets, and initial cloud projects
 - image-edit and asset-generation providers behind application-owned interfaces
 
 This starts as a feature-oriented modular monolith. A small Python segmentation service may be introduced later if automatic object selection requires it.
@@ -102,7 +102,7 @@ Directories should be introduced with their first real behavior. Do not create s
 - Diagnostics observe the edit pipeline but cannot create operations, versions, or provider requests.
 - Diagnostic failures never change the result or status of the edit they observe.
 - Shared code remains small and cannot become a generic utility directory.
-- Cloud modes must validate their complete environment before serving traffic. Until authenticated Supabase persistence exists, staging and beta keep project persistence disabled and expose only non-sensitive health routes; they never fall back to SQLite or filesystem assets on Render.
+- Cloud modes validate their complete environment before serving traffic. P05 opens only owned project creation/read routes backed by Supabase PostgreSQL and private Storage; the local SQLite project/editing API stays closed in staging and beta. Render never falls back to local disk for cloud projects.
 - Database migrations are reviewed release operations, separate from application startup and application rollback.
 
 ### Workspace UI boundary

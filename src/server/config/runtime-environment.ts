@@ -93,7 +93,7 @@ export function readRuntimeEnvironment(
 
   if (cloudModes.has(mode)) {
     if (persistence !== "disabled") {
-      issues.push("MIRAI_PERSISTENCE_MODE must be disabled until cloud project persistence is implemented");
+      issues.push("MIRAI_PERSISTENCE_MODE must remain disabled for the local project API in cloud modes");
     }
     if (!canonicalUrl || canonicalUrl.protocol !== "https:") {
       issues.push("MIRAI_CANONICAL_URL must be an absolute HTTPS URL in cloud modes");

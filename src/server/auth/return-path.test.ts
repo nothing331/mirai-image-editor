@@ -8,6 +8,9 @@ describe("safeReturnPath", () => {
     ["/access?invite=abc", "/access?invite=abc"],
     ["/welcome", "/welcome"],
     ["/admin/access", "/admin/access"],
+    ["/projects", "/projects"],
+    ["/projects/new", "/projects/new"],
+    ["/projects/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "/projects/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
   ])("accepts the owned destination %s", (candidate, expected) => {
     expect(safeReturnPath(candidate)).toBe(expected);
   });
@@ -44,6 +47,11 @@ describe("authorizedAccountReturnPath", () => {
 
   it("allows an active owner to return to owner administration", () => {
     expect(authorizedAccountReturnPath(account("active", "owner"), "/admin/access")).toBe("/admin/access");
+  });
+
+  it("returns an active member to the requested project after login", () => {
+    expect(authorizedAccountReturnPath(account("active", "member"), "/projects/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"))
+      .toBe("/projects/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   });
 
   it("moves an already active account past the access page", () => {
