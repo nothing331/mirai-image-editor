@@ -252,6 +252,13 @@ export async function signedOriginalRead(ownerId: string, id: string, role: "sou
   return { url: data.signedUrl, expiresIn: 60 };
 }
 
+export async function downloadOriginalSource(ownerId: string, id: string) {
+  const upload = await findOwnedUpload(ownerId, id);
+  if (upload.state !== "ready") throw new AssetError("not-found", "Original image not found.");
+  const bytes = await downloadExact(ASSET_BUCKET, upload.source_key, upload.source_sha256 ?? undefined);
+  return { bytes, mediaType: upload.original_mime, name: upload.original_name };
+}
+
 export async function cancelOriginalUpload(ownerId: string, id: string) {
   const upload = await findOwnedUpload(ownerId, id);
   if (upload.state === "cancelled" || upload.state === "expired") return;
