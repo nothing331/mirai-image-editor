@@ -96,6 +96,9 @@ jobs:
       - name: Test private asset quotas and access
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/private_asset_foundation_test.sql
 
+      - name: Test cloud project transactions and access
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/cloud_projects_test.sql
+
       - name: Test private Storage integration
         run: MIRAI_ASSET_INTEGRATION=1 npx vitest run src/server/assets/original-assets.integration.test.ts
 
