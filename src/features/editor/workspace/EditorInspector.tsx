@@ -36,6 +36,7 @@ export function EditorInspector({
   onReturnToExtendComparison,
   onRetry,
   onOpenDiagnostics,
+  localOnly = false,
 }: {
   phase: WorkspacePhase;
   providerCapabilities: ProviderCapabilities | null;
@@ -49,6 +50,7 @@ export function EditorInspector({
   onReturnToExtendComparison: () => void;
   onRetry: () => Promise<boolean>;
   onOpenDiagnostics: () => void;
+  localOnly?: boolean;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const state = useEditorStore(useShallow((editor) => ({
@@ -155,10 +157,10 @@ export function EditorInspector({
         <section className="grid gap-3 border-t border-line py-3" aria-labelledby="edit-operation-label">
           <div className="grid gap-1">
             <span id="edit-operation-label" className="font-mono text-[8px] uppercase tracking-[.12em] text-muted">Edit operation</span>
-            <p className="text-[10px] leading-relaxed text-muted">Recolor runs locally. Remove, Replace, and Restyle generate AI previews.</p>
+            <p className="text-[10px] leading-relaxed text-muted">{localOnly ? "Recolor the selected area locally." : "Recolor runs locally. Remove, Replace, and Restyle generate AI previews."}</p>
           </div>
           <div className="grid grid-cols-2 gap-1 bg-[#e8e5dc] p-1" role="radiogroup" aria-label="Edit operation">
-            {editModes.map((mode) => (
+            {editModes.filter((mode) => !localOnly || mode.execution === "Local").map((mode) => (
               <button
                 key={mode.value}
                 type="button"

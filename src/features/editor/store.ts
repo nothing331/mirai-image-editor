@@ -18,6 +18,8 @@ import { getExtendPreset } from "@/shared/extend-presets";
 import type { CropRatio, EditOperation, EditPreview, EditType, ExtendDraftState, ExtendInput, FakeScenario, GenerativePreviewState, GenerativeRequestSnapshot, GeometryEditType, ImageVersion, LassoVisualization, LocalEditDraft, MaskAsset, OverlayImageAsset, PaintSession, ProcessingMask, SelectionDiagnostics, SelectionMode, SourcePoint, Tool, TransformInput, Viewport } from "./types";
 
 interface EditorState {
+  acceptanceMode: "local" | "cloud";
+  pendingAcceptance: { input: ImageVersion; output: ImageVersion; operation: EditOperation; mask: MaskAsset; preserveSelection: boolean } | null;
   originalVersionId: string | null;
   projectId: string | null;
   projectName: string;
@@ -52,6 +54,10 @@ interface EditorState {
   error: string | null;
   lastRequestId: string | null;
   loadImage: (version: ImageVersion, options?: { projectId?: string; projectName?: string; projectOrigin?: ProjectOrigin; lastRequestId?: string | null }) => void;
+  loadCloudProject: (project: { id: string; name: string; original: ImageVersion; current: ImageVersion }) => void;
+  setCloudCurrentVersion: (version: ImageVersion) => void;
+  confirmPendingAcceptance: () => boolean;
+  discardPendingAcceptance: () => void;
   restoreProject: (project: { id: string; name: string; origin?: ProjectOrigin; originalVersionId: string; currentVersionId: string; versions: ImageVersion[]; operations: EditOperation[]; maskAssets: MaskAsset[]; overlayAssets?: OverlayImageAsset[] }) => void;
   setProjectName: (name: string) => void;
   setViewport: (viewport: Viewport) => void;
@@ -176,8 +182,17 @@ function appendAcceptedEdit(
   };
 }
 
+function stageOrAppendAcceptedEdit(state: EditorState, input: ImageVersion, output: ImageVersion, operation: EditOperation, mask: MaskAsset, preserveSelection = false): Partial<EditorState> {
+  if (state.acceptanceMode === "cloud") {
+    return { pendingAcceptance: { input, output, operation, mask, preserveSelection }, error: null };
+  }
+  return appendAcceptedEdit(state, input, output, operation, mask, preserveSelection);
+}
+
 /** Owns one filled source-resolution selection and separates previews from accepted history. */
 export const useEditorStore = create<EditorState>((set, get) => ({
+  acceptanceMode: "local",
+  pendingAcceptance: null,
   originalVersionId: null,
   projectId: null,
   projectName: "Untitled edit",
@@ -200,6 +215,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   paintSession: null,
   ...initialControls,
   loadImage: (version, options) => set((state) => ({
+    acceptanceMode: "local",
+    pendingAcceptance: null,
     projectId: options?.projectId ?? crypto.randomUUID(),
     projectName: options?.projectName ?? "Untitled edit",
     projectOrigin: options?.projectOrigin ?? { kind: "upload" },
@@ -225,10 +242,53 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     error: null,
     lastRequestId: options?.lastRequestId ?? null,
   })),
+  loadCloudProject: (project) => set((state) => ({
+    acceptanceMode: "cloud",
+    pendingAcceptance: null,
+    projectId: project.id,
+    projectName: project.name,
+    projectOrigin: { kind: "upload" },
+    originalVersionId: project.original.id,
+    currentVersionId: project.current.id,
+    versions: project.original.id === project.current.id ? [project.original] : [project.original, project.current],
+    operations: [], maskAssets: [], overlayAssets: [], preview: null,
+    editType: "recolor",
+    localDraft: null, localDraftDirty: false, paintSession: null,
+    selectionMask: createMask(project.current.width, project.current.height),
+    selectionId: crypto.randomUUID(), selectionMode: "draw", selectionDiagnostics: null,
+    lassoVisualization: null, generativeState: idleGenerativeState, extendState: idleExtendState,
+    viewResetKey: state.viewResetKey + 1, error: null, lastRequestId: null,
+  })),
+  setCloudCurrentVersion: (version) => set((state) => {
+    if (state.acceptanceMode !== "cloud" || !state.originalVersionId || state.pendingAcceptance) return {};
+    const original = state.versions.find((item) => item.id === state.originalVersionId);
+    if (!original) return {};
+    return {
+      currentVersionId: version.id,
+      versions: original.id === version.id ? [original] : [original, version],
+      operations: [], maskAssets: [], preview: null, localDraft: null, localDraftDirty: false,
+      paintSession: null, selectionMask: createMask(version.width, version.height),
+      selectionId: crypto.randomUUID(), selectionDiagnostics: null, lassoVisualization: null,
+      viewResetKey: state.viewResetKey + 1, error: null,
+    };
+  }),
+  confirmPendingAcceptance: () => {
+    const state = get();
+    const pending = state.pendingAcceptance;
+    if (!pending || state.currentVersionId !== pending.input.id) return false;
+    const accepted = appendAcceptedEdit(state, pending.input, pending.output, pending.operation, pending.mask, pending.preserveSelection);
+    const original = state.versions.find((version) => version.id === state.originalVersionId);
+    set({ ...accepted, versions: original && original.id !== pending.output.id ? [original, pending.output] : [pending.output],
+      operations: [], maskAssets: [], pendingAcceptance: null });
+    return true;
+  },
+  discardPendingAcceptance: () => set({ pendingAcceptance: null, preview: null, error: null }),
   restoreProject: (project) => {
     const current = project.versions.find((version) => version.id === project.currentVersionId);
     if (!current) return;
     set((state) => ({
+      acceptanceMode: "local",
+      pendingAcceptance: null,
       projectId: project.id,
       projectName: project.name,
       projectOrigin: project.origin ?? { kind: "upload" },
@@ -395,6 +455,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addOverlayAsset: (asset) => set((state) => ({ overlayAssets: [...state.overlayAssets.filter((item) => item.id !== asset.id), asset] })),
   applyLocalDraft: () => {
     const state = get();
+    if (state.pendingAcceptance) {
+      set({ error: "Save or discard the pending edit before applying another." });
+      return false;
+    }
     const draft = state.localDraft;
     const input = state.versions.find((version) => version.id === draft?.inputVersionId);
     if (!draft || !input || state.currentVersionId !== draft.inputVersionId) {
@@ -433,7 +497,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         : createFullImageMask(input.width, input.height);
       const mask: MaskAsset = { id: crypto.randomUUID(), ...effectiveMask };
       const operation = localDraftOperation(draft, input.id, outputId, mask.id);
-      set(appendAcceptedEdit(state, input, output, operation, mask));
+      set(stageOrAppendAcceptedEdit(state, input, output, operation, mask));
       return true;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "The local edit could not be applied." });
@@ -628,6 +692,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   acceptPreview: () => {
     const state = get();
+    if (state.pendingAcceptance) {
+      set({ error: "Save or discard the pending edit before accepting another." });
+      return false;
+    }
     const preview = state.preview;
     const input = state.versions.find((version) => version.id === preview?.inputVersionId);
     if (!preview || !input || state.currentVersionId !== preview.inputVersionId) {
@@ -655,7 +723,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ? { id: crypto.randomUUID(), inputVersionId: input.id, outputVersionId: outputId, maskId: preview.mask.id, type: "transform", parameters: preview.parameters, method: "local", status: "accepted" }
           : { id: crypto.randomUUID(), inputVersionId: input.id, outputVersionId: outputId, maskId: preview.mask.id, type: "recolor", parameters: preview.parameters, method: "local", status: "accepted" };
     const preserveSelection = preview.type === "paint";
-    set(appendAcceptedEdit(state, input, output, operation, preview.mask, preserveSelection));
+    set(stageOrAppendAcceptedEdit(state, input, output, operation, preview.mask, preserveSelection));
     return true;
   },
   discardPreview: () => set({ preview: null, generativeState: idleGenerativeState, error: null }),
@@ -685,6 +753,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return true;
   },
   reset: () => set((state) => {
+    if (state.acceptanceMode === "cloud") return {};
     const original = state.versions.find((version) => version.id === state.originalVersionId);
     return original ? {
       currentVersionId: original.id, versions: [original], operations: [], maskAssets: [], overlayAssets: [], preview: null, localDraft: null, localDraftDirty: false, paintSession: null, generativeState: idleGenerativeState,

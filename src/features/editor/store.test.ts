@@ -68,6 +68,43 @@ describe("filled selection preview and acceptance", () => {
     useEditorStore.getState().setMaskSoftness(0);
   });
 
+  it("keeps a cloud edit pending until the durable receipt is confirmed", () => {
+    useEditorStore.getState().loadCloudProject({ id: "cloud-project", name: "Cloud", original, current: original });
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    expect(useEditorStore.getState().createPreview()).toBe(true);
+    expect(useEditorStore.getState().acceptPreview()).toBe(true);
+    let state = useEditorStore.getState();
+    expect(state.pendingAcceptance?.operation).toMatchObject({ type: "recolor", status: "accepted" });
+    expect(state.versions).toHaveLength(1);
+    expect(state.operations).toHaveLength(0);
+    expect(state.currentVersionId).toBe(original.id);
+    expect(state.acceptPreview()).toBe(false);
+    expect(state.confirmPendingAcceptance()).toBe(true);
+    state = useEditorStore.getState();
+    expect(state.pendingAcceptance).toBeNull();
+    expect(state.versions).toHaveLength(2);
+    expect(state.operations).toHaveLength(0);
+    expect(state.currentVersionId).toBe(state.versions[1].id);
+    state.fillSelection(firstPixelContour);
+    expect(useEditorStore.getState().createPreview()).toBe(true);
+    expect(useEditorStore.getState().acceptPreview()).toBe(true);
+    expect(useEditorStore.getState().confirmPendingAcceptance()).toBe(true);
+    expect(useEditorStore.getState().versions).toHaveLength(2);
+  });
+
+  it("can discard a failed cloud save without advancing history", () => {
+    useEditorStore.getState().loadCloudProject({ id: "cloud-project", name: "Cloud", original, current: original });
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    useEditorStore.getState().createPreview();
+    useEditorStore.getState().acceptPreview();
+    useEditorStore.getState().discardPendingAcceptance();
+    const state = useEditorStore.getState();
+    expect(state.versions).toHaveLength(1);
+    expect(state.operations).toHaveLength(0);
+    expect(state.currentVersionId).toBe(original.id);
+    expect(state.preview).toBeNull();
+  });
+
   it("plans and accepts a dimension-changing Extend as one immutable edit", async () => {
     const analysis = {
       primarySubjects: [{ label: "subject", bounds: { x: 0.3, y: 0.1, width: 0.4, height: 0.8 }, importance: 1, touchesEdge: false, mustPreserve: true }],

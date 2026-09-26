@@ -99,8 +99,14 @@ jobs:
       - name: Test cloud project transactions and access
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/cloud_projects_test.sql
 
+      - name: Test cloud edit transactions and history
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/cloud_edit_history_test.sql
+
       - name: Test private Storage integration
         run: MIRAI_ASSET_INTEGRATION=1 npx vitest run src/server/assets/original-assets.integration.test.ts
+
+      - name: Test accepted edit Storage integration
+        run: MIRAI_EDIT_INTEGRATION=1 npx vitest run src/server/cloud-projects/cloud-edit-history.integration.test.ts
 
       - name: Stop local Supabase
         if: always()

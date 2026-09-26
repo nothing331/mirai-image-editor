@@ -23,7 +23,7 @@ const directWorkflowTools: Array<{ kind: Exclude<WorkspaceWorkflow["kind"], "can
   { kind: "watermark", label: "Watermark", icon: Stamp, testId: "open-watermark" },
 ];
 
-export function ToolRail({ collapsed, disabled, generationDisabled, workflow, onGenerateAsset, onSelectWorkflow, onToggleInspector }: {
+export function ToolRail({ collapsed, disabled, generationDisabled, workflow, onGenerateAsset, onSelectWorkflow, onToggleInspector, localOnly = false }: {
   collapsed: boolean;
   disabled: boolean;
   generationDisabled: boolean;
@@ -31,13 +31,14 @@ export function ToolRail({ collapsed, disabled, generationDisabled, workflow, on
   onGenerateAsset: () => void;
   onSelectWorkflow: (workflow: WorkspaceWorkflow) => void;
   onToggleInspector: () => void;
+  localOnly?: boolean;
 }) {
   const hasPendingPaint = useEditorStore((state) => Boolean(state.paintSession));
   const hasPendingLocalDraft = useEditorStore((state) => Boolean(state.localDraft));
 
   return (
     <nav className="relative z-30 flex h-12 items-center overflow-x-auto overflow-y-hidden border-t border-line bg-[#e9e7df] md:h-auto md:flex-col md:overflow-visible md:border-r md:border-t-0" aria-label="Editor tools">
-      <button
+      {!localOnly && <button
         data-testid="rail-asset-generator"
         type="button"
         className="group relative grid size-11 shrink-0 place-items-center bg-acid text-ink outline-none transition-colors hover:bg-accent hover:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-35 md:mt-2"
@@ -49,12 +50,12 @@ export function ToolRail({ collapsed, disabled, generationDisabled, workflow, on
         <Sparkles className="size-[17px]" />
         <span className="absolute bottom-1 right-1 font-mono text-[7px] font-bold uppercase leading-none group-hover:text-white">AI</span>
         <ToolLabel label="Create with AI" />
-      </button>
+      </button>}
       <div className="flex items-center justify-center md:w-full md:flex-col" role="radiogroup" aria-label="Editor workflows">
         <RailButton testId="open-lasso-edit" label="Select & edit" shortcut="L" selected={workflow.kind === "canvas" && workflow.tool === "lasso"} disabled={disabled} onClick={() => onSelectWorkflow({ kind: "canvas", tool: "lasso" })}>
           <LassoSelect className="size-[17px]" />
         </RailButton>
-        {aiWorkflowTools.map(({ kind, label, shortcut, icon: Icon, testId }) => (
+        {!localOnly && aiWorkflowTools.map(({ kind, label, shortcut, icon: Icon, testId }) => (
           <RailButton key={kind} variant="ai" testId={testId} label={label} shortcut={shortcut} selected={workflow.kind === kind} disabled={disabled} onClick={() => onSelectWorkflow({ kind } as WorkspaceWorkflow)}>
             <Icon className="size-[17px]" />
             <AiMarker selected={workflow.kind === kind} />
