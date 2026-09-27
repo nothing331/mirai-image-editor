@@ -4,6 +4,7 @@ import { Crop, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Scaling } fr
 import { cn } from "@/lib/utils";
 import { getCurrentVersion, useEditorStore } from "../store";
 import type { CropRatio, GeometryEditType, ImageVersion, LocalEditDraft } from "../types";
+import { DirectEditActions } from "./DirectEditActions";
 
 const geometryTools: Array<{ value: GeometryEditType; label: string; icon: typeof Crop }> = [
   { value: "crop", label: "Crop", icon: Crop },
@@ -46,8 +47,9 @@ export function SizePositionInspector({ onSelectEdit }: { onSelectEdit: (editTyp
         {geometryDraft?.type === "resize" ? <ResizeControls version={version} draft={geometryDraft} onChange={updateLocalDraft} /> : null}
         {geometryDraft?.type === "rotate" ? <RotateControls draft={geometryDraft} onChange={updateLocalDraft} /> : null}
         {geometryDraft?.type === "flip" ? <FlipControls draft={geometryDraft} onChange={updateLocalDraft} /> : null}
-        <p className="border-t border-line pt-3 font-mono text-[8px] uppercase leading-relaxed tracking-[.1em] text-muted">Changes stay live on canvas. Switching tools asks whether to save them.</p>
+        {!geometryDraft && <p className="border-t border-line pt-3 text-xs leading-relaxed text-muted">Choose an operation above to make another edit.</p>}
       </div>
+      {geometryDraft && <DirectEditActions draft={geometryDraft} />}
     </div>
   );
 }

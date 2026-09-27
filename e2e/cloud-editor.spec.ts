@@ -115,6 +115,36 @@ test("accepts an edit, reopens it, and persists undo/redo and redo replacement",
   await expect(page.getByRole("complementary", { name: "Project history" }).getByRole("button")).toHaveCount(2);
 });
 
+test("saves a crop from the inspector as one cloud version", async ({ page, context }) => {
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  const before = await page.evaluate(async (id) => ({
+    project: await fetch(`/api/cloud-projects/${id}`).then((response) => response.json()),
+    history: await fetch(`/api/cloud-projects/${id}/history`).then((response) => response.json()),
+  }), projectId);
+  await page.getByTestId("open-size-position").click();
+  const save = page.getByRole("button", { name: "Save crop" });
+  await expect(save).toBeVisible();
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Crop width").fill("10");
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect.poll(async () => (await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId)).project.currentVersionId)
+    .not.toBe(before.project.project.currentVersionId);
+  const after = await page.evaluate(async (id) => ({
+    project: await fetch(`/api/cloud-projects/${id}`).then((response) => response.json()),
+    history: await fetch(`/api/cloud-projects/${id}/history`).then((response) => response.json()),
+  }), projectId);
+  expect(after.history.versions).toHaveLength(before.history.versions.length + 1);
+  expect(after.history.versions[0]).toMatchObject({ operationType: "crop", width: 10, height: 16 });
+  expect(after.project.project.currentVersionId).toBe(after.history.versions[0].id);
+  await page.reload();
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  const reloaded = await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId);
+  expect(reloaded.project.currentVersionId).toBe(after.history.versions[0].id);
+});
+
 test("searches, renames, exports, trashes, and restores an owned project", async ({ page, context }) => {
   await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
   await page.goto("/projects");
