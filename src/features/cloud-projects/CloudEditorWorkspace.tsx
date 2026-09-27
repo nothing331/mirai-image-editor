@@ -280,6 +280,9 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
   };
 
   const busy = status === "saving" || status === "loading" || historyBusy;
+  const cloudStatusLabel = status === "loading" ? "Opening" : status === "saving" ? "Saving…"
+    : status === "failed" ? "Save needs attention" : draftStatus === "unavailable" ? "Draft cache unavailable"
+      : draftStatus === "stored" ? "Draft on device" : "Cloud saved";
   return <section className="grid h-[calc(100dvh-56px)] min-h-[440px] grid-rows-[56px_minmax(0,1fr)] bg-[#cfcdc5] text-ink" aria-label="Cloud editor">
     {draftOffer && <div className="absolute left-1/2 top-20 z-50 w-[min(90vw,420px)] -translate-x-1/2 border border-ink bg-paper p-4 shadow-[5px_5px_0_#d8f441]" role="dialog" aria-label="Stored browser draft"><strong className="text-sm">Draft stored on this device</strong><p className="mt-2 text-xs leading-5 text-muted">This draft matches the current saved version. It has not been saved to the cloud.</p><div className="mt-4 flex gap-3"><button type="button" className="min-h-10 bg-acid px-3 text-xs font-bold" onClick={() => { if (draftOffer.pendingAcceptance && draftOffer.commitKeys) saveKeys.current.set(draftOffer.pendingAcceptance.operation.id, draftOffer.commitKeys); if (!editor.restoreCloudDraft(draftOffer)) editor.setError("The stored draft no longer matches this image."); if (draftOffer.localDraft) setWorkflow(draftOffer.localDraft.type === "text" ? { kind: "text" } : draftOffer.localDraft.type === "watermark" ? { kind: "watermark" } : { kind: "size-position" }); else if (draftOffer.paintSession) setWorkflow({ kind: "canvas", tool: "brush" }); setDraftOffer(null); setDraftReady(true); }}>Restore draft</button><button type="button" className="min-h-10 px-3 text-xs underline" onClick={() => { void clearCloudDraft(ownerId, projectId); setDraftOffer(null); setDraftReady(true); }}>Discard draft</button></div></div>}
     <header className="flex min-w-0 items-center gap-2 border-b border-line bg-paper px-3">
@@ -310,7 +313,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
               onReturnToExtendComparison={() => {}} onRetry={async () => false} onOpenDiagnostics={() => {}} />
           </div>}
         </aside>
-        <CanvasFrame cloudMode busyAction={status === "loading" ? "open" : null} onUpload={() => {}} onGenerateAsset={() => {}}
+        <CanvasFrame cloudMode cloudStatusLabel={cloudStatusLabel} busyAction={status === "loading" ? "open" : null} onUpload={() => {}} onGenerateAsset={() => {}}
           extendSelected={false} extendPreviewAdjustmentOpen={false} onAdjustTransform={() => {}} onAdjustExtend={() => {}} />
       </div>
       {historyOpen && <aside className="absolute inset-x-2 bottom-2 top-28 z-40 flex flex-col border border-line bg-paper shadow-xl lg:static lg:shadow-none" aria-label="Project history">

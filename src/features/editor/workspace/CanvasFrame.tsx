@@ -18,7 +18,7 @@ const EditorCanvas = dynamic(() => import("../EditorCanvas").then((module) => mo
   loading: () => <div className="absolute inset-0 grid place-items-center font-mono text-xs text-white">Preparing canvas…</div>,
 });
 
-export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend, cloudMode = false }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void; cloudMode?: boolean }) {
+export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend, cloudMode = false, cloudStatusLabel }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void; cloudMode?: boolean; cloudStatusLabel?: string }) {
   const [compareWith, setCompareWith] = useState<ComparisonBase>("original");
   const state = useEditorStore(useShallow((editor) => ({
     currentVersion: getCurrentVersion(editor),
@@ -103,7 +103,8 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
           {!cloudMode && state.preview && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") && (
             <label className="flex items-center gap-1.5">Compare<select aria-label="Comparison base" className="h-6 bg-transparent text-[8px] outline-none focus:ring-1 focus:ring-accent" value={compareWith} onChange={(event) => setCompareWith(event.target.value as ComparisonBase)}><option value="original">Original</option><option value="previous">Previous</option></select></label>
           )}
-          <span>{cloudMode ? "Cloud history" : `${state.operations.length} accepted edit${state.operations.length === 1 ? "" : "s"}`}</span>
+          {cloudMode ? <><span role="status" aria-live="polite" className="sm:hidden">{cloudStatusLabel}</span><span className="hidden sm:inline">Cloud history</span></>
+            : <span>{state.operations.length} accepted edit{state.operations.length === 1 ? "" : "s"}</span>}
           <button type="button" aria-label="Reset view" title="Reset view" className="grid size-6 place-items-center hover:bg-white/50 hover:text-ink disabled:opacity-30" disabled={!state.currentVersion} onClick={state.requestViewReset}><Focus className="size-3" /></button>
         </div>
       </div>

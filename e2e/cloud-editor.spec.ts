@@ -27,7 +27,7 @@ test.beforeAll(async () => {
   const password = randomUUID() + randomUUID();
   expect((await admin.auth.admin.createUser({ id: userId, email, password, email_confirm: true })).error).toBeNull();
   expect((await admin.from("profiles").update({ status: "active" }).eq("id", userId)).error).toBeNull();
-  const source = await sharp({ create: { width: 20, height: 16, channels: 4, background: "#dc6a48" } }).png().toBuffer();
+  const source = await sharp({ create: { width: 320, height: 200, channels: 4, background: "#dc6a48" } }).png().toBuffer();
   const base = await sharp(source).rotate().toColourspace("srgb").png({ compressionLevel: 9 }).toBuffer();
   const reserved = await admin.rpc("mirai_reserve_original_upload", {
     target_owner: userId, target_id: randomUUID(), target_request_key: randomUUID(),
@@ -41,7 +41,7 @@ test.beforeAll(async () => {
   expect((await admin.rpc("mirai_finish_original_upload", {
     target_id: reserved.data.id, target_owner: userId, target_source_sha: hash(source),
     target_base_sha: hash(base), target_source_bytes: source.length,
-    target_base_bytes: base.length, target_width: 20, target_height: 16,
+    target_base_bytes: base.length, target_width: 320, target_height: 200,
   })).error).toBeNull();
   const project = await admin.rpc("mirai_create_cloud_project", {
     target_owner: userId, target_id: randomUUID(), target_version_id: randomUUID(),
@@ -81,7 +81,7 @@ test("accepts an edit, reopens it, and persists undo/redo and redo replacement",
   await page.getByRole("button", { name: "Preview monochrome edit" }).click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
   await page.getByTestId("accept-preview").click();
-  await expect(page.getByText("Save needs attention")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Cloud editor" }).locator("header").getByText("Save needs attention")).toBeVisible();
   await expect(page.getByTestId("cloud-pending-comparison")).toBeVisible();
   await page.getByRole("button", { name: "Retry save" }).click();
   await expect(page.getByText("Saved to cloud")).toBeVisible();
@@ -127,8 +127,10 @@ test("saves a crop from the inspector as one cloud version", async ({ page, cont
   const save = page.getByRole("button", { name: "Save crop" });
   await expect(save).toBeVisible();
   await expect(save).toBeDisabled();
-  await page.getByLabel("Crop width").fill("10");
+  await page.getByLabel("Crop width").fill("240");
   await expect(save).toBeEnabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(save).toBeInViewport();
   await save.click();
   await expect.poll(async () => (await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId)).project.currentVersionId)
     .not.toBe(before.project.project.currentVersionId);
@@ -137,12 +139,89 @@ test("saves a crop from the inspector as one cloud version", async ({ page, cont
     history: await fetch(`/api/cloud-projects/${id}/history`).then((response) => response.json()),
   }), projectId);
   expect(after.history.versions).toHaveLength(before.history.versions.length + 1);
-  expect(after.history.versions[0]).toMatchObject({ operationType: "crop", width: 10, height: 16 });
+  expect(after.history.versions[0]).toMatchObject({ operationType: "crop", width: 240, height: 200 });
   expect(after.project.project.currentVersionId).toBe(after.history.versions[0].id);
   await page.reload();
-  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Image canvas" }).getByText("Cloud saved")).toBeVisible();
   const reloaded = await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId);
   expect(reloaded.project.currentVersionId).toBe(after.history.versions[0].id);
+});
+
+test("saves direct and paint edits, then undoes and redoes the saved versions", async ({ page, context }) => {
+  test.setTimeout(120_000);
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+
+  const currentId = async () => (await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId)).project.currentVersionId as string;
+  const history = async () => (await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}/history`).then((response) => response.json()), projectId)).versions as Array<{ id: string; operationType: string }>;
+  const saveAndCheck = async (kind: string, action: () => Promise<void>) => {
+    const previousId = await currentId();
+    const previousCount = (await history()).length;
+    await action();
+    await expect.poll(currentId).not.toBe(previousId);
+    const savedId = await currentId();
+    await expect.poll(async () => (await history()).length).toBe(previousCount + 1);
+    expect((await history())[0]).toMatchObject({ id: savedId, operationType: kind });
+    await page.reload();
+    await expect(page.getByText("Saved to cloud")).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect.poll(currentId).toBe(previousId);
+    await page.getByRole("button", { name: "Redo" }).click();
+    await expect.poll(currentId).toBe(savedId);
+    await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+  };
+
+  await page.getByTestId("open-text").click();
+  await page.getByLabel("Text content").fill("SAVE THIS TEXT");
+  await saveAndCheck("text", () => page.getByRole("button", { name: "Save text" }).click());
+
+  await page.getByTestId("open-watermark").click();
+  await page.getByLabel("Watermark text").fill("MIRAI");
+  await saveAndCheck("watermark", () => page.getByRole("button", { name: "Save watermark" }).click());
+
+  await page.getByTestId("open-size-position").click();
+  await page.getByRole("radio", { name: "Resize" }).click();
+  await page.getByLabel("Width", { exact: true }).fill("120");
+  await saveAndCheck("resize", () => page.getByRole("button", { name: "Save resize" }).click());
+  await page.getByTestId("open-size-position").click();
+  await page.getByRole("radio", { name: "Rotate" }).click();
+  await saveAndCheck("rotate", () => page.getByRole("button", { name: "Save rotation" }).click());
+  await page.getByTestId("open-size-position").click();
+  await page.getByRole("radio", { name: "Flip" }).click();
+  await saveAndCheck("flip", () => page.getByRole("button", { name: "Save flip" }).click());
+
+  await page.getByRole("radio", { name: "Brush" }).click();
+  await page.getByLabel("Brush color").fill("#00ff00");
+  const canvas = page.getByTestId("editor-canvas");
+  const viewportX = Number(await canvas.getAttribute("data-viewport-x"));
+  const viewportY = Number(await canvas.getAttribute("data-viewport-y"));
+  const viewportScale = Number(await canvas.getAttribute("data-viewport-scale"));
+  await canvas.locator("canvas").first().click({ position: { x: viewportX + 20 * viewportScale, y: viewportY + 20 * viewportScale } });
+  await expect(page.getByTestId("apply-paint")).toBeEnabled();
+  await saveAndCheck("paint", () => page.getByTestId("apply-paint").click());
+
+  await page.getByTestId("open-lasso-edit").click();
+  const selectionCanvas = page.getByTestId("editor-canvas");
+  const bounds = await selectionCanvas.boundingBox();
+  if (!bounds) throw new Error("Cloud canvas is not visible.");
+  const selectX = Number(await selectionCanvas.getAttribute("data-viewport-x"));
+  const selectY = Number(await selectionCanvas.getAttribute("data-viewport-y"));
+  const selectScale = Number(await selectionCanvas.getAttribute("data-viewport-scale"));
+  const point = (x: number, y: number) => ({ x: bounds.x + selectX + x * selectScale, y: bounds.y + selectY + y * selectScale });
+  const start = point(10, 10);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  for (const [x, y] of [[40, 10], [40, 40], [10, 40], [10, 10]]) {
+    const next = point(x, y);
+    await page.mouse.move(next.x, next.y, { steps: 4 });
+  }
+  await page.mouse.up();
+  await expect(page.getByRole("heading", { name: "Edit selected area" })).toBeVisible();
+  await page.getByLabel("Recolor selection").fill("#0000ff");
+  await page.getByTestId("apply-edit").click();
+  await expect(page.getByTestId("preview-comparison")).toBeVisible();
+  await saveAndCheck("recolor", () => page.getByTestId("accept-preview").click());
 });
 
 test("searches, renames, exports, trashes, and restores an owned project", async ({ page, context }) => {
@@ -191,7 +270,7 @@ test("offers a browser draft only for the same saved version", async ({ page, co
   const before = await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId);
   await page.getByRole("button", { name: "Preview monochrome edit" }).click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
-  await expect(page.getByText("Draft on device")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Cloud editor" }).locator("header").getByText("Draft on device")).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   await page.reload();
   await expect(page.getByRole("dialog", { name: "Stored browser draft" })).toBeVisible();
