@@ -188,7 +188,7 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 
 ### Review
 
-Review is a distinct dark stage owned by the canvas for generated proposals and explicitly reviewable local operations such as selection recolor. Show the comparison at the largest practical size. Accept, Discard, and feature-specific adjustment controls live with the preview. Fidelity or scope warnings must remain adjacent to those decisions. Do not route directly manipulated Text, Watermark, Crop, Resize, Rotate, or Flip drafts through this stage; they remain visible on the ordinary canvas and are resolved only when the user leaves the changed workflow.
+Review is a distinct dark stage owned by the canvas for generated proposals and explicitly reviewable local operations such as selection recolor. Show the comparison at the largest practical size. Accept, Discard, and feature-specific adjustment controls live with the preview. Fidelity or scope warnings must remain adjacent to those decisions. Do not route directly manipulated Text, Watermark, Crop, Resize, Rotate, or Flip drafts through this stage; they remain visible on the ordinary canvas and have a persistent Save/Discard inspector footer.
 
 ## Motion
 
