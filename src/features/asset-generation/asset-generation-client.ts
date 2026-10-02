@@ -1,3 +1,4 @@
+import { postCloudAi } from "@/features/cloud-projects/cloud-ai-client";
 import type { AssetCreationRequest, AssetGenerationCapabilities, AssetGenerationResponse } from "@/shared/asset-generation";
 
 export class AssetGenerationRequestError extends Error {
@@ -13,7 +14,8 @@ export async function getAssetGenerationCapabilities(): Promise<AssetGenerationC
   return response.json() as Promise<AssetGenerationCapabilities>;
 }
 
-export async function requestAssetCandidates(creation: AssetCreationRequest, projectId: string, requestId: string): Promise<AssetGenerationResponse> {
+export async function requestAssetCandidates(creation: AssetCreationRequest, projectId: string, requestId: string, cloud = false): Promise<AssetGenerationResponse> {
+  if (cloud) return postCloudAi<AssetGenerationResponse>("/api/asset-generations", { requestId, sessionId: projectId, creation });
   const response = await fetch("/api/asset-generations", {
     method: "POST",
     headers: { "content-type": "application/json", "x-project-id": projectId, "x-request-id": requestId },

@@ -1,3 +1,4 @@
+import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { assetCreationRequestSchema, type AssetCreationRequest, type AssetGenerationResponse } from "@/shared/asset-generation";
@@ -17,6 +18,7 @@ export async function GET() {
 
 /** Creates one low-quality result and returns a temporary, browser-owned PNG. */
 export async function POST(request: Request) {
+  if (cloudAiMode()) return cloudAiPost(request, "creation");
   const projectId = correlationId(request.headers.get("x-project-id"));
   const requestId = correlationId(request.headers.get("x-request-id"));
   const capabilities = assetGenerationCapabilities();

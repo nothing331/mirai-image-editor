@@ -75,20 +75,26 @@ export async function createCloudProject(ownerId: string, uploadId: string, name
 
 export async function listCloudProjects(ownerId: string): Promise<CloudProject[]> {
   const client = createAdminSupabaseClient();
-  const { data, error } = await client.from("cloud_projects")
-    .select("id,owner_id,name,status,original_upload_id,current_version_id,head_version_id,revision,created_at,updated_at")
-    .eq("owner_id", ownerId).eq("status", "active")
-    .order("created_at", { ascending: false }).order("id", { ascending: true }).limit(6);
-  if (error || !data) throw new CloudProjectError("unavailable", "Projects could not be loaded.");
-  if (!data.length) return [];
-  const uploadIds = data.map((row) => row.original_upload_id);
-  const uploads = await client.from("asset_uploads")
-    .select("id,width,height,original_name").eq("owner_id", ownerId).in("id", uploadIds);
-  if (uploads.error || !uploads.data || uploads.data.length !== data.length) {
-    throw new CloudProjectError("unavailable", "Project originals could not be loaded.");
+  const projects: CloudProject[] = [];
+  const pageSize = 100;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client.from("cloud_projects")
+      .select("id,owner_id,name,status,original_upload_id,current_version_id,head_version_id,revision,created_at,updated_at")
+      .eq("owner_id", ownerId).eq("status", "active")
+      .order("created_at", { ascending: false }).order("id", { ascending: true }).range(offset, offset + pageSize - 1);
+    if (error || !data) throw new CloudProjectError("unavailable", "Projects could not be loaded.");
+    if (!data.length) break;
+    const uploadIds = data.map((row) => row.original_upload_id);
+    const uploads = await client.from("asset_uploads")
+      .select("id,width,height,original_name").eq("owner_id", ownerId).in("id", uploadIds);
+    if (uploads.error || !uploads.data || uploads.data.length !== data.length) {
+      throw new CloudProjectError("unavailable", "Project originals could not be loaded.");
+    }
+    const byId = new Map(uploads.data.map((upload) => [upload.id, upload]));
+    projects.push(...data.map((row) => projectWithUpload(row, byId.get(row.original_upload_id))));
+    if (data.length < pageSize) break;
   }
-  const byId = new Map(uploads.data.map((upload) => [upload.id, upload]));
-  return data.map((row) => projectWithUpload(row, byId.get(row.original_upload_id)));
+  return projects;
 }
 
 export async function getCloudProject(ownerId: string, projectId: string): Promise<CloudProject> {

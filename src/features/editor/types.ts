@@ -202,6 +202,7 @@ export type EditOperation = OperationBase & (
 );
 
 interface GenerativeRequestBase {
+  cloud?: boolean;
   projectId: string;
   requestId: string;
   retryOfRequestId: string | null;

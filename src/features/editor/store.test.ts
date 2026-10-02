@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ImageVersion, SourcePoint } from "./types";
+import { solveSmartReframe } from "@/shared/extend-plan";
+import type { EditPreview, ImageVersion, SourcePoint } from "./types";
 
 vi.mock("./image-data", () => ({ pixelsToDataUrl: () => "data:image/png;base64,edited" }));
 vi.mock("./generative-client", () => {
@@ -119,6 +120,23 @@ describe("filled selection preview and acceptance", () => {
     expect(useEditorStore.getState().operations).toHaveLength(0);
     expect(useEditorStore.getState().versions).toHaveLength(1);
     expect(useEditorStore.getState().restoreCloudDraft({ ...snapshot, inputVersionId: "other" })).toBe(false);
+  });
+
+  it("recovers an owned Extend frame and reuses its analysis without changing history", async () => {
+    useEditorStore.getState().loadCloudProject({ id: "cloud-project", name: "Cloud", original, current: original });
+    const analysis = { primarySubjects: [], secondarySubjects: [], textRegions: [], horizonY: null, visualCenter: { x: 0.5, y: 0.5 }, negativeSpaceRegions: [], edgeContinuation: { top: "sky", right: "wall", bottom: "floor", left: "wall" }, confidence: 0.9, warnings: [] };
+    const input = { presetId: "instagram-classic" as const, presetVersion: 1 as const, strategy: "preserve-all" as const, userPrompt: "" };
+    const plan = solveSmartReframe({ width: original.width, height: original.height, ...input, ratio: [4, 5], analysis });
+    const preview: EditPreview = { id: "recovered", inputVersionId: original.id, type: "extend", method: "generative", width: plan.outputWidth, height: plan.outputHeight, pixels: new Uint8ClampedArray(plan.outputWidth * plan.outputHeight * 4), dataUrl: "data:image/png;base64,recovered", mask: { id: "source-mask", width: original.width, height: original.height, data: new Uint8ClampedArray(3).fill(255) }, parameters: { ...input, plan, analysis, resolvedInstruction: "Extend", providerRequestId: "saved-provider", diagnosticRequestId: "saved-attempt" } };
+    useEditorStore.getState().restoreCloudAiPreview({ ...preview, inputVersionId: "stale-version" });
+    expect(useEditorStore.getState().preview).toBeNull();
+    useEditorStore.getState().restoreCloudAiPreview(preview);
+    expect(useEditorStore.getState().extendState).toMatchObject({ status: "planned", input, plan });
+    expect(useEditorStore.getState().versions).toHaveLength(1);
+    expect(useEditorStore.getState().operations).toHaveLength(0);
+    expect(useEditorStore.getState().pendingAcceptance).toBeNull();
+    expect(await useEditorStore.getState().planExtend({ ...input, userPrompt: "More sky" })).toBe(true);
+    expect(requestExtendPlan).not.toHaveBeenCalled();
   });
 
   it("plans and accepts a dimension-changing Extend as one immutable edit", async () => {

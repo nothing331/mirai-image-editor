@@ -37,6 +37,9 @@ export function EditorInspector({
   onRetry,
   onOpenDiagnostics,
   localOnly = false,
+  aiUnavailable = false,
+  cloudCredits = false,
+  cloudUnlimited = false,
 }: {
   phase: WorkspacePhase;
   providerCapabilities: ProviderCapabilities | null;
@@ -51,6 +54,9 @@ export function EditorInspector({
   onRetry: () => Promise<boolean>;
   onOpenDiagnostics: () => void;
   localOnly?: boolean;
+  aiUnavailable?: boolean;
+  cloudCredits?: boolean;
+  cloudUnlimited?: boolean;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const state = useEditorStore(useShallow((editor) => ({
@@ -96,9 +102,9 @@ export function EditorInspector({
   if (workflow.kind === "text") return <TextInspector />;
   if (workflow.kind === "watermark") return <WatermarkInspector />;
   if (workflow.kind === "transform") {
-    return <TransformInspector providerCapabilities={providerCapabilities} onGenerate={onGenerateTransform} onRetry={onRetry} onOpenDiagnostics={onOpenDiagnostics} />;
+    return <TransformInspector cloudUnlimited={cloudUnlimited} aiUnavailable={aiUnavailable} cloudCredits={cloudCredits} providerCapabilities={providerCapabilities} onGenerate={onGenerateTransform} onRetry={onRetry} onOpenDiagnostics={onOpenDiagnostics} />;
   }
-  if (workflow.kind === "extend") return <ExtendInspector onPlan={onPlanExtend} onGenerate={onGenerateExtend} previewAdjustmentOpen={extendPreviewAdjustmentOpen} onReturnToComparison={onReturnToExtendComparison} />;
+  if (workflow.kind === "extend") return <ExtendInspector aiUnavailable={aiUnavailable} cloudCredits={cloudCredits} onPlan={onPlanExtend} onGenerate={onGenerateExtend} previewAdjustmentOpen={extendPreviewAdjustmentOpen} onReturnToComparison={onReturnToExtendComparison} />;
 
   if (phase === "preview") {
     return (
@@ -280,7 +286,7 @@ export function EditorInspector({
             <span>{state.generativeState.error}</span>
             <code className="break-all font-mono text-[8px]">Request {state.generativeState.snapshot.requestId}</code>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="h-8 bg-paper px-2 font-bold text-ink hover:bg-white" onClick={onOpenDiagnostics}><Activity className="mr-1 inline size-3" />View diagnostics</button>
+              {!cloudCredits && !cloudUnlimited && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink hover:bg-white" onClick={onOpenDiagnostics}><Activity className="mr-1 inline size-3" />View diagnostics</button>}
               {state.generativeState.retryable && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink hover:bg-white" onClick={() => void onRetry()}>Retry same request</button>}
             </div>
           </div>
@@ -293,8 +299,8 @@ export function EditorInspector({
         {state.editType === "recolor" ? (
           <button type="button" data-testid="apply-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45" disabled={Boolean(state.paintSession)} onClick={onGenerate}><Sparkles className="size-4" />Preview color</button>
         ) : (
-          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45" disabled={processing || Boolean(state.paintSession)} onClick={onGenerate}>
-            {processing ? <><Sparkles className="size-4 animate-pulse" />Processing…</> : <><WandSparkles className="size-4" />Generate preview</>}
+          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-45" disabled={aiUnavailable || processing || Boolean(state.paintSession)} onClick={onGenerate}>
+            {processing ? <><Sparkles className="size-4 animate-pulse" />Processing…</> : <><WandSparkles className="size-4" />{cloudCredits ? "Generate preview · 1 credit" : "Generate preview"}</>}
           </button>
         )}
       </div>

@@ -1,3 +1,4 @@
+import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { ImageProviderError } from "@/server/ai/contracts";
@@ -27,6 +28,7 @@ export async function GET() {
 
 /** Validates multipart browser input, records reproducible diagnostics, and delegates generation. */
 export async function POST(request: Request) {
+  if (cloudAiMode()) return cloudAiPost(request, "edit");
   const projectId = correlationId(request.headers.get("x-project-id"));
   const requestId = correlationId(request.headers.get("x-request-id"));
   const retryOfRequestId = optionalCorrelationId(request.headers.get("x-retry-of-request-id"));

@@ -85,6 +85,16 @@ describe("runtime environment", () => {
     expect(() => readRuntimeEnvironment({ ...stagingEnvironment(), ...changes })).toThrow(expectedIssue);
   });
 
+  it("allows cloud fake AI only behind authenticated admission", () => {
+    expect(readRuntimeEnvironment({ ...stagingEnvironment(), MIRAI_AI_ENABLED: "true", MIRAI_AUTH_ENABLED: "true", MIRAI_OWNER_EMAILS: "owner@example.com", SUPABASE_SECRET_KEY: "server-only-placeholder-secret" }).aiEnabled).toBe(true);
+  });
+  it("requires hosted qualification and stage ceilings before real cloud AI", () => {
+    const real = { ...stagingEnvironment(), MIRAI_AI_ENABLED: "true", MIRAI_AUTH_ENABLED: "true", MIRAI_OWNER_EMAILS: "owner@example.com", SUPABASE_SECRET_KEY: "server-only-placeholder-secret", IMAGE_EDIT_PROVIDER: "openai", OPENAI_API_KEY: "test-only-placeholder" };
+    expect(() => readRuntimeEnvironment(real)).toThrow("MIRAI_AI_HOST_QUALIFIED");
+    expect(() => readRuntimeEnvironment({ ...real, MIRAI_AI_HOST_QUALIFIED: "true" })).toThrow("MIRAI_AI_IMAGE_STAGE_MICROUSD");
+    expect(() => readRuntimeEnvironment({ ...real, MIRAI_AI_HOST_QUALIFIED: "true", MIRAI_AI_IMAGE_STAGE_MICROUSD: "1000000", MIRAI_AI_TEXT_STAGE_MICROUSD: "100000", OPENAI_IMAGE_QUALITY: "high" })).toThrow("OPENAI_IMAGE_QUALITY");
+    expect(readRuntimeEnvironment({ ...real, MIRAI_AI_HOST_QUALIFIED: "true", MIRAI_AI_IMAGE_STAGE_MICROUSD: "1000000", MIRAI_AI_TEXT_STAGE_MICROUSD: "100000" }).aiEnabled).toBe(true);
+  });
   it("reports missing cloud requirements without exposing values", () => {
     try {
       readRuntimeEnvironment({ MIRAI_APP_MODE: "beta" });

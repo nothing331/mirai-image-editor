@@ -92,6 +92,7 @@ interface EditorState {
   generateExtend: () => Promise<boolean>;
   retryGenerativePreview: () => Promise<boolean>;
   acceptPreview: () => boolean;
+  restoreCloudAiPreview: (preview: EditPreview) => void;
   discardPreview: () => void;
   undo: () => boolean;
   redo: () => boolean;
@@ -577,6 +578,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     const snapshot: GenerativeRequestSnapshot = {
       projectId: state.projectId!,
+      cloud: state.acceptanceMode === "cloud",
       requestId: crypto.randomUUID(),
       retryOfRequestId: null,
       inputVersion: { ...input, pixels: new Uint8ClampedArray(input.pixels) },
@@ -628,6 +630,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     const snapshot: GenerativeRequestSnapshot = {
       projectId: state.projectId!,
+      cloud: state.acceptanceMode === "cloud",
       requestId: crypto.randomUUID(),
       retryOfRequestId: null,
       inputVersion: { ...input, pixels: new Uint8ClampedArray(input.pixels) },
@@ -643,7 +646,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (state.generativeState.status !== "failed" || !state.generativeState.retryable) return false;
     return executeGenerativeRequest({
       ...state.generativeState.snapshot,
-      requestId: crypto.randomUUID(),
+      requestId: state.acceptanceMode === "cloud" ? state.generativeState.snapshot.requestId : crypto.randomUUID(),
       retryOfRequestId: state.generativeState.snapshot.requestId,
     });
   },
@@ -668,7 +671,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     set({ extendState: { status: "analyzing", input: normalized, analysis: cachedAnalysis, plan: null, error: null }, preview: null, error: null });
     try {
-      const result = await requestExtendPlan(input, normalized, cachedAnalysis, state.projectId!);
+      const result = await requestExtendPlan(input, normalized, cachedAnalysis, state.projectId!, state.acceptanceMode === "cloud");
       if (get().currentVersionId !== input.id) return false;
       set((current) => ({ extendState: { status: "planned", input: normalized, analysis: result.analysis, plan: result.plan, error: null }, extendAnalysisCache: { ...current.extendAnalysisCache, [input.id]: result.analysis } }));
       return true;
@@ -689,9 +692,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         const current = get();
         if (current.currentVersionId !== input.id || current.extendState.status !== "generating") return;
         set({ extendState: { ...current.extendState, phase } });
-      });
+      }, state.acceptanceMode === "cloud");
       if (get().currentVersionId !== input.id) return false;
-      const mask: MaskAsset = { id: crypto.randomUUID(), ...candidate.mask };
+      const mask: MaskAsset = { id: crypto.randomUUID(), ...(state.acceptanceMode === "cloud" ? createFullImageMask(input.width, input.height) : candidate.mask) };
       set({
         preview: {
           id: crypto.randomUUID(), inputVersionId: input.id, type: "extend", method: "generative",
@@ -707,6 +710,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ extendState: { status: "failed", input: draft.input, analysis: draft.analysis, plan: draft.plan, error: message }, error: message });
       return false;
     }
+  },
+  restoreCloudAiPreview: (preview) => {
+    const state = get();
+    if (state.acceptanceMode !== "cloud" || state.currentVersionId !== preview.inputVersionId || state.preview || state.pendingAcceptance || state.localDraftDirty || state.paintSession) return;
+    const recoveredExtend = preview.type === "extend" ? {
+      extendState: { status: "planned" as const, input: { presetId: preview.parameters.presetId, presetVersion: preview.parameters.presetVersion, strategy: preview.parameters.strategy, userPrompt: preview.parameters.userPrompt }, analysis: preview.parameters.analysis, plan: preview.parameters.plan, error: null },
+      extendAnalysisCache: { ...state.extendAnalysisCache, [preview.inputVersionId]: preview.parameters.analysis },
+    } : {};
+    set({ ...recoveredExtend, preview, localDraft: null, error: null, lastRequestId: "diagnosticRequestId" in preview.parameters ? preview.parameters.diagnosticRequestId : null });
   },
   acceptPreview: () => {
     const state = get();

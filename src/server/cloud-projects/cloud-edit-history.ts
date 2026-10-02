@@ -3,16 +3,17 @@ import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import sharp from "sharp";
 import { z } from "zod";
+import { prepareAiAcceptance } from "@/server/cloud-ai/editing";
 import { createAdminSupabaseClient } from "@/server/supabase/admin-client";
-import { CloudProjectError } from "./cloud-projects";
+import { getCloudProject, CloudProjectError } from "./cloud-projects";
 
 const ASSET_BUCKET = "mirai-assets";
 const MAX_EDIT_BYTES = 30 * 1024 * 1024;
 const MAX_PIXELS = 4_194_304;
 const operationSchema = z.object({
   id: z.uuid(), inputVersionId: z.uuid(), outputVersionId: z.uuid(), maskId: z.uuid(),
-  type: z.enum(["recolor", "paint", "crop", "resize", "rotate", "flip", "text", "watermark", "transform"]),
-  method: z.literal("local"), status: z.literal("accepted"),
+  type: z.enum(["recolor", "paint", "crop", "resize", "rotate", "flip", "text", "watermark", "transform", "remove", "replace", "restyle", "extend"]),
+  method: z.enum(["local", "generative"]), status: z.literal("accepted"),
   parameters: z.record(z.string(), z.unknown()),
 }).strict();
 export const editCommitSchema = z.object({
@@ -139,21 +140,47 @@ function validateOutsideMask(input: Uint8Array, output: Uint8Array, mask: Uint8A
 
 export async function commitCloudEdit(ownerId: string, projectId: string, raw: unknown) {
   const input = editCommitSchema.parse(raw);
+  const generative = input.operation.method === "generative";
+  if (!generative && "diagnosticRequestId" in input.operation.parameters) fail("invalid", "Local edits cannot claim an AI result.");
+  if (generative) {
+    const receipt = await createAdminSupabaseClient().from("cloud_commit_receipts").select("*")
+      .eq("owner_id", ownerId).eq("project_id", projectId).eq("request_key", input.requestKey).maybeSingle();
+    if (receipt.error) fail("unavailable", "The save receipt could not be checked.");
+    if (receipt.data) {
+      const operation = await createAdminSupabaseClient().from("cloud_edit_operations").select("kind,method,parameters")
+        .eq("id", receipt.data.operation_id).eq("owner_id", ownerId).eq("project_id", projectId).single();
+      if (operation.error || receipt.data.operation_id !== input.operation.id || receipt.data.input_version_id !== input.inputVersionId
+        || receipt.data.output_version_id !== input.outputVersionId || operation.data.method !== "generative"
+        || operation.data.kind !== input.operation.type || operation.data.parameters.diagnosticRequestId !== input.operation.parameters.diagnosticRequestId) fail("conflict", "This save request belongs to another edit.");
+      // Return the durable acknowledgement even after its temporary candidate has expired.
+      await getCloudProject(ownerId, projectId);
+      return receipt.data;
+    }
+  }
+  if (!generative && ["remove", "replace", "restyle", "extend"].includes(input.operation.type)) fail("invalid", "This operation requires a stored AI result.");
+  const ai = generative ? await prepareAiAcceptance(ownerId, projectId, input.inputVersionId, input.operation) : null;
+  if (ai) {
+    input.outputDataUrl = ai.outputDataUrl;
+    input.maskAlphaBase64 = ai.maskAlphaBase64;
+    input.maskWidth = ai.maskWidth;
+    input.maskHeight = ai.maskHeight;
+    input.operation.parameters = ai.parameters;
+  }
   if (input.operation.inputVersionId !== input.inputVersionId
     || input.operation.outputVersionId !== input.outputVersionId) fail("invalid", "Edit IDs do not match.");
-  if (JSON.stringify(input.operation.parameters).length > 16_384) fail("invalid", "Edit parameters are too large.");
+  if (JSON.stringify(input.operation.parameters).length > 65_536) fail("invalid", "Edit parameters are too large.");
   const output = decodeBase64(input.outputDataUrl.slice("data:image/png;base64,".length), MAX_EDIT_BYTES);
   const mask = decodeBase64(input.maskAlphaBase64, MAX_PIXELS);
   const sourceVersion = await currentVersion(ownerId, projectId, input.inputVersionId);
   if (input.maskWidth !== sourceVersion.width || input.maskHeight !== sourceVersion.height
     || mask.length !== input.maskWidth * input.maskHeight) fail("invalid", "Edit mask must match the source image.");
   const outputImage = await decodedPixels(output);
-  const expected = expectedDimensions(input.operation.type, input.operation.parameters, sourceVersion.width, sourceVersion.height);
+  const expected = ai ?? expectedDimensions(input.operation.type, input.operation.parameters, sourceVersion.width, sourceVersion.height);
   if (outputImage.width !== expected.width || outputImage.height !== expected.height) fail("invalid", "Edited image dimensions do not match the operation.");
   if (["crop", "resize", "rotate", "flip", "transform"].includes(input.operation.type) && mask.some((alpha) => alpha !== 255)) {
     fail("invalid", "Geometry edits require a full source-image mask.");
   }
-  if (outputImage.width === sourceVersion.width && outputImage.height === sourceVersion.height) {
+  if ((!generative || input.operation.parameters.boundaryPolicy === "protected") && outputImage.width === sourceVersion.width && outputImage.height === sourceVersion.height) {
     const source = await decodedPixels(await versionBytes(ownerId, projectId, input.inputVersionId));
     validateOutsideMask(source.pixels, outputImage.pixels, mask, source.width, source.height);
   }

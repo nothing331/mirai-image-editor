@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { discardCloudAiPreview } from "./cloud-ai-client";
+import { CloudAiBalance, CloudAiRecovery, useCloudAiUsage } from "./CloudAiStatus";
 import { useRouter } from "next/navigation";
 import { Download, History, LoaderCircle, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,13 +31,15 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
   initialCurrentVersionId: string; initialHeadVersionId: string;
 }) {
   const router = useRouter();
+  const ai = useCloudAiUsage();
+  const [extendPreviewAdjustmentOpen, setExtendPreviewAdjustmentOpen] = useState(false);
   const editor = useEditorStore(useShallow((state) => ({
     currentVersionId: state.currentVersionId,
     currentVersion: getCurrentVersion(state),
     pendingAcceptance: state.pendingAcceptance,
     preview: state.preview, localDraft: state.localDraft, localDraftDirty: state.localDraftDirty,
     paintSession: state.paintSession, selectionMask: state.selectionMask,
-    generativeState: state.generativeState, error: state.error,
+    generativeState: state.generativeState, extendState: state.extendState, error: state.error,
     loadCloudProject: state.loadCloudProject, setCloudCurrentVersion: state.setCloudCurrentVersion,
     restoreCloudDraft: state.restoreCloudDraft,
     confirmPendingAcceptance: state.confirmPendingAcceptance, discardPendingAcceptance: state.discardPendingAcceptance,
@@ -183,6 +187,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
       if (useEditorStore.getState().pendingAcceptance?.operation.id !== operationId) return false;
       if (receipt.output_version_id !== pending.output.id) throw new Error("Save receipt refers to another image version.");
       editor.confirmPendingAcceptance();
+      window.dispatchEvent(new CustomEvent("mirai-ai-usage-updated"));
       saveKeys.current.delete(operationId);
       setHeadVersionId(receipt.output_version_id);
       setStatus("saved");
@@ -357,7 +362,16 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     finally { setHistoryBusy(false); }
   };
 
-  const busy = status === "saving" || status === "loading" || historyBusy;
+  function discardPreview() {
+    const state = useEditorStore.getState();
+    const preview = state.preview;
+    state.discardPreview();
+    if (preview?.method === "generative" && "diagnosticRequestId" in preview.parameters) {
+      void discardCloudAiPreview(preview.parameters.diagnosticRequestId).catch(() => state.setError("The preview was removed on this device. Server cleanup is unavailable; it will expire automatically."));
+    }
+  }
+
+  const busy = status === "saving" || status === "loading" || historyBusy || editor.generativeState.status === "processing" || editor.extendState.status === "generating" || editor.extendState.status === "analyzing";
   const decisionDraft = editor.localDraft;
   const decisionCanSaveEdit = Boolean(editor.pendingAcceptance || editor.paintSession || editor.preview
     || (decisionDraft && editor.localDraftDirty && canSaveDraft(decisionDraft, editor.currentVersion)));
@@ -390,16 +404,24 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     <div className={cn("grid min-h-0 min-w-0", historyOpen ? "lg:grid-cols-[minmax(0,1fr)_280px]" : "grid-cols-1")}>
       <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] md:grid-cols-[256px_minmax(0,1fr)] md:grid-rows-1">
         <aside className="order-2 grid min-h-0 bg-paper md:order-1 md:grid-cols-[48px_minmax(0,1fr)]" aria-label="Editor tools">
-          <ToolRail collapsed={inspectorCollapsed} disabled={busy || Boolean(editor.pendingAcceptance || editor.preview)} generationDisabled localOnly workflow={workflow} onGenerateAsset={() => {}} onSelectWorkflow={changeWorkflow} onToggleInspector={() => setInspectorCollapsed((value) => !value)} />
-          {!inspectorCollapsed && <div className={cn("min-h-0 border-t border-line md:border-t-0", editor.pendingAcceptance && "pointer-events-none opacity-50")}>
-            <EditorInspector localOnly phase={phase} providerCapabilities={null} workflow={workflow} onSelectGeometryEdit={selectGeometry}
-              onGenerate={() => editor.createPreview()} onGenerateTransform={async () => false} onPlanExtend={async () => false}
-              onGenerateExtend={async () => false} extendPreviewAdjustmentOpen={false}
-              onReturnToExtendComparison={() => {}} onRetry={async () => false} onOpenDiagnostics={() => {}} />
+          <ToolRail collapsed={inspectorCollapsed} disabled={busy || Boolean(editor.pendingAcceptance || editor.preview)} generationDisabled={busy || !ai.available} workflow={workflow} onGenerateAsset={() => {
+            const state = useEditorStore.getState();
+            if (state.pendingAcceptance || state.localDraftDirty || state.paintSession || state.preview || state.selectionMask?.data.some((alpha) => alpha > 0)) setPendingDecision({ kind: "navigate", href: "/projects/new?create=ai" });
+            else router.push("/projects/new?create=ai");
+          }} onSelectWorkflow={changeWorkflow} onToggleInspector={() => setInspectorCollapsed((value) => !value)} />
+          {!inspectorCollapsed && <div className={cn("grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] border-t border-line md:border-t-0", editor.pendingAcceptance && "pointer-events-none opacity-50")}>
+            <CloudAiBalance usage={ai.usage} error={ai.error} />
+            <CloudAiRecovery unlimited={ai.usage?.unlimited} projectId={projectId} currentVersionId={editor.currentVersionId} hasDraft={Boolean(editor.preview || editor.pendingAcceptance || editor.localDraftDirty || editor.paintSession)} />
+            <EditorInspector cloudCredits={!ai.usage?.unlimited} cloudUnlimited={ai.usage?.unlimited} aiUnavailable={!ai.available} phase={phase} providerCapabilities={null} workflow={workflow} onSelectGeometryEdit={selectGeometry}
+              onGenerate={() => { const state = useEditorStore.getState(); if (state.editType === "recolor") state.createPreview(); else if (ai.available) void state.requestGenerativePreview(); }}
+              onGenerateTransform={async (input) => { if ((input.presetId === "monochrome" && !input.userPrompt.trim()) || ai.available) return editor.requestTransformPreview(input); return false; }}
+              onPlanExtend={(input) => { const state = useEditorStore.getState(); return ai.available || Boolean(state.currentVersionId && state.extendAnalysisCache[state.currentVersionId]) ? state.planExtend(input) : Promise.resolve(false); }}
+              onGenerateExtend={() => ai.available ? useEditorStore.getState().generateExtend() : Promise.resolve(false)} extendPreviewAdjustmentOpen={extendPreviewAdjustmentOpen}
+              onReturnToExtendComparison={() => setExtendPreviewAdjustmentOpen(false)} onRetry={() => useEditorStore.getState().retryGenerativePreview()} onOpenDiagnostics={() => {}} />
           </div>}
         </aside>
         <CanvasFrame cloudMode cloudStatusLabel={cloudStatusLabel} busyAction={status === "loading" ? "open" : null} onUpload={() => {}} onGenerateAsset={() => {}}
-          extendSelected={false} extendPreviewAdjustmentOpen={false} onAdjustTransform={() => {}} onAdjustExtend={() => {}} />
+          onDiscardPreview={discardPreview} extendSelected={workflow.kind === "extend"} extendPreviewAdjustmentOpen={extendPreviewAdjustmentOpen} onAdjustTransform={() => { discardPreview(); setWorkflow({ kind: "transform" }); }} onAdjustExtend={() => { setWorkflow({ kind: "extend" }); setExtendPreviewAdjustmentOpen(true); }} />
       </div>
       {historyOpen && <aside className="absolute inset-x-2 bottom-2 top-28 z-40 flex flex-col border border-line bg-paper shadow-xl lg:static lg:shadow-none" aria-label="Project history">
         <div className="flex items-center justify-between border-b border-line p-3"><strong className="text-xs">Saved history</strong><button type="button" className="font-mono text-[9px] uppercase lg:hidden" onClick={() => setHistoryOpen(false)}>Close</button></div>

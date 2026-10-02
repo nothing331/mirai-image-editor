@@ -1,9 +1,11 @@
+import { cloudAiMode } from "@/server/cloud-ai/http";
 import { requestDiagnosticRepository } from "@/server/diagnostics/request-diagnostic-service";
 import { diagnosticArtifactNames, type DiagnosticArtifactName } from "@/shared/request-diagnostics";
 
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ requestId: string; name: string }> }) {
+  if (cloudAiMode()) return Response.json({ error: "Not found." }, { status: 404 });
   const { requestId, name } = await context.params;
   if (!diagnosticArtifactNames.includes(name as DiagnosticArtifactName)) {
     return Response.json({ error: "Diagnostic artifact not found." }, { status: 404 });

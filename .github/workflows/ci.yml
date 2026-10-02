@@ -108,6 +108,12 @@ jobs:
       - name: Test cloud edit transactions and history
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/cloud_edit_history_test.sql
 
+      - name: Test AI credits, leases, budget and cleanup
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/wave_d_ai_test.sql
+
+      - name: Test cloud AI integrations with fake providers
+        run: MIRAI_AI_INTEGRATION=1 npx vitest run src/server/cloud-ai/editing.integration.test.ts
+
       - name: Test private Storage integration
         run: MIRAI_ASSET_INTEGRATION=1 npx vitest run src/server/assets/original-assets.integration.test.ts
 
