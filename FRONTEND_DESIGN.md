@@ -187,6 +187,12 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Never advance history on failure or discard.
 - A leave decision must say whether work is saved to the cloud or only kept as a device draft. A failed save keeps the user in the editor with a retry path.
 
+### New project entry
+
+- New project starts with two equally prominent choices: Upload an image to edit and Create an image with AI. Use adjoining square surfaces in the existing paper/ink visual system, side by side on desktop and stacked on mobile.
+- Keep upload inputs inside the chosen upload flow. AI creation opens in Create Image mode; opening the studio never generates a result by itself. Show availability and member pricing beside the AI choice.
+- Restore unfinished uploads before offering another starting point. Keep the recovery flow visible until it saves; a transfer cannot be replaced by another path. Closing the AI studio returns to the chooser.
+
 ### Cloud AI usage and recovery
 
 - Keep the account balance and pending-credit state beside the active inspector and creation entry. Use plain copy: “25 AI credits shared across your projects” and “1 credit per generated preview.” State the one-time member policy in welcome/settings. Admin accounts show “Unlimited” for AI, projects and account storage, with no one-credit action prices; communicate service availability separately.
