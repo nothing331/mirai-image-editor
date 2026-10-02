@@ -11,11 +11,18 @@ import { EditorInspector } from "@/features/editor/workspace/EditorInspector";
 import { ToolRail } from "@/features/editor/workspace/ToolRail";
 import type { WorkspaceWorkflow } from "@/features/editor/workspace/workspace-types";
 import { deriveWorkspacePhase } from "@/features/editor/workspace/workspace-phase";
-import type { GeometryEditType } from "@/features/editor/types";
+import type { GeometryEditType, LocalEditDraft } from "@/features/editor/types";
 import { cn } from "@/lib/utils";
 import { loadCloudHistory, loadCloudVersion, saveCloudEdit, selectCloudVersion, type CloudVersionSummary } from "./cloud-edit-client";
 import { CloudExportDialog } from "./CloudExportDialog";
+import { CloudPendingWorkDialog } from "./CloudPendingWorkDialog";
 import { activateCloudDraftAccount, clearCloudDraft, loadCloudDraft, saveCloudDraft, type CloudDraftSnapshot } from "./cloud-draft-cache";
+
+type PendingDecision =
+  | { kind: "navigate"; href: string }
+  | { kind: "workflow"; workflow: WorkspaceWorkflow }
+  | { kind: "geometry"; editType: GeometryEditType }
+  | { kind: "version"; versionId: string };
 
 export function CloudEditorWorkspace({ ownerId, projectId, projectName, originalVersionId, initialCurrentVersionId, initialHeadVersionId }: {
   ownerId: string; projectId: string; projectName: string; originalVersionId: string;
@@ -50,6 +57,9 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
   const [workflow, setWorkflow] = useState<WorkspaceWorkflow>({ kind: "canvas", tool: "lasso" });
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
+  const [decisionBusy, setDecisionBusy] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
   const loadCloudProject = editor.loadCloudProject;
   const setEditorError = editor.setError;
   const attempted = useRef(new Set<string>());
@@ -129,34 +139,30 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
       if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname) return;
       const state = useEditorStore.getState();
       if (state.projectId !== projectId || state.acceptanceMode !== "cloud") return;
-      if (state.pendingAcceptance || status === "saving") {
+      if (status === "saving") {
         event.preventDefault();
         state.setError("Finish or retry the pending save before leaving this project.");
         return;
       }
-      if (!state.localDraftDirty && !state.paintSession && !state.preview
+      if (!state.pendingAcceptance && !state.localDraftDirty && !state.paintSession && !state.preview
         && !(state.selectionMask?.data.some((alpha) => alpha !== 0))) return;
       event.preventDefault();
-      void (async () => {
-        const stored = await persistDraft();
-        const message = stored ? "Leave the editor? Your draft is stored on this device and can be restored when you return."
-          : "Draft storage is unavailable. Leaving may lose your unfinished work. Leave anyway?";
-        if (window.confirm(message)) router.push(`${destination.pathname}${destination.search}${destination.hash}`);
-      })();
+      setDecisionError(null);
+      setPendingDecision({ kind: "navigate", href: `${destination.pathname}${destination.search}${destination.hash}` });
     };
     document.addEventListener("click", guard, true);
     return () => document.removeEventListener("click", guard, true);
-  }, [projectId, status, persistDraft, router]);
+  }, [projectId, status]);
 
-  const attemptSave = useCallback(async () => {
+  const attemptSave = useCallback(async (allowRedoReplacement = false): Promise<boolean> => {
     const pending = useEditorStore.getState().pendingAcceptance;
-    if (!pending || status === "saving") return;
+    if (!pending || status === "saving") return false;
     const operationId = pending.operation.id;
     const replaceFuture = pending.input.id !== headVersionId;
-    if (replaceFuture && !window.confirm("This new edit will replace the redo versions after the current image. Continue?")) {
+    if (replaceFuture && !allowRedoReplacement && !window.confirm("This new edit will replace the redo versions after the current image. Continue?")) {
       setStatus("failed");
       editor.setError("The pending edit is still available. Save it to replace redo history, or discard it.");
-      return;
+      return false;
     }
     let keys = saveKeys.current.get(operationId);
     if (!keys) {
@@ -174,7 +180,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     editor.setError(null);
     try {
       const { receipt } = await saveCloudEdit(projectId, pending, keys, replaceFuture);
-      if (useEditorStore.getState().pendingAcceptance?.operation.id !== operationId) return;
+      if (useEditorStore.getState().pendingAcceptance?.operation.id !== operationId) return false;
       if (receipt.output_version_id !== pending.output.id) throw new Error("Save receipt refers to another image version.");
       editor.confirmPendingAcceptance();
       saveKeys.current.delete(operationId);
@@ -187,9 +193,11 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
       } catch {
         editor.setError("The edit was saved. Reload the project to refresh its history controls.");
       }
+      return true;
     } catch (error) {
       setStatus("failed");
       editor.setError(error instanceof Error ? error.message : "The edit could not be saved. Retry without changing the pending image.");
+      return false;
     }
   }, [ownerId, projectId, headVersionId, status, editor, refreshHistory]);
 
@@ -203,7 +211,8 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {
       const state = useEditorStore.getState();
-      if (state.pendingAcceptance || state.preview || state.localDraftDirty || state.paintSession) {
+      if (state.pendingAcceptance || state.preview || state.localDraftDirty || state.paintSession
+        || state.selectionMask?.data.some((alpha) => alpha !== 0)) {
         event.preventDefault();
       }
     };
@@ -211,13 +220,8 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     return () => window.removeEventListener("beforeunload", guard);
   }, []);
 
-  const changeWorkflow = (next: WorkspaceWorkflow) => {
-    if (editor.pendingAcceptance || status === "saving") return;
-    if (editor.localDraftDirty && !window.confirm("Discard the unfinished local edit?")) return;
+  const performWorkflow = (next: WorkspaceWorkflow) => {
     if (editor.localDraft) editor.discardLocalDraft();
-    if (editor.paintSession && (next.kind !== "canvas" || (next.tool !== "brush" && next.tool !== "eraser"))) {
-      editor.setError("Apply or discard pending paint first."); return;
-    }
     if (next.kind === "canvas") editor.setTool(next.tool);
     else if (next.kind === "size-position") editor.beginLocalDraft("crop");
     else if (next.kind === "text") editor.beginLocalDraft("text");
@@ -226,18 +230,35 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     setInspectorCollapsed(next.kind === "canvas" && next.tool === "pan");
   };
 
+  const changeWorkflow = (next: WorkspaceWorkflow) => {
+    if (editor.pendingAcceptance || status === "saving") return;
+    if (next.kind === workflow.kind && (next.kind !== "canvas" || (workflow.kind === "canvas" && next.tool === workflow.tool))) return;
+    if (editor.paintSession && (next.kind !== "canvas" || (next.tool !== "brush" && next.tool !== "eraser"))) {
+      setDecisionError(null);
+      setPendingDecision({ kind: "workflow", workflow: next });
+      return;
+    }
+    if (editor.localDraftDirty) {
+      setDecisionError(null);
+      setPendingDecision({ kind: "workflow", workflow: next });
+      return;
+    }
+    performWorkflow(next);
+  };
+
   const selectGeometry = (type: GeometryEditType) => {
     if (editor.pendingAcceptance) return;
-    if (editor.localDraftDirty && !window.confirm("Discard the unfinished local edit?")) return;
+    if (editor.localDraft?.type === type) return;
+    if (editor.localDraftDirty) {
+      setDecisionError(null);
+      setPendingDecision({ kind: "geometry", editType: type });
+      return;
+    }
     editor.beginLocalDraft(type);
   };
 
-  const selectSavedVersion = useCallback(async (versionId: string) => {
+  const openSavedVersion = useCallback(async (versionId: string) => {
     const state = useEditorStore.getState();
-    if (state.pendingAcceptance || status === "saving") {
-      editor.setError("Save or discard the pending edit before changing history."); return;
-    }
-    if ((state.preview || state.localDraftDirty || state.paintSession) && !window.confirm("Discard unfinished work and open this saved version?")) return;
     setHistoryBusy(true);
     editor.setError(null);
     try {
@@ -253,7 +274,64 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     } catch (error) {
       editor.setError(error instanceof Error ? error.message : "The selected version could not be opened.");
     } finally { setHistoryBusy(false); }
-  }, [projectId, status, editor]);
+  }, [projectId, editor]);
+
+  const selectSavedVersion = useCallback((versionId: string) => {
+    if (status === "saving") return;
+    const state = useEditorStore.getState();
+    if (state.pendingAcceptance || state.preview || state.localDraftDirty || state.paintSession
+      || state.selectionMask?.data.some((alpha) => alpha !== 0)) {
+      setDecisionError(null);
+      setPendingDecision({ kind: "version", versionId });
+      return;
+    }
+    void openSavedVersion(versionId);
+  }, [status, openSavedVersion]);
+
+  const finishDecision = (decision: PendingDecision) => {
+    setPendingDecision(null);
+    setDecisionError(null);
+    if (decision.kind === "navigate") router.push(decision.href);
+    else if (decision.kind === "workflow") performWorkflow(decision.workflow);
+    else if (decision.kind === "geometry") editor.beginLocalDraft(decision.editType);
+    else void openSavedVersion(decision.versionId);
+  };
+
+  const saveAndContinue = async () => {
+    const decision = pendingDecision;
+    if (!decision || decisionBusy) return;
+    setDecisionBusy(true);
+    setDecisionError(null);
+    const state = useEditorStore.getState();
+    const draft = state.localDraft;
+    const canCommitDraft = Boolean(draft && state.localDraftDirty && canSaveDraft(draft, getCurrentVersion(state)));
+    const canCommit = Boolean(state.pendingAcceptance || canCommitDraft || state.paintSession || state.preview);
+    try {
+      if (canCommit && !state.pendingAcceptance) {
+        const accepted = canCommitDraft ? state.applyLocalDraft()
+          : state.paintSession ? state.commitPaintSession() : state.acceptPreview();
+        if (!accepted) {
+          setDecisionError(useEditorStore.getState().error ?? "This edit could not be prepared. Keep editing and try again.");
+          return;
+        }
+        const operationId = useEditorStore.getState().pendingAcceptance?.operation.id;
+        if (operationId) attempted.current.add(operationId);
+      }
+      if (canCommit) {
+        if (!await attemptSave(true)) {
+          setDecisionError(useEditorStore.getState().error ?? "The cloud save did not finish. Your edit is still here; retry the save.");
+          return;
+        }
+      } else if (decision.kind !== "navigate") {
+        setDecisionError("Finish this edit before changing views. Your work is still on the canvas.");
+        return;
+      } else if (!await persistDraft()) {
+        setDecisionError("This browser could not store your draft. Your work is still on the canvas; keep editing and try again.");
+        return;
+      }
+      finishDecision(decision);
+    } finally { setDecisionBusy(false); }
+  };
 
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
@@ -280,6 +358,13 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
   };
 
   const busy = status === "saving" || status === "loading" || historyBusy;
+  const decisionDraft = editor.localDraft;
+  const decisionCanSaveEdit = Boolean(editor.pendingAcceptance || editor.paintSession || editor.preview
+    || (decisionDraft && editor.localDraftDirty && canSaveDraft(decisionDraft, editor.currentVersion)));
+  const decisionDestination = pendingDecision?.kind === "navigate" ? "leave this project"
+    : pendingDecision?.kind === "version" ? "open another saved version" : "switch tools";
+  const decisionActionTarget = pendingDecision?.kind === "navigate" ? "leave"
+    : pendingDecision?.kind === "version" ? "open version" : "switch tools";
   const cloudStatusLabel = status === "loading" ? "Opening" : status === "saving" ? "Saving…"
     : status === "failed" ? "Save needs attention" : draftStatus === "unavailable" ? "Draft cache unavailable"
       : draftStatus === "stored" ? "Draft on device" : "Cloud saved";
@@ -330,5 +415,24 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     </div>
     {editor.error && <div role="alert" className="absolute bottom-3 left-3 right-3 z-50 max-w-xl border border-accent bg-paper p-3 text-xs text-accent shadow-lg">{editor.error}</div>}
     {exportOpen && editor.currentVersion && <CloudExportDialog projectId={projectId} projectName={projectName} version={editor.currentVersion} onClose={() => setExportOpen(false)} />}
+    {pendingDecision && <CloudPendingWorkDialog destination={decisionDestination} actionTarget={decisionActionTarget} deviceDraft={!decisionCanSaveEdit}
+      blocked={!decisionCanSaveEdit && pendingDecision.kind !== "navigate"}
+      retry={Boolean(editor.pendingAcceptance)}
+      replacesRedo={Boolean(editor.pendingAcceptance ? editor.pendingAcceptance.input.id !== headVersionId : editor.currentVersionId && editor.currentVersionId !== headVersionId)}
+      busy={decisionBusy} error={decisionError}
+      onSave={() => void saveAndContinue()} onStay={() => { setPendingDecision(null); setDecisionError(null); }} />}
   </section>;
+}
+
+function canSaveDraft(draft: LocalEditDraft, version: { id: string; width: number; height: number } | null | undefined) {
+  if (!version || draft.inputVersionId !== version.id) return false;
+  if (draft.type === "crop") {
+    const { x, y, width, height } = draft.parameters.sourceRect;
+    if (x === 0 && y === 0 && width === version.width && height === version.height) return false;
+  }
+  if (draft.type === "resize" && draft.parameters.width === version.width && draft.parameters.height === version.height) return false;
+  if (draft.type === "text") return draft.parameters.content.trim().length > 0;
+  if (draft.type === "watermark") return draft.parameters.source === "text"
+    ? draft.parameters.content.trim().length > 0 : Boolean(draft.parameters.overlayAssetId);
+  return true;
 }

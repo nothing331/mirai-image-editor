@@ -147,6 +147,50 @@ test("saves a crop from the inspector as one cloud version", async ({ page, cont
   expect(reloaded.project.currentVersionId).toBe(after.history.versions[0].id);
 });
 
+test("offers a save-first dialog when leaving and stays put if the cloud save fails", async ({ page, context }) => {
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  const currentId = async () => (await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId)).project.currentVersionId as string;
+  const before = await currentId();
+
+  await page.getByTestId("open-text").click();
+  await page.getByLabel("Text content").fill("KEEP THIS WORK");
+  const projects = page.getByRole("region", { name: "Cloud editor" }).getByRole("link", { name: "Projects" });
+  await projects.click();
+  const decision = page.getByRole("dialog", { name: "Save your edit first" });
+  await expect(decision).toBeVisible();
+  await expect(decision.getByRole("button", { name: /discard/i })).toHaveCount(0);
+  await decision.getByRole("button", { name: "Keep editing" }).click();
+  await expect(page.getByLabel("Text content")).toHaveValue("KEEP THIS WORK");
+
+  let failOnce = true;
+  await page.route("**/api/cloud-projects/*/edits", async (route) => {
+    if (failOnce) {
+      failOnce = false;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Save interrupted. Try again." }) });
+    } else await route.continue();
+  });
+  await projects.click();
+  await decision.getByRole("button", { name: "Save edit and leave" }).click();
+  await expect(page.getByRole("dialog", { name: "Finish saving your edit" })).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("Save interrupted. Try again.")).toBeVisible();
+  await expect.poll(currentId).toBe(before);
+  await page.getByRole("dialog").getByRole("button", { name: "Retry save and leave" }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect.poll(currentId).not.toBe(before);
+
+  await page.goto(`/projects/${projectId}`);
+  await expect(page.getByText("Saved to cloud")).toBeVisible();
+  const beforeSwitch = await currentId();
+  await page.getByTestId("open-text").click();
+  await page.getByLabel("Text content").fill("SAVE BEFORE SWITCHING");
+  await page.getByTestId("open-size-position").click();
+  await page.getByRole("dialog", { name: "Save your edit first" }).getByRole("button", { name: "Save edit and switch tools" }).click();
+  await expect(page.getByRole("button", { name: "Save crop" })).toBeVisible();
+  await expect.poll(currentId).not.toBe(beforeSwitch);
+});
+
 test("saves direct and paint edits, then undoes and redoes the saved versions", async ({ page, context }) => {
   test.setTimeout(120_000);
   await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3000" })));
