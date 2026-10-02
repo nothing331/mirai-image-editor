@@ -23,9 +23,10 @@ export default async function WelcomePage() {
         <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em]">Your Mirai account is active.</h2>
         <dl className="mt-5 divide-y divide-line border-y border-line text-sm">
           <div className="flex justify-between gap-4 py-3"><dt className="text-muted">Role</dt><dd className="font-mono uppercase">{account.profile.account_role}</dd></div>
-          <div className="flex justify-between gap-4 py-3"><dt className="text-muted">Initial AI allowance</dt><dd className="font-mono">{account.initialAiImageAllowance} images</dd></div>
+          <div className="flex justify-between gap-4 py-3"><dt className="text-muted">Welcome AI credits</dt><dd className="font-mono">{account.initialAiImageAllowance} credits</dd></div>
           <div className="flex justify-between gap-4 py-3"><dt className="text-muted">Cloud projects</dt><dd><Link href="/projects" className="font-mono uppercase underline underline-offset-4">Open my projects</Link></dd></div>
         </dl>
+        <p className="mt-4 text-xs leading-5 text-muted">Your beta includes 5 active projects and 25 welcome AI credits shared across all projects. Each generated preview uses 1 credit. Local edits and exports use no credits. Welcome credits do not reset monthly.</p>
         {account.profile.account_role === "owner" && <Link href="/admin/access" className="mt-5 inline-flex min-h-10 items-center border border-line px-4 text-sm font-bold hover:border-ink hover:bg-[#e8e5dc]">Manage beta access</Link>}
         {!account.profile.onboarding_completed_at && <form action={completeOnboardingAction} className="mt-6"><SubmitButton idle="Acknowledge and continue" pending="Saving…" /></form>}
       </div>

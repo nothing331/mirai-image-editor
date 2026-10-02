@@ -1,5 +1,7 @@
 "use client";
 
+import { discardCloudAiPreview } from "@/features/cloud-projects/cloud-ai-client";
+
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Box, Brush, Camera, Check, ImageIcon, LoaderCircle, PenLine, Shapes, Sparkles, X } from "lucide-react";
@@ -67,7 +69,9 @@ const defaultBrief: AssetGenerationBrief = {
 
 const defaultCustomColors = ["#171714", "#d8f441"];
 
-export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
+export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSessionId, cloudAiAvailable = true }: {
+  cloudSessionId?: string;
+  cloudAiAvailable?: boolean;
   open: boolean;
   onClose: () => void;
   onUseCandidate: (candidate: DisplayedAssetCandidate) => Promise<boolean>;
@@ -83,6 +87,21 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
   const [batchesUsed, setBatchesUsed] = useState(0);
   const [status, setStatus] = useState<"idle" | "generating" | "using">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !cloudSessionId) return;
+    let cancelled = false;
+    const id = sessionStorage.getItem(`mirai-ai-creation-${cloudSessionId}`);
+    if (!id) return;
+    void fetch(`/api/ai/attempts/${id}`, { cache: "no-store" }).then(async (result) => {
+      if (!result.ok) return;
+      const attempt = await result.json() as { status: string; result: import("@/shared/asset-generation").AssetGenerationResponse | null };
+      if (cancelled) return;
+      if (attempt.result?.creation && attempt.result.candidates[0]) setCandidate({ ...attempt.result.candidates[0], response: attempt.result, request: attempt.result.creation });
+      else if (["running", "unknown"].includes(attempt.status)) setError("The last generation is still processing or has an unknown outcome. Close and reopen to check its status; its credit is pending.");
+    }).catch(() => { if (!cancelled) setError("Generation recovery is unavailable. Close and reopen to retry."); });
+    return () => { cancelled = true; };
+  }, [open, cloudSessionId]);
 
   const draftRequest = useMemo<AssetCreationRequest | object>(() => choice === "image"
     ? { mode: "image", prompt: imagePrompt, treatment, format }
@@ -101,12 +120,12 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
     if (!open) return;
     getAssetGenerationCapabilities().then((next) => {
       setCapabilities(next);
-      if (next.provider === "openai") {
+      if (!cloudSessionId && next.provider === "openai") {
         const stored = Number.parseInt(sessionStorage.getItem("mirai-asset-generation-batches") ?? "0", 10);
         setBatchesUsed(Number.isFinite(stored) && stored > 0 ? stored : 0);
       }
     }).catch((cause) => setError(cause instanceof Error ? cause.message : "AI creation is unavailable."));
-  }, [open]);
+  }, [open, cloudSessionId]);
 
   useEffect(() => {
     if (!open) return;
@@ -123,8 +142,8 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
   }
 
   async function generate() {
-    if (!validation.success || !capabilities) return;
-    if (capabilities.provider === "openai") {
+    if (!cloudAiAvailable || !validation.success || !capabilities) return;
+    if (!cloudSessionId && capabilities.provider === "openai") {
       if (batchesUsed >= capabilities.maxBatchesPerSession) {
         setError(`The session limit of ${capabilities.maxBatchesPerSession} paid image requests has been reached.`);
         return;
@@ -138,13 +157,16 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
     setStatus("generating");
     setError(null);
     try {
-      const response = await requestAssetCandidates(validation.data, projectId, crypto.randomUUID());
+      const requestId = crypto.randomUUID();
+      if (cloudSessionId) sessionStorage.setItem(`mirai-ai-creation-${cloudSessionId}`, requestId);
+      const response = await requestAssetCandidates(validation.data, cloudSessionId ?? projectId, requestId, Boolean(cloudSessionId));
       const next = response.candidates[0];
       if (!next) throw new Error("The image provider returned no result.");
+      if (cloudSessionId && candidate) void discardCloudAiPreview(candidate.response.requestId).catch(() => {});
       setCandidate({ ...next, response, request: validation.data });
       if (capabilities.provider === "fake") setBatchesUsed((current) => current + 1);
     } catch (cause) {
-      if (capabilities.provider === "openai" && cause instanceof AssetGenerationRequestError && !cause.imageGenerationAttempted) {
+      if (!cloudSessionId && capabilities.provider === "openai" && cause instanceof AssetGenerationRequestError && !cause.imageGenerationAttempted) {
         setBatchesUsed((current) => {
           const nextUsage = Math.max(0, current - 1);
           sessionStorage.setItem("mirai-asset-generation-batches", String(nextUsage));
@@ -206,11 +228,11 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
 
             {validationMessage && <p className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{validationMessage}</p>}
             {error && <p role="alert" className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{error}</p>}
-            <button data-testid="generate-assets" type="submit" className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-paper outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35" disabled={!validation.success || !capabilities || status !== "idle"}>
+            <button data-testid="generate-assets" type="submit" className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-paper outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35" disabled={!cloudAiAvailable || !validation.success || !capabilities || status !== "idle"}>
               {status === "generating" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-acid" />}
-              {status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}` : `Create ${choiceLabel}`}
+              {status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}${cloudSessionId ? " · 1 credit" : ""}` : `Create ${choiceLabel}${cloudSessionId ? " · 1 credit" : ""}`}
             </button>
-            <p className="text-center font-mono text-[8px] uppercase tracking-wider text-muted">{capabilities ? `${capabilities.model} · low quality · 1 result` : "Loading configuration…"}</p>
+            <p className="text-center font-mono text-[8px] uppercase tracking-wider text-muted">{cloudSessionId ? "1 welcome credit per result · local edits use no credits" : capabilities ? `${capabilities.model} · low quality · 1 result` : "Loading configuration…"}</p>
           </form>
 
           <div className="grid min-h-[430px] grid-rows-[auto_1fr] bg-[#c9c6bc] lg:min-h-0 lg:overflow-y-auto" aria-live="polite">
@@ -220,7 +242,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
             </div>
             {!candidate ? <EmptyResult choice={choice} generating={status === "generating"} /> : (
               <div className="grid place-items-center p-4 sm:p-6">
-                <div data-testid="asset-candidate-1" className="grid max-h-full w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] border border-accent bg-paper shadow-[7px_7px_0_#ef4b32]">
+                <div data-testid="asset-candidate-1" style={{ maxWidth: `min(100%, max(180px, calc((100dvh - 410px) * ${candidate.width / candidate.height})), 42rem)` }} className="grid max-h-full w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] border border-accent bg-paper shadow-[7px_7px_0_#ef4b32]">
                   <span className="flex h-9 items-center justify-between border-b border-ink px-3 font-mono text-[9px] uppercase tracking-wider"><span>Generated result</span><span className="flex items-center gap-1 text-accent"><Check className="size-3" />Selected</span></span>
                   <span className="relative mx-auto w-full bg-[linear-gradient(45deg,#ddd_25%,transparent_25%),linear-gradient(-45deg,#ddd_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#ddd_75%),linear-gradient(-45deg,transparent_75%,#ddd_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px]" style={{ aspectRatio: `${candidate.width} / ${candidate.height}` }}><Image src={candidateDataUrl(candidate.candidateBase64)} alt={`Generated ${candidateLabel}`} fill unoptimized className={cn("object-contain", candidate.request.mode === "mark" && "p-5")} /></span>
                   <span className="flex h-9 items-center justify-between border-t border-ink px-3 text-[10px]"><span>{candidate.width} × {candidate.height}</span><span className={candidate.transparency && candidate.transparency.status !== "clean" ? "text-[#9a4d00]" : "text-[#2c641d]"}>{candidate.transparency ? candidate.transparency.status === "clean" ? "Transparent PNG" : "Cleanup advised" : "Complete PNG"}</span></span>
@@ -231,7 +253,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate }: {
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-ink bg-paper px-4 py-3 sm:px-6">
-          <p className="max-w-xl text-[10px] leading-relaxed text-muted">Using this result makes it the immutable original of a new project. Closing this window discards the temporary result.</p>
+          <p className="max-w-xl text-[10px] leading-relaxed text-muted">Using this result makes it the immutable original of a new project. {cloudSessionId ? "Closing keeps it recoverable for 24 hours; its credit remains spent." : "Closing this window discards the temporary result."}</p>
           <button data-testid="use-generated-asset" type="button" className="flex h-10 items-center gap-2 bg-acid px-4 text-xs font-bold outline-none hover:bg-ink hover:text-paper focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35" disabled={!candidate || status !== "idle"} onClick={() => void openSelected()}>{status === "using" ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}Use in Mirai</button>
         </footer>
       </section>

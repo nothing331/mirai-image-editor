@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { AssetGenerationDialog } from "@/features/asset-generation/AssetGenerationDialog";
+import { CloudAiBalance, useCloudAiUsage } from "./CloudAiStatus";
+import { cloudAiJson } from "./cloud-ai-client";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type PendingUpload = { uploadId: string; name: string; originalName: string; stage: "finalizing" | "attaching" };
 type Phase = "idle" | "reserving" | "uploading" | "finalizing" | "saving";
@@ -15,6 +18,10 @@ async function readResponse<T>(response: Response): Promise<T> {
 
 export function NewProjectForm({ ownerId }: { ownerId: string }) {
   const router = useRouter();
+  const ai = useCloudAiUsage();
+  const [aiSessionId, setAiSessionId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiStarting, setAiStarting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
@@ -23,7 +30,26 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
   const [pending, setPending] = useState<PendingUpload | null>(null);
   const key = `mirai-p05-pending-${ownerId}`;
 
+  const openAiCreation = useCallback(async () => {
+    if (aiStarting || pending || phase !== "idle") return;
+    setAiStarting(true);
+    try {
+      const sessionId = (await cloudAiJson<{ id: string }>(await fetch("/api/ai/sessions", { method: "POST" }))).id;
+      sessionStorage.setItem(`mirai-ai-session-${ownerId}`, sessionId);
+      setAiSessionId(sessionId); setAiOpen(true);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "AI creation is unavailable."); }
+    finally { setAiStarting(false); }
+  }, [aiStarting, ownerId, pending, phase]);
+  const autoOpened = useRef(false);
   useEffect(() => {
+    if (autoOpened.current || new URLSearchParams(window.location.search).get("create") !== "ai" || (!ai.available && !aiSessionId) || pending || phase !== "idle") return;
+    const timer = window.setTimeout(() => { autoOpened.current = true; void openAiCreation(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [ai.available, aiSessionId, pending, phase, openAiCreation]);
+
+  useEffect(() => {
+    const previousSession = sessionStorage.getItem(`mirai-ai-session-${ownerId}`);
+    if (previousSession) window.setTimeout(() => setAiSessionId(previousSession), 0);
     const raw = sessionStorage.getItem(key);
     if (!raw) return;
     try {
@@ -34,7 +60,7 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
         return () => window.clearTimeout(timer);
       }
     } catch { sessionStorage.removeItem(key); }
-  }, [key]);
+  }, [key, ownerId]);
 
   async function attach(uploadId: string, projectName: string) {
     setPhase("saving");
@@ -114,7 +140,7 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
     if (next && !name) setName(next.name.replace(/\.[^.]+$/, "").slice(0, 80));
   }
 
-  return <section className="mx-auto grid min-h-[calc(100dvh-56px)] max-w-6xl border-x border-line lg:grid-cols-[0.9fr_1.1fr]">
+  return <><section className="mx-auto grid min-h-[calc(100dvh-56px)] max-w-6xl border-x border-line lg:grid-cols-[0.9fr_1.1fr]">
     <div className="flex flex-col justify-between border-b border-line bg-ink p-6 text-paper sm:p-10 lg:border-b-0 lg:border-r">
       <div><Link href="/projects" className="font-mono text-[10px] uppercase tracking-[0.12em] text-acid underline underline-offset-4">← My projects</Link>
         <p className="mt-16 font-mono text-[10px] uppercase tracking-[0.18em] text-acid">New project / original image</p>
@@ -123,7 +149,9 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
       <p className="mt-16 font-mono text-[10px] uppercase tracking-[0.12em] text-[#8e8b82]">PNG or JPEG · 10 MiB maximum · 2,048 px per edge</p>
     </div>
     <div className="flex items-center p-6 sm:p-10"><form onSubmit={submit} className="w-full max-w-lg">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">01 / Select image</p>
+      <CloudAiBalance usage={ai.usage} error={ai.error} />
+      <button type="button" className="my-5 min-h-11 border border-ink px-4 text-sm font-bold hover:bg-ink hover:text-paper focus-visible:outline-2 focus-visible:outline-acid disabled:opacity-40" disabled={aiStarting || (!ai.available && !aiSessionId) || Boolean(pending) || phase !== "idle"} onClick={() => void openAiCreation()}>Create with AI</button>
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">01 / Upload image</p>
       {pending ? <div role="status" className="mt-4 border-l-2 border-acid bg-[#edf5c4] p-4 text-sm leading-6">{pending.originalName} is uploaded. Finish saving this project before starting another image.</div>
         : <label className="mt-4 flex min-h-36 cursor-pointer flex-col items-center justify-center border border-dashed border-line bg-[#e8e5dc] px-5 text-center hover:border-ink focus-within:outline-2 focus-within:outline-acid">
           <span className="text-2xl" aria-hidden="true">↑</span><span className="mt-2 text-sm font-bold">{file ? file.name : "Choose an image"}</span><span className="mt-1 text-xs text-muted">PNG or JPEG, up to 10 MiB</span>
@@ -136,5 +164,12 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
       <div className="mt-7 flex flex-wrap items-center gap-4"><button type="submit" disabled={phase !== "idle"} className="inline-flex min-h-11 items-center border border-ink bg-acid px-5 text-sm font-bold hover:bg-ink hover:text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acid disabled:cursor-wait disabled:opacity-60">{pending ? "Finish saving project" : "Save project"} <span aria-hidden="true" className="ml-3">↗</span></button>
         {phase === "reserving" || phase === "uploading" ? <button type="button" onClick={() => abortRef.current?.abort()} className="min-h-11 text-sm underline underline-offset-4">Stop upload</button> : null}</div>
     </form></div>
-  </section>;
+  </section>
+    {aiSessionId && <AssetGenerationDialog open={aiOpen} cloudSessionId={aiSessionId} cloudAiAvailable={ai.available} onClose={() => setAiOpen(false)} onUseCandidate={async (candidate) => {
+      const result = await cloudAiJson<{ project: { id: string } }>(await fetch(`/api/ai/attempts/${candidate.response.requestId}/use`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() || "AI creation" }) }));
+      sessionStorage.removeItem(`mirai-ai-session-${ownerId}`);
+      router.push(`/projects/${result.project.id}`);
+      return true;
+    }} />}
+  </>;
 }

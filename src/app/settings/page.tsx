@@ -14,5 +14,5 @@ export default async function SettingsPage() {
   const usage = await readAccountUsage(account.profile.id);
   return <ProjectShell email={account.profile.email} ownerId={account.profile.id}><AccountSettings
     displayName={account.profile.display_name} email={account.profile.email}
-    usage={usage} aiAllowance={account.initialAiImageAllowance} /></ProjectShell>;
+    usage={usage} /></ProjectShell>;
 }
