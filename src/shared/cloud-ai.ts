@@ -3,7 +3,7 @@ import { assetCreationRequestSchema } from "./asset-generation";
 import { extendPresets } from "./extend-presets";
 import { transformPresets } from "./transform-presets";
 
-export const aiUsageSchema = z.object({ granted: z.number().int().nonnegative(), spent: z.number().int().nonnegative(), pending: z.number().int().nonnegative(), enabled: z.boolean() });
+export const aiUsageSchema = z.object({ unlimited: z.boolean().default(false), granted: z.number().int().nonnegative(), spent: z.number().int().nonnegative(), pending: z.number().int().nonnegative(), enabled: z.boolean() });
 export type AiUsage = z.infer<typeof aiUsageSchema>;
 export const cloudAiEditSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), inputVersionId: z.uuid(),
