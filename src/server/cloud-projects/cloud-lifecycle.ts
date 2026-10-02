@@ -16,11 +16,18 @@ function lifecycleError(message: string): never {
 }
 
 export async function listTrashedProjects(ownerId: string) {
-  const { data, error } = await createAdminSupabaseClient().from("cloud_projects")
-    .select("id,owner_id,name,status,deleted_at,purge_after").eq("owner_id", ownerId)
-    .eq("status", "trash").order("deleted_at", { ascending: false }).limit(50);
-  if (error || !data) throw new CloudProjectError("unavailable", "Trash could not be loaded.");
-  return data.map((row) => lifecycleProject.parse(row));
+  const client = createAdminSupabaseClient();
+  const projects: Array<z.infer<typeof lifecycleProject>> = [];
+  const pageSize = 100;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client.from("cloud_projects")
+      .select("id,owner_id,name,status,deleted_at,purge_after").eq("owner_id", ownerId)
+      .eq("status", "trash").order("deleted_at", { ascending: false }).order("id", { ascending: true }).range(offset, offset + pageSize - 1);
+    if (error || !data) throw new CloudProjectError("unavailable", "Trash could not be loaded.");
+    projects.push(...data.map((row) => lifecycleProject.parse(row)));
+    if (data.length < pageSize) break;
+  }
+  return projects;
 }
 
 export async function changeProjectLifecycle(ownerId: string, projectId: string, action: "trash" | "restore" | "purge") {

@@ -51,7 +51,8 @@ export async function ownedAttempt(ownerId: string, requestId: string): Promise<
 
 export async function readAiResult(attempt: AiAttempt): Promise<StoredAiResult> {
   if (!["ready", "accepted"].includes(attempt.status) || Date.parse(attempt.expires_at) <= Date.now()) {
-    throw new CloudProjectError("conflict", attempt.status === "failed" ? "This generation failed and its credit was restored. Start a new generation to try again." : ["running", "unknown"].includes(attempt.status) ? "This AI request is still processing or has an unknown outcome. Its credit is pending; generating again will not recover it." : "This temporary AI result has expired or was discarded.");
+    const unlimited = (await aiUsage(attempt.owner_id).catch(() => null))?.unlimited;
+    throw new CloudProjectError("conflict", attempt.status === "failed" ? unlimited ? "This generation failed. Start a new generation to try again." : "This generation failed and its credit was restored. Start a new generation to try again." : ["running", "unknown"].includes(attempt.status) ? unlimited ? "This AI request is still processing or has an unknown outcome. Check this request before generating again." : "This AI request is still processing or has an unknown outcome. Its credit is pending; generating again will not recover it." : "This temporary AI result has expired or was discarded.");
   }
   const { data, error } = await createAdminSupabaseClient().storage.from(AI_RESULT_BUCKET).download(attempt.result_key);
   if (error || !data) aiError("result download failed");
@@ -114,7 +115,8 @@ export class PaidAttempt {
       const correlation = cause && typeof cause === "object" && "diagnostics" in cause ? (cause.diagnostics as { providerRequestId?: unknown } | undefined)?.providerRequestId : null;
       const settled = await client.rpc("mirai_finish_ai_stage", { target_owner: this.attempt.owner_id, target_id: this.attempt.id, target_ordinal: started.data, target_status: status, target_provider: typeof correlation === "string" ? correlation.slice(0, 200) : null });
       if (settled.error) aiError(settled.error.message);
-      throw new CloudProjectError("unavailable", status === "unknown" ? "The provider outcome is unknown. Your credit is pending; check this request before trying again." : "The generation failed. Your AI credit will be restored.");
+      const unlimited = (await aiUsage(this.attempt.owner_id).catch(() => null))?.unlimited;
+      throw new CloudProjectError("unavailable", status === "unknown" ? unlimited ? "The provider outcome is unknown. Check this request before trying again." : "The provider outcome is unknown. Your credit is pending; check this request before trying again." : unlimited ? "The generation failed. Start a new generation to try again." : "The generation failed. Your AI credit will be restored.");
     }
     const providerRequestId = value && typeof value === "object" && "providerRequestId" in value ? String(value.providerRequestId) : null;
     const settled = await client.rpc("mirai_finish_ai_stage", { target_owner: this.attempt.owner_id, target_id: this.attempt.id, target_ordinal: started.data, target_status: "succeeded", target_provider: providerRequestId, target_usage: numericProviderUsage(value && typeof value === "object" && "usage" in value ? value.usage : undefined) });

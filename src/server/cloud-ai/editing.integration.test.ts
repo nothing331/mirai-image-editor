@@ -8,7 +8,7 @@ import { reserveOriginalUpload, uploadOriginalBytes, finalizeOriginalUpload } fr
 import { createCloudProject } from "@/server/cloud-projects/cloud-projects";
 import { commitCloudEdit, readCloudVersionBytes, listCloudHistory, selectCloudVersion } from "@/server/cloud-projects/cloud-edit-history";
 import { generateCloudEdit, generateCloudExtend, planCloudExtend, prepareAiAcceptance } from "./editing";
-import { aiUsage, createAiSession, ownedAttempt, runAiAttempt, discardAiAttempt, AI_RESULT_BUCKET } from "./attempts";
+import { aiUsage, createAiSession, ownedAttempt, readAiResult, runAiAttempt, discardAiAttempt, AI_RESULT_BUCKET, type PaidAttempt } from "./attempts";
 import { attachCloudOriginal, generateCloudOriginal } from "./creation";
 import * as providers from "@/server/ai/provider-factory";
 import { unavailableTransformFidelityAssessment } from "@/shared/transform-fidelity";
@@ -154,7 +154,7 @@ describe.runIf(enabled)("Wave D cloud AI with actual Postgres and private Storag
     const startedPromise = new Promise<void>((resolve) => { started = resolve; });
     const hold = new Promise<void>((resolve) => { release = resolve; });
     const input = { ownerId: foreignId, requestId, sessionId: session.id, workflow: "creation" as const, payload: { purpose: "race" }, real: false, stages: ["image" as const] };
-    const execute = async (attempt: Parameters<Parameters<typeof runAiAttempt>[1]>[0]) => {
+    const execute = async (attempt: PaidAttempt) => {
       await attempt.stage("image", async () => { calls++; started(); await hold; return { providerRequestId: "fake-race", usage: { input_tokens: 9 } }; });
       return { response: { candidate: "bounded fixture" } };
     };
@@ -228,6 +228,40 @@ describe.runIf(enabled)("Wave D cloud AI with actual Postgres and private Storag
     }
     expect((await aiUsage(ownerId)).spent).toBe(before.spent + 2);
     expect((await listCloudHistory(ownerId, project.id)).versions).toHaveLength(1);
+  });
+
+  it("lets an admin without a grant recover previews beyond member credits and reports pending requests without credit warnings", async () => {
+    const admin = createAdminSupabaseClient();
+    const accountId = randomUUID();
+    expect((await admin.auth.admin.createUser({ id: accountId, email: `${accountId}@example.test`, email_confirm: true })).error).toBeNull();
+    expect((await admin.from("profiles").update({ status: "active", account_role: "owner" }).eq("id", accountId)).error).toBeNull();
+    const session = await createAiSession(accountId);
+    expect((await admin.from("ai_attempts").insert(Array.from({ length: 27 }, () => ({ id: randomUUID(), owner_id: accountId,
+      creation_session_id: session.id, workflow: "creation", executor_id: randomUUID(), digest: "a".repeat(64), status: "expired",
+      credit_state: "spent", storage_bytes: 0, budget_reserved: 0, result_key: `synthetic-admin/${randomUUID()}` })))).error).toBeNull();
+    expect(await aiUsage(accountId)).toMatchObject({ unlimited: true, granted: 0, spent: 27 });
+    const input = { ownerId: accountId, requestId: randomUUID(), sessionId: session.id, workflow: "creation" as const, payload: {}, real: false, stages: ["image" as const] };
+    const execute = vi.fn(async (attempt: PaidAttempt) => {
+      await attempt.stage("image", async () => ({ providerRequestId: "synthetic-admin" }));
+      return { response: { result: "synthetic stored preview" } };
+    });
+    const result = await runAiAttempt(input, execute);
+    expect(await runAiAttempt(input, execute)).toEqual(result);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(await aiUsage(accountId)).toMatchObject({ unlimited: true, spent: 28, pending: 0 });
+    await discardAiAttempt(accountId, input.requestId);
+    process.env.MIRAI_AI_IMAGE_STAGE_MICROUSD = "10";
+    const unknownId = randomUUID();
+    try {
+      await expect(runAiAttempt({ ...input, requestId: unknownId, real: true }, (attempt) => attempt.stage("image", async () => {
+        throw { diagnostics: { status: 408 } };
+      }))).rejects.toThrow("The provider outcome is unknown. Check this request before trying again.");
+      await expect(readAiResult(await ownedAttempt(accountId, unknownId))).rejects.toThrow("Check this request before generating again.");
+    } finally {
+      delete process.env.MIRAI_AI_IMAGE_STAGE_MICROUSD;
+      await admin.from("ai_attempts").update({ lease_until: new Date(0).toISOString() }).eq("id", unknownId);
+      expect((await admin.rpc("mirai_reconcile_ai", { target_id: unknownId, target_outcome: "failed", target_bytes: 0, target_reason: "Synthetic admin provider confirmed failure" })).error).toBeNull();
+    }
   });
 
 });
