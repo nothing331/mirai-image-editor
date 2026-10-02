@@ -1,0 +1,61 @@
+begin;
+select no_plan();
+insert into auth.users(id,email) values
+('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','ai-a@example.test'),
+('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','ai-b@example.test');
+update public.profiles set status='active' where id in ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+insert into public.account_allowance_grants(account_id,allowance_key,granted_quantity,granted_by)
+select id,'initial-ai-images',25,id from public.profiles where id in ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+insert into public.ai_creation_sessions(id,owner_id) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+update public.ai_control set enabled=true,budget_microusd=100,committed_microusd=0;
+select ok(not has_function_privilege('authenticated','public.mirai_admit_ai(uuid,uuid,uuid,uuid,uuid,text,text,bigint,uuid)','execute'),'browser cannot admit paid requests directly');
+select ok(not has_table_privilege('authenticated','public.ai_attempts','SELECT'),'browser cannot read raw private AI attempts');
+select ok(not has_table_privilege('anon','public.ai_stage_attempts','SELECT'),'anonymous cannot read provider accounting');
+select ok((select relrowsecurity from pg_class where oid='public.ai_attempts'::regclass),'attempt RLS is enabled');
+select is((public.mirai_ai_usage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')->>'granted')::integer,25,'welcome grant is shared and one-time');
+select lives_ok($$ select public.mirai_admit_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',null,null,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','creation',repeat('a',64),20,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3') $$,'admit before provider work');
+select lives_ok($$ select public.mirai_admit_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',null,null,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','creation',repeat('a',64),20,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4') $$,'same key returns same attempt');
+select is((select executor_id from public.ai_attempts where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'),'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3'::uuid,'same-key racing executor never owns existing lease');
+select is((public.mirai_ai_usage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')->>'pending')::integer,1,'duplicate does not reserve another credit');
+select throws_ok($$ select public.mirai_admit_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',null,null,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','creation',repeat('b',64),20,gen_random_uuid()) $$,'P0001','AI request key reused','changed payload cannot reuse key');
+select throws_ok($$ select public.mirai_admit_ai('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',null,null,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','creation',repeat('b',64),20,gen_random_uuid()) $$,'P0001','AI is busy','global concurrency works across users');
+select throws_ok($$ select public.mirai_start_ai_stage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2','image',21) $$,'P0001','AI stage budget reached','stage cannot exceed reserved spending');
+select is(public.mirai_start_ai_stage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2','image',15),1,'stage is durable before call');
+select lives_ok($$ select public.mirai_finish_ai_stage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2',1,'unknown',null) $$,'unknown outcome remains conservatively billed');
+select lives_ok($$ select public.mirai_finish_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2','failed',0) $$,'failed request with uncertain stage becomes unknown');
+select is((select status from public.ai_attempts where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'),'unknown','unknown stage cannot trigger a credit refund');
+select is((select committed_microusd from public.ai_control where id),15::bigint,'uncertain provider ceiling is recorded globally');
+select is((public.mirai_ai_usage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')->>'pending')::integer,1,'uncertain user credit remains pending');
+update public.ai_attempts set lease_until=now()-interval '1 minute' where id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2';
+select lives_ok($$ select public.mirai_reconcile_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2','failed',0,'Provider confirmed no recoverable result') $$,'operator can resolve failure after lease expiration');
+select is((public.mirai_ai_usage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')->>'pending')::integer,0,'reconciliation restores the user credit');
+select is((select committed_microusd from public.ai_control where id),15::bigint,'courtesy refund never erases provider spend');
+select is((select count(*) from public.ai_reconciliation_log),1::bigint,'reconciliation leaves audit evidence');
+update public.ai_control set budget_microusd=20;
+select throws_ok($$ select public.mirai_admit_ai('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',null,null,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','creation',repeat('b',64),10,gen_random_uuid()) $$,'P0001','global AI budget reached','aggregate spending survives user refunds');
+update public.ai_control set budget_microusd=100;
+select lives_ok($$ select public.mirai_admit_ai('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2',null,null,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','creation',repeat('b',64),10,gen_random_uuid()) $$,'another request can enter after reconciliation');
+select throws_ok($$ select public.mirai_finish_ai('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2','ready',100) $$,'P0001','stored AI result required','success cannot acknowledge unstored result');
+select public.mirai_start_ai_stage('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2','image',10);
+update public.ai_attempts set lease_until=now()-interval '1 minute' where id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2';
+select public.mirai_expire_ai_leases();
+select is((select status from public.ai_attempts where id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'),'unknown','server termination fences abandoned lease');
+select is((select committed_microusd from public.ai_control where id),25::bigint,'terminated stage retains spending ceiling');
+select throws_ok($$ select public.mirai_finish_ai('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2','ready',100) $$,'P0001','AI completion fenced','late completion cannot resurrect fenced attempt');
+select is(public.mirai_claim_ai_cleanup('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'),null::text,'unknown result reservation cannot be cleaned prematurely');
+select lives_ok($$ select public.mirai_reconcile_ai('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2','failed',0,'Provider failed after process termination') $$,'resolve terminated request safely');
+select is(public.mirai_claim_ai_cleanup('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'),'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2/result.json','cleanup is fenced by durable status');
+select lives_ok($$ select public.mirai_finish_ai_cleanup('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2') $$,'release storage only after absence is confirmed');
+select is((select storage_bytes from public.ai_attempts where id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2'),0::bigint,'physical cleanup frees quota');
+delete from public.ai_attempts where owner_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+select is((select committed_microusd from public.ai_control where id),25::bigint,'account data deletion cannot replenish the global provider budget');
+
+select ok(not has_function_privilege('authenticated','public.mirai_create_ai_session(uuid)','execute'),'browser cannot create uncontrolled sessions');
+select is(public.mirai_create_ai_session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),public.mirai_create_ai_session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),'creation session endpoint reuses one live session');
+insert into public.ai_attempts(id,owner_id,creation_session_id,workflow,executor_id,digest,status,credit_state,storage_bytes,budget_reserved,result_key)
+select gen_random_uuid(),'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','creation',gen_random_uuid(),repeat('a',64),'expired','spent',0,0,'exhausted/'||n from generate_series(1,25) n;
+select is((public.mirai_ai_usage('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')->>'spent')::integer,25,'exhausted account has 25 spent welcome credits');
+select throws_ok($$ select public.mirai_admit_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',gen_random_uuid(),null,null,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','creation',repeat('e',64),0,gen_random_uuid()) $$,'P0001','AI credit allowance reached','no twenty-sixth preview can be admitted');
+select throws_ok($$ select public.mirai_admit_ai('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',gen_random_uuid(),null,null,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','creation',repeat('e',64),0,gen_random_uuid()) $$,'P0001','AI credit allowance reached','repeated admission cannot replenish credits');
+select * from finish();
+rollback;
