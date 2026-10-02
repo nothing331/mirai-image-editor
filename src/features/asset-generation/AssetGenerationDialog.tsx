@@ -69,7 +69,8 @@ const defaultBrief: AssetGenerationBrief = {
 
 const defaultCustomColors = ["#171714", "#d8f441"];
 
-export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSessionId, cloudAiAvailable = true, cloudUnlimited = false }: {
+export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSessionId, cloudAiAvailable = true, cloudUnlimited = false, initialChoice = "logo-mark" }: {
+  initialChoice?: CreationChoice;
   cloudSessionId?: string;
   cloudAiAvailable?: boolean;
   cloudUnlimited?: boolean;
@@ -77,7 +78,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   onClose: () => void;
   onUseCandidate: (candidate: DisplayedAssetCandidate) => Promise<boolean>;
 }) {
-  const [choice, setChoice] = useState<CreationChoice>("logo-mark");
+  const [choice, setChoice] = useState<CreationChoice>(initialChoice);
   const [brief, setBrief] = useState(defaultBrief);
   const [imagePrompt, setImagePrompt] = useState("");
   const [treatment, setTreatment] = useState<ImageTreatment>("auto");
