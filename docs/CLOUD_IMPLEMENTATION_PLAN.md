@@ -501,12 +501,12 @@ Old browser tabs may live across deployments. Version contracts so old clients f
 | Limit | Proposal | Reason |
 |---|---|---|
 | Invitations | No fixed account-count ceiling; owner invitation or approval required | Owner controls admission; aggregate resource budgets independently control spend |
-| Active projects | 5 per account | Multiple projects without an unlimited library |
-| Total committed user assets | Proposed 100 MiB per account, including trash | Aggregate depends on actual approved accounts; global reserve still applies and this numeric per-user proposal is not yet approved |
+| Active projects | 5 per member; unlimited for active admins | Member beta allowance; trusted owners are exempt |
+| Total committed user assets | 100 MiB per member, including trash; unlimited account allowance for active admins | Global storage capacity remains enforced for everyone |
 | Upload file size | 10 MiB | Reasonable initial transport bound |
 | Editing dimensions | At most 2,048 px on either edge, at most 4,194,304 pixels | Starting benchmark envelope, not proof it fits the free instance |
 | Output dimensions | Same envelope, including Resize and Extend | Prevent bypassing limits after upload; incompatible presets must be disabled clearly |
-| AI credits | 25 one-time welcome credits per invited/owner-approved account | Shared across projects and AI workflows; one credit per produced preview; local processing/export use none; global provider budget remains separate |
+| AI credits | 25 one-time welcome credits per invited/owner-approved member; active owner/admin accounts have unlimited account allowances | Shared across projects and AI workflows; one credit per produced preview; local processing/export use none; global provider budget remains separate |
 | Concurrent heavy processing | 1 globally and 1 per user initially | Reduce memory and spend spikes |
 | Temporary candidates | Proposed 24-hour maximum, earlier cleanup on discard where safe | Recovery window without a permanent generation gallery |
 | Trash | 7 days | Small recovery window; counts against quota |
@@ -518,7 +518,7 @@ Use a separate small aggregate temporary-upload/result reserve and backup reserv
 
 Proposed zero-billing global storage watermarks: warn at 600 MiB of managed objects, stop new large uploads/generations at 700 MiB, and leave the rest of the included 1 GB for in-flight reservations, staging, cleanup lag, and provider-reported accounting variance. Keep backups outside this live-object allowance or reduce the product cutoff further. Before enabling work, verify that predicted usage including reserved bytes stays below the cutoff. Bound temporary reservations in total, not just per user.
 
-Do not implement an automatic reset: the approved welcome grant is one-time. A future recurring policy requires a new product decision. One user-facing generation action may purchase several provider stages. A request rejected before all paid work releases its reservation; partial/unknown provider work keeps the corresponding cost reservation. A failed request does not enter edit history. Any courtesy restoration of user allowance is a separate audited decision and does not erase actual provider cost. Pure cached analysis/frame recalculation uses no new AI attempt. New Extend analyses use the global provider budget with a separate lifetime cap of 25 analyses per account, and require an available preview credit; they do not deduct a user credit.
+Do not implement an automatic reset: the approved welcome grant is one-time. A future recurring policy requires a new product decision. One user-facing generation action may purchase several provider stages. A request rejected before all paid work releases its reservation; partial/unknown provider work keeps the corresponding cost reservation. A failed request does not enter edit history. Any courtesy restoration of user allowance is a separate audited decision and does not erase actual provider cost. Pure cached analysis/frame recalculation uses no new AI attempt. Active owners are exempt from project, credit, account-storage, hourly-attempt and lifetime-analysis member allowances; global funding/capacity, execution and authorization gates remain enforced. New Extend analyses use the global provider budget with a separate lifetime cap of 25 analyses per member account, and require an available preview credit; they do not deduct a user credit.
 
 ### 8.2 Prevent waste before buying more infrastructure
 

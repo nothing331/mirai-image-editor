@@ -16,7 +16,9 @@ The editor supports PNG/JPEG upload plus a unified AI creation studio for icon/l
 
 ## Controlled cloud AI decision
 
-The personal cloud product uses five active projects per account and 25 one-time welcome AI credits shared across all projects. Creation, Remove, Replace, Restyle, generative Transform and Extend each cost one credit per produced preview. Acceptance, discard, undo and deletion do not refund produced work. Confirmed failures restore a user credit; uncertain outcomes keep it pending. Local processing and export cost no AI credits. Invitations and approvals never reset the grant.
+The personal cloud product gives invited members five active projects per account and 25 one-time welcome AI credits shared across all projects. Creation, Remove, Replace, Restyle, generative Transform and Extend each cost one credit per produced preview. Acceptance, discard, undo and deletion do not refund produced work. Confirmed failures restore a user credit; uncertain outcomes keep it pending. Local processing and export cost no AI credits. Invitations and approvals never reset the grant.
+
+Active admin (`owner`) accounts have no per-account project, AI-credit, storage, hourly-attempt or lifetime-analysis allowance. The trusted active database role authorizes this exemption. Global provider funding, storage capacity, concurrency, off switch, request envelopes and source ownership remain enforced; invited members retain five projects and 25 one-time shared welcome credits.
 
 Cloud AI routes resolve owned immutable source assets on the server, reserve account/storage/provider budgets atomically, record every paid stage, and privately persist results before reporting success. The database owns concurrency, idempotency, lease fencing and usage; the shared acceptance pipeline uses stored candidates and fidelity evidence. Extend analysis is owned and version-cached; newly purchased analyses have a bounded planning allowance and consume global provider budget. Provider spending uses conservative integer stage ceilings independently of user credits, preserving the aggregate even when an account is deleted. Execution remains attached to the request; no reliable background executor is claimed.
 
@@ -306,8 +308,8 @@ These decisions are intentionally kept here until the project becomes large enou
 | Development storage | SQLite and local filesystem | Provisional |
 | Zero-billing cloud target | Next.js on Render Free with Supabase Free Auth, Postgres, and private Storage; no payment-method-backed object store | Accepted; P01 validated and P02 live walkthrough complete |
 | Cloud runtime safety | Explicit local/CI/staging/beta modes; fail closed before authenticated Supabase persistence exists; migrations separate from startup | Accepted in Wave A P02 |
-| Cloud identity and eligibility | Google identity through Supabase Auth; application profile status and server-configured owner role separately gate access; approval/invitation grants one fixed five-image allowance | Accepted in Wave B P03 |
-| Cloud personal workspace | Five active owned projects, immutable deterministic edit/history chain, browser draft cache, exact-original and accepted-version export, trash, account deletion, and portable account archive | Implemented in Waves B/C; staged rollout requires the Wave C hosted checklist |
+| Cloud identity and eligibility | Google identity through Supabase Auth; application profile status and server-configured owner role separately gate access; approval/invitation grants 25 one-time shared welcome AI credits for members; active owners have unlimited account allowances | Accepted in Wave B P03 |
+| Cloud personal workspace | Five active projects for members, unlimited account allowances for owners, immutable deterministic edit/history chain, browser draft cache, exact-original and accepted-version export, trash, account deletion, and portable account archive | Implemented in Waves B/C; staged rollout requires the Wave C hosted checklist |
 | Request diagnostics | Structured local manifests plus directly inspectable artifacts | Accepted |
 | Replace intent planning | Structured multimodal plan before image generation | Accepted |
 | Generative selection semantics | Approximate focus by default; explicit protected boundary available | Accepted |
