@@ -1,8 +1,10 @@
+import { postCloudAi } from "@/features/cloud-projects/cloud-ai-client";
 import { decodeImage, pixelsToDataUrl } from "./image-data";
 import type { ImageVersion, ProcessingMask, ExtendInput } from "./types";
 import type { ExtendSceneAnalysis, SmartReframePlan } from "@/shared/extend-plan";
 
-export async function requestExtendPlan(version: ImageVersion, input: ExtendInput, cachedAnalysis: ExtendSceneAnalysis | null, projectId: string) {
+export async function requestExtendPlan(version: ImageVersion, input: ExtendInput, cachedAnalysis: ExtendSceneAnalysis | null, projectId: string, cloud = false) {
+  if (cloud) return postCloudAi<{ analysis: ExtendSceneAnalysis; plan: SmartReframePlan }>("/api/image-extends/plan", { requestId: crypto.randomUUID(), projectId, inputVersionId: version.id, ...input });
   const form = new FormData();
   form.set("image", await imageFile(version));
   form.set("presetId", input.presetId);
@@ -15,23 +17,25 @@ export async function requestExtendPlan(version: ImageVersion, input: ExtendInpu
   return { analysis: payload.analysis, plan: payload.plan };
 }
 
-export async function requestExtendCandidate(version: ImageVersion, input: ExtendInput, analysis: ExtendSceneAnalysis, plan: SmartReframePlan, projectId: string, onPhase?: (phase: "sending" | "generating" | "preparing") => void) {
+export async function requestExtendCandidate(version: ImageVersion, input: ExtendInput, analysis: ExtendSceneAnalysis, plan: SmartReframePlan, projectId: string, onPhase?: (phase: "sending" | "generating" | "preparing") => void, cloud = false) {
   const requestId = crypto.randomUUID();
   onPhase?.("sending");
   const form = new FormData();
-  form.set("image", await imageFile(version));
-  form.set("prompt", input.userPrompt.trim());
-  form.set("analysis", JSON.stringify(analysis));
-  form.set("plan", JSON.stringify(plan));
+  if (!cloud) {
+    form.set("image", await imageFile(version));
+    form.set("prompt", input.userPrompt.trim());
+    form.set("analysis", JSON.stringify(analysis));
+    form.set("plan", JSON.stringify(plan));
+  }
   onPhase?.("generating");
-  const response = await fetch("/api/image-extends/generate", { method: "POST", headers: { "x-project-id": projectId, "x-request-id": requestId }, body: form });
+  const response = cloud ? Response.json(await postCloudAi("/api/image-extends/generate", { requestId, projectId, inputVersionId: version.id, ...input, plan })) : await fetch("/api/image-extends/generate", { method: "POST", headers: { "x-project-id": projectId, "x-request-id": requestId }, body: form });
   onPhase?.("preparing");
   const payload = await response.json() as { candidateBase64?: string; providerRequestId?: string; resolvedInstruction?: string; width?: number; height?: number; error?: string };
   if (!response.ok || !payload.candidateBase64 || !payload.providerRequestId || !payload.width || !payload.height) throw new Error(payload.error ?? "Image extension failed.");
   const candidate = await decodeBase64(payload.candidateBase64, "candidate.png");
   if (candidate.width !== payload.width || candidate.height !== payload.height) throw new Error("The Extend result dimensions are invalid.");
   const mask: ProcessingMask = { width: candidate.width, height: candidate.height, data: new Uint8ClampedArray(candidate.width * candidate.height).fill(255) };
-  void uploadExtendPreview(projectId, requestId, candidate.dataUrl);
+  if (!cloud) void uploadExtendPreview(projectId, requestId, candidate.dataUrl);
   return { ...candidate, mask, providerRequestId: payload.providerRequestId, diagnosticRequestId: requestId, resolvedInstruction: payload.resolvedInstruction ?? input.userPrompt };
 }
 
