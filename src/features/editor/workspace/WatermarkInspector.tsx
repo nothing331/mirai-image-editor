@@ -7,6 +7,7 @@ import { decodeOverlayImage } from "../image-data";
 import { getCurrentVersion, useEditorStore } from "../store";
 import type { WatermarkParameters } from "../types";
 import { RangeField } from "./TextInspector";
+import { DirectEditActions } from "./DirectEditActions";
 
 const anchors: WatermarkParameters["anchor"][] = ["north-west", "north", "north-east", "west", "center", "east", "south-west", "south", "south-east"];
 
@@ -77,9 +78,9 @@ export function WatermarkInspector() {
           <RangeField label="Rotation" value={parameters.rotation} min={-180} max={180} step={1} display={`${Math.round(parameters.rotation)}°`} onChange={(rotation) => update({ rotation })} />
           <NumberField label="Margin" value={parameters.margin} min={0} onChange={(margin) => update({ margin })} />
           <p className="border-l-2 border-acid bg-[#edf5c4] p-3 text-[10px] leading-relaxed text-ink">Presets place the mark quickly. Drag it anywhere on the image to switch to free positioning.</p>
-          <p className="font-mono text-[8px] uppercase leading-relaxed tracking-[.1em] text-muted">Switch tools when finished. You’ll be asked whether to save the watermark.</p>
         </section>
       </div>
+      <DirectEditActions draft={draft} />
     </div>
   );
 }

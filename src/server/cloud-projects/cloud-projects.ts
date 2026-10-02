@@ -19,6 +19,7 @@ export interface CloudProject {
   headVersionId: string;
   revision: number;
   createdAt: string;
+  updatedAt: string;
   width: number;
   height: number;
   originalName: string;
@@ -42,7 +43,8 @@ function projectWithUpload(row: unknown, upload: unknown): CloudProject {
   return {
     id: project.id, name: project.name, originalUploadId: project.original_upload_id,
     currentVersionId: project.current_version_id, headVersionId: project.head_version_id, revision: project.revision,
-    createdAt: project.created_at, width: original.width, height: original.height,
+    createdAt: project.created_at, updatedAt: project.updated_at,
+    width: original.width, height: original.height,
     originalName: original.original_name,
   };
 }
@@ -101,6 +103,19 @@ export async function getCloudProject(ownerId: string, projectId: string): Promi
     .eq("owner_id", ownerId).eq("state", "ready").single();
   if (upload.error) throw new CloudProjectError("unavailable", "The original could not be opened.");
   return projectWithUpload(data, upload.data);
+}
+
+export async function renameCloudProject(ownerId: string, projectId: string, name: string): Promise<CloudProject> {
+  const normalized = name.trim();
+  if (!normalized || normalized.length > 80) throw new CloudProjectError("invalid", "Use a project name between 1 and 80 characters.");
+  const client = createAdminSupabaseClient();
+  const { data, error } = await client.from("cloud_projects")
+    .update({ name: normalized, updated_at: new Date().toISOString() })
+    .eq("id", projectId).eq("owner_id", ownerId).eq("status", "active")
+    .select("id").maybeSingle();
+  if (error) throw new CloudProjectError("unavailable", "The project could not be renamed.");
+  if (!data) throw new CloudProjectError("not-found", "Project not found.");
+  return getCloudProject(ownerId, projectId);
 }
 
 export async function getCloudProjectImage(ownerId: string, project: CloudProject): Promise<string> {

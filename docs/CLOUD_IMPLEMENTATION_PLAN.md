@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A complete. P03 accounts and invitations are working on staging; the remaining account walkthrough is tracked separately. P04 private original assets and P05 project creation/reopening passed local and Render/Supabase staging checks on 2026-09-26. P06/P07 cloud editing and history passed local automated checks and the primary Render/Supabase staging walkthrough on 2026-09-26; additional hosted failure, access, and geometry cases remain tracked in the runbook. P08 and later cloud features remain planned.
+**Status:** Wave A complete. P03 accounts and invitations are working on staging; the remaining account walkthrough is tracked separately. P04 private original assets and P05 project creation/reopening passed local and Render/Supabase staging checks on 2026-09-26. P06/P07 cloud editing and history passed local automated checks and the primary Render/Supabase staging walkthrough on 2026-09-26; additional hosted failure, access, and geometry cases remain tracked in the runbook. Wave C P08–P13 and its P18 maintenance dependency are implemented together on a review branch and have local database/browser coverage; hosted migration, maintenance credentials, and staging walkthrough remain release gates.
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -643,12 +643,12 @@ At this checkpoint the main vertical slice is usable with local/fake edits. Depl
 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
-| P08 | Library completion: thumbnails, pagination/search/sort, rename; after P05–P07 | Empty/error/long-name/narrow cases; no full-history list downloads |
-| P09 | Browser draft cache and cross-surface navigation/session recovery; after P06–P07 | Same-account draft restore, eviction/denial fallback, stale-base rejection, logout purge; no dedicated conflict UI |
-| P10 | Export completion: accepted-version download, format/background/filename, original download; after P07 | No provider calls, correct dimensions/transparency, remote canvas test |
-| P11 | Trash, restore and project purge; after P08 and maintenance foundation | Restorable project; purge retry; no asset resurrection or premature quota release |
-| P12 | Account settings, usage and deletion; after P03/P11 | Recent-auth deletion, in-flight result cleanup, cached session denial |
-| P13 | Portable account data export; after P07/P12 and maintenance foundation | Manifest/assets complete, private expiring result, large export bounded, deletion race handled |
+| P08 | Implemented locally: current-image thumbnails, bounded load-more/search/sort, rename; after P05–P07 | Empty/error/long-name/narrow cases; no full-history list downloads; hosted check pending |
+| P09 | Implemented locally: IndexedDB browser draft, guarded navigation, same-version restore and logout/account-switch purge; after P06–P07 | Browser restore and stale-base tests pass; cache denial/eviction remains best effort; hosted check pending |
+| P10 | Implemented locally: accepted-version PNG/JPEG/background/filename and exact-original download; after P07 | Browser download and original-byte path pass; hosted remote-browser check pending |
+| P11 | Implemented locally: trash, restore and fenced project purge; after P08 and P18 foundation | Transaction/Storage cleanup tests pass; hosted maintenance retry check pending |
+| P12 | Implemented locally: profile, usage, recent-session deletion and cleanup; after P03/P11 | Recent-auth and local end-to-end deletion pass; hosted account walkthrough pending |
+| P13 | Implemented locally: bounded private tar.gz account archive with expiring result; after P07/P12/P18 | Local archive/asset/deletion run passes; hosted larger-account and retry check pending |
 
 ### Wave D — Controlled real AI
 
@@ -666,7 +666,7 @@ P15a, P15b, P16 and P17 are separate feature deliveries because they have differ
 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
-| P18 | Maintenance execution foundation: protected scheduled/manual batches, task progress and retry | Orphan cleanup works after interruption; no public maintenance endpoint; can precede P11–P13 |
+| P18 | Implemented locally alongside Wave C: protected scheduled/manual runner, leased tasks, retry, expired-upload and uncommitted-edit cleanup | Local task/fence tests pass; protected staging secrets and hosted run pending; detached accepted redo pruning remains deferred |
 | P19 | Backup/restore and deletion reconciliation; after P06/P18, extended after lifecycle features | Restored multi-project fixture with assets/ownership and deletion tombstones |
 | P20 | Public pages, help/policy content and consistent account shell; after scope decisions | Scroll/accessibility/responsive/metadata checks; promises match implemented product |
 | P21 | Operational visibility, runbooks, spend alerts and release rollback; after P02/P14/P18 | Alert exercise, AI off switch, bad-release rollback and credential rotation exercise |

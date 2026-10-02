@@ -36,6 +36,14 @@ describe("cloud foundation API isolation", () => {
     },
   );
 
+  it.each(["/api/account/profile", "/api/account/export", "/api/account/deletion"])(
+    "passes Wave C's %s route to its account checks in staging", async (pathname) => {
+      process.env.MIRAI_APP_MODE = "staging";
+      const response = await proxy(new NextRequest(`https://example.com${pathname}`));
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    },
+  );
+
   it.each(["staging", "beta"])("hides unfinished APIs in %s", async (mode) => {
     process.env.MIRAI_APP_MODE = mode;
 
@@ -79,6 +87,7 @@ describe("cloud spike API isolation", () => {
     "/api/image-extends/plan",
     "/api/original-uploads",
     "/api/cloud-projects",
+    "/api/account/deletion",
     "/api/internal/assets-cleanup",
   ])("hides %s in an isolated deployment", async (pathname) => {
     process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT = "true";

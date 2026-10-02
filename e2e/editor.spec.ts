@@ -304,6 +304,7 @@ test("text, watermark, and crop stay live on canvas and apply without comparison
   await expect(page.getByTestId("preview-comparison")).toHaveCount(0);
   const initialTextCanvas = await sceneCanvas.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
   await page.getByLabel("Text content").fill("VISIBLE NOW");
+  await expect(page.getByRole("button", { name: "Save text" })).toBeVisible();
   await expect.poll(() => sceneCanvas.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).not.toBe(initialTextCanvas);
   const textX = Number(await editorCanvas.getAttribute("data-draft-x"));
   const textY = Number(await editorCanvas.getAttribute("data-draft-y"));
@@ -330,6 +331,7 @@ test("text, watermark, and crop stay live on canvas and apply without comparison
   await expect(page.getByTestId("preview-comparison")).toHaveCount(0);
 
   await expect(editorCanvas).toHaveAttribute("data-local-draft", "watermark");
+  await expect(page.getByRole("button", { name: "Save watermark" })).toBeVisible();
   await page.getByRole("button", { name: "Watermark center" }).click();
   const initialX = Number(await editorCanvas.getAttribute("data-draft-x"));
   const initialY = Number(await editorCanvas.getAttribute("data-draft-y"));
@@ -368,9 +370,7 @@ test("text, watermark, and crop stay live on canvas and apply without comparison
   await page.mouse.move(cropBounds.x + cropViewportX + (cropX + cropWidth - 50) * cropScale, cropBounds.y + cropViewportY + (cropY + cropHeight - 50) * cropScale, { steps: 8 });
   await page.mouse.up();
   await expect.poll(async () => Number(await editorCanvas.getAttribute("data-draft-width"))).toBeLessThan(cropWidth);
-  await page.getByRole("radio", { name: "Select & edit" }).click();
-  await expect(page.getByRole("dialog", { name: "Save your crop?" })).toBeVisible();
-  await page.getByTestId("save-local-edit").click();
+  await page.getByRole("button", { name: "Save crop" }).click();
   await expect(page.getByText("150 × 150px", { exact: true })).toBeVisible();
   await expect(page.getByText("3 accepted edits", { exact: true })).toBeVisible();
   await expect(page.getByTestId("preview-comparison")).toHaveCount(0);

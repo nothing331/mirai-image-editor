@@ -24,8 +24,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     if (error instanceof CloudProjectError && error.code === "not-found") notFound();
     throw error;
   }
-  return <ProjectShell email={account.profile.email}>
-      <CloudEditorWorkspace projectId={project.id} projectName={project.name}
+  return <ProjectShell email={account.profile.email} ownerId={account.profile.id}>
+      <CloudEditorWorkspace ownerId={account.profile.id} projectId={project.id} projectName={project.name}
         originalVersionId={originalVersionId} initialCurrentVersionId={project.currentVersionId}
         initialHeadVersionId={project.headVersionId} />
     </ProjectShell>;
