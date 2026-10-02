@@ -15,6 +15,7 @@ export interface TransformValidatorRequest {
 export interface TransformValidatorResult {
   assessment: TransformFidelityAssessment;
   providerRequestId: string;
+  usage?: unknown;
 }
 
 export interface TransformValidator {

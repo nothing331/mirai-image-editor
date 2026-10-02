@@ -22,6 +22,7 @@ export interface ImageEditRequest {
 export interface ProviderCandidate {
   candidatePng: Uint8Array;
   providerRequestId: string;
+  usage?: unknown;
 }
 
 export interface ImageEditProvider {
@@ -33,6 +34,7 @@ export class ImageProviderError extends Error {
     message: string,
     public readonly retryable: boolean,
     public readonly diagnostics?: {
+      providerCompleted?: boolean;
       providerRequestId?: string | null;
       status?: number;
       code?: string;

@@ -76,6 +76,7 @@ export interface AssetGenerationCandidate {
 export interface AssetGenerationResponse {
   projectId: string;
   requestId: string;
+  creation?: AssetCreationRequest;
   provider: AssetGenerationProviderName;
   providerRequestId: string;
   model: string;
