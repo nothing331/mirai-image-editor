@@ -1,9 +1,11 @@
 import "server-only";
 import { z } from "zod";
+import { aiUsageSchema } from "@/shared/cloud-ai";
 import { createAdminSupabaseClient } from "@/server/supabase/admin-client";
 import { AccountAccessError } from "./account";
 
 const usageSchema = z.object({
+  ai: aiUsageSchema,
   usedBytes: z.number().int().nonnegative(),
   limitBytes: z.number().int().positive(),
   activeProjects: z.number().int().nonnegative(),

@@ -4,20 +4,22 @@ import type { SmartReframePlan } from "@/shared/extend-plan";
 import { ImageProviderError } from "./contracts";
 
 export interface ExtendProviderRequest { sourcePng: Uint8Array; plan: SmartReframePlan; instruction: string }
-export interface ExtendProviderResult { candidatePng: Uint8Array; rawCandidatePng: Uint8Array; effectiveMaskPng: Uint8Array; providerInputPng: Uint8Array; providerMaskPng: Uint8Array; providerRequestId: string }
+export interface ExtendProviderResult { candidatePng: Uint8Array; rawCandidatePng: Uint8Array; effectiveMaskPng: Uint8Array; providerInputPng: Uint8Array; providerMaskPng: Uint8Array; providerRequestId: string; usage?: unknown }
 
 export interface ExtendProvider { extend(request: ExtendProviderRequest): Promise<ExtendProviderResult> }
 
 export class OpenAIExtendProvider implements ExtendProvider {
   private readonly client: OpenAI;
-  constructor(apiKey: string, private readonly model = "gpt-image-2", private readonly maxEdge = 1536) { this.client = new OpenAI({ apiKey }); }
+  constructor(apiKey: string, private readonly model = "gpt-image-2", private readonly maxEdge = 1536) { this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 }); }
 
   async extend(request: ExtendProviderRequest): Promise<ExtendProviderResult> {
     const prepared = await prepareProviderInput(request.sourcePng, request.plan, this.maxEdge);
     let providerRequestId: string | null = null;
+    let providerCompleted = false;
     try {
       const { data: response, request_id: requestId } = await this.client.images.edit({
         model: this.model,
+        n: 1,
         image: await toFile(Buffer.from(prepared.inputPng), "extend-input.png", { type: "image/png" }),
         mask: await toFile(Buffer.from(prepared.maskPng), "extend-mask.png", { type: "image/png" }),
         prompt: request.instruction,
@@ -25,15 +27,19 @@ export class OpenAIExtendProvider implements ExtendProvider {
         quality: "low",
         output_format: "png",
       }).withResponse();
+      providerCompleted = true;
       providerRequestId = requestId;
       const encoded = response.data?.[0]?.b64_json;
       if (!encoded) throw new ImageProviderError("The image provider returned no Extend candidate.", false, { providerRequestId });
       const result = await finalizeCandidate(new Uint8Array(Buffer.from(encoded, "base64")), request.plan, prepared);
-      return { ...result, rawCandidatePng: new Uint8Array(Buffer.from(encoded, "base64")), providerInputPng: prepared.inputPng, providerMaskPng: prepared.maskPng, providerRequestId: providerRequestId ?? `openai-extend-${crypto.randomUUID()}` };
+      return { ...result, usage: response.usage, rawCandidatePng: new Uint8Array(Buffer.from(encoded, "base64")), providerInputPng: prepared.inputPng, providerMaskPng: prepared.maskPng, providerRequestId: providerRequestId ?? `openai-extend-${crypto.randomUUID()}` };
     } catch (error) {
-      if (error instanceof ImageProviderError) throw error;
+      if (error instanceof ImageProviderError) {
+        if (providerCompleted) Object.assign(error, { diagnostics: { ...error.diagnostics, providerCompleted: true } });
+        throw error;
+      }
       const status = error instanceof OpenAI.APIError ? error.status : undefined;
-      throw new ImageProviderError(error instanceof Error ? error.message : "OpenAI Extend failed.", status === 408 || status === 409 || status === 429 || (status !== undefined && status >= 500), error instanceof OpenAI.APIError ? { providerRequestId: error.requestID ?? providerRequestId, status, code: error.code ?? undefined, type: error.type } : { providerRequestId });
+      throw new ImageProviderError(error instanceof Error ? error.message : "OpenAI Extend failed.", status === 408 || status === 409 || status === 429 || (status !== undefined && status >= 500), error instanceof OpenAI.APIError ? { providerRequestId: error.requestID ?? providerRequestId, status, code: error.code ?? undefined, type: error.type } : { providerRequestId, providerCompleted });
     }
   }
 }

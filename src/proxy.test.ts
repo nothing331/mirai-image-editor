@@ -63,6 +63,18 @@ describe("cloud foundation API isolation", () => {
   });
 });
 
+describe("Wave D routing", () => {
+  it.each(["/api/ai/usage", "/api/ai/sessions", "/api/ai/attempts/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "/api/image-edits", "/api/asset-generations", "/api/image-extends/plan", "/api/image-extends/generate"])("delegates %s to its cloud account and admission checks", async (path) => {
+    process.env.MIRAI_APP_MODE = "beta";
+    const response = await proxy(new NextRequest(`https://example.com${path}`));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+  it("keeps disk-backed diagnostics closed", async () => {
+    process.env.MIRAI_APP_MODE = "beta";
+    expect((await proxy(new NextRequest("https://example.com/api/request-logs"))).status).toBe(404);
+  });
+});
+
 describe("cloud spike API isolation", () => {
   it("does not change local API routing by default", async () => {
     const response = await proxy(new NextRequest("http://localhost/api/projects"));

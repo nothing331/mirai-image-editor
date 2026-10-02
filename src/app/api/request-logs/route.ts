@@ -1,9 +1,11 @@
+import { cloudAiMode } from "@/server/cloud-ai/http";
 import { requestDiagnosticRepository } from "@/server/diagnostics/request-diagnostic-service";
 import type { RequestDiagnosticStatus } from "@/shared/request-diagnostics";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  if (cloudAiMode()) return Response.json({ error: "Not found." }, { status: 404 });
   const url = new URL(request.url);
   const projectId = url.searchParams.get("projectId") ?? undefined;
   const requestedStatus = url.searchParams.get("status");

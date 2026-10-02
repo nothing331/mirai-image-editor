@@ -16,11 +16,12 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
     private readonly quality: "low" | "medium" | "high" | "auto" = "medium",
     private readonly maxInputEdge = 1536,
   ) {
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   }
 
   async edit(request: ImageEditRequest, diagnostics?: ImageEditDiagnosticSink): Promise<ProviderCandidate> {
     validateImageEditRequest(request);
+    let providerCompleted = false;
     try {
       const scale = Math.min(1, this.maxInputEdge / Math.max(request.width, request.height));
       const providerWidth = Math.max(1, Math.round(request.width * scale));
@@ -44,6 +45,7 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
       await diagnostics?.event("provider-call", "Calling the OpenAI image-edit provider.");
       const { data: response, request_id: providerRequestId } = await this.client.images.edit({
         model: this.model,
+        n: 1,
         image: await toFile(providerImage, "image.png", { type: "image/png" }),
         ...(providerMask ? { mask: await toFile(providerMask, "mask.png", { type: "image/png" }) } : {}),
         prompt: instruction,
@@ -52,6 +54,7 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
         ...(supportsInputFidelity(this.model) ? { input_fidelity: "high" as const } : {}),
         output_format: "png",
       }).withResponse();
+      providerCompleted = true;
       const encoded = response.data?.[0]?.b64_json;
       if (!encoded) throw new ImageProviderError("OpenAI returned no image candidate.", true, { providerRequestId });
       const rawCandidate = Buffer.from(encoded, "base64");
@@ -73,7 +76,7 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
       await diagnostics?.event("normalization", "Normalized the provider candidate to source-image dimensions.", { width: request.width, height: request.height });
       await diagnostics?.artifact("candidate-normalized.png", normalized, "image/png");
       await diagnostics?.metadata({ providerRequestId });
-      return { candidatePng: normalized, providerRequestId: providerRequestId ?? `openai-unreported-${crypto.randomUUID()}` };
+      return { usage: response.usage, candidatePng: normalized, providerRequestId: providerRequestId ?? `openai-unreported-${crypto.randomUUID()}` };
     } catch (error) {
       const providerError = error instanceof ImageProviderError ? error : new ImageProviderError(
         error instanceof Error ? error.message : "OpenAI image editing failed.",
@@ -86,6 +89,7 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
         } : undefined,
       );
       await diagnostics?.failProviderCall("image-editor", toDiagnosticError(providerError), providerError.retryable, providerError.diagnostics?.providerRequestId);
+      if (providerCompleted) Object.assign(providerError, { diagnostics: { ...providerError.diagnostics, providerCompleted: true } });
       throw providerError;
     }
   }

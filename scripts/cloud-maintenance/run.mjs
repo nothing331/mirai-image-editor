@@ -26,6 +26,24 @@ async function removeObjects(keys) {
   }
 }
 
+async function reconcileAiResults() {
+  const expired = await client.rpc("mirai_expire_ai_leases");
+  if (expired.error) throw new Error("AI lease reconciliation failed.");
+  const scan = await client.from("ai_attempts").select("id").gt("storage_bytes", 0)
+    .not("status", "in", "(running,unknown)")
+    .or(`status.in.(failed,discarded,cleaning),expires_at.lte.${new Date().toISOString()}`).order("expires_at").limit(50);
+  if (scan.error) throw new Error("AI temporary result scan failed.");
+  for (const attempt of scan.data ?? []) {
+    const claimed = await client.rpc("mirai_claim_ai_cleanup", { target_id: attempt.id });
+    if (claimed.error) throw new Error("AI cleanup claim failed.");
+    if (!claimed.data) continue;
+    const deleted = await client.storage.from("mirai-ai-results").remove([claimed.data]);
+    if (deleted.error) throw new Error("AI temporary result deletion failed.");
+    const finished = await client.rpc("mirai_finish_ai_cleanup", { target_id: attempt.id });
+    if (finished.error) throw new Error("AI cleanup confirmation failed.");
+  }
+}
+
 async function reconcileOriginalUploads() {
   const stale = new Date(Date.now() - 10 * 60_000).toISOString();
   const expired = await client.from("asset_uploads").select("id,owner_id,state,staging_key,source_key,base_key")
@@ -90,6 +108,13 @@ async function purgeProject(task) {
 }
 
 async function purgeAccount(task) {
+  const pendingAi = await client.from("ai_attempts").select("id").eq("owner_id", task.owner_id).in("status", ["running", "unknown"]).limit(1);
+  if (pendingAi.error || pendingAi.data?.length) throw new Error("Account AI outcomes require reconciliation before purge.");
+  const aiResults = await allRows("ai_attempts", "id,result_key,created_at", "owner_id", task.owner_id);
+  for (const result of aiResults) {
+    const removed = await client.storage.from("mirai-ai-results").remove([result.result_key]);
+    if (removed.error) throw new Error("Account AI result cleanup failed.");
+  }
   const projects = await rows("cloud_projects", "id", "owner_id", task.owner_id);
   if (projects.length) throw new Error("Project purge is still pending.");
   for (;;) {
@@ -182,7 +207,7 @@ async function exportAccount(task) {
     const upload = uploads[0];
     if (!upload) throw new Error("Project original is missing.");
     const versions = await allRows("cloud_project_versions", "id,parent_version_id,kind,width,height,sequence,active,created_at,edit_asset_id", "project_id", project.id);
-    const operations = await allRows("cloud_edit_operations", "id,input_version_id,output_version_id,kind,parameters,mask_width,mask_height,mask_deflate,created_at", "project_id", project.id);
+    const operations = await allRows("cloud_edit_operations", "id,input_version_id,output_version_id,kind,method,parameters,mask_width,mask_height,mask_deflate,created_at", "project_id", project.id);
     const assets = await allRows("cloud_edit_assets", "id,storage_key,created_at", "project_id", project.id);
     const byAsset = new Map(assets.map((asset) => [asset.id, asset.storage_key]));
     const prefix = `projects/${project.id}`;
@@ -221,6 +246,7 @@ async function exportAccount(task) {
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
+await reconcileAiResults();
 await reconcileOriginalUploads();
 await reconcileOrphanEdits();
 

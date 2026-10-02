@@ -8,10 +8,11 @@ export class OpenAIAssetGenerator implements AssetGenerator {
   private readonly client: OpenAI;
 
   constructor(apiKey: string, private readonly model = "gpt-image-2") {
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   }
 
   async generate(request: AssetGeneratorRequest, diagnostics?: ImageEditDiagnosticSink): Promise<AssetGeneratorResult> {
+    let providerCompleted = false;
     try {
       await diagnostics?.beginProviderCall("asset-generator", "openai", this.model);
       await diagnostics?.event("provider-call", "Calling the OpenAI image generation provider.", { candidateCount: request.count });
@@ -25,6 +26,7 @@ export class OpenAIAssetGenerator implements AssetGenerator {
         output_format: "png",
       });
       const { data: response, request_id: providerRequestId } = await call.withResponse();
+      providerCompleted = true;
       const candidates = (response.data ?? []).flatMap((candidate, ordinal) => candidate.b64_json
         ? [{ ordinal, png: new Uint8Array(Buffer.from(candidate.b64_json, "base64")) }]
         : []);
@@ -40,7 +42,7 @@ export class OpenAIAssetGenerator implements AssetGenerator {
         candidateCount: candidates.length,
       }, null, 2)), "application/json");
       await diagnostics?.completeProviderCall("asset-generator", providerRequestId, flattenUsage(response.usage));
-      return { candidates, providerRequestId: providerRequestId ?? `openai-unreported-${crypto.randomUUID()}` };
+      return { usage: response.usage, candidates, providerRequestId: providerRequestId ?? `openai-unreported-${crypto.randomUUID()}` };
     } catch (error) {
       const providerError = error instanceof AssetGenerationProviderError ? error : new AssetGenerationProviderError(
         error instanceof Error ? error.message : "OpenAI asset generation failed.",
@@ -53,6 +55,7 @@ export class OpenAIAssetGenerator implements AssetGenerator {
         } : undefined,
       );
       await diagnostics?.failProviderCall("asset-generator", toDiagnosticError(providerError), providerError.retryable, providerError.diagnostics?.providerRequestId);
+      if (providerCompleted) Object.assign(providerError, { diagnostics: { ...providerError.diagnostics, providerCompleted: true } });
       throw providerError;
     }
   }

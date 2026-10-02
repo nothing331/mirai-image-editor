@@ -1,3 +1,4 @@
+import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import sharp from "sharp";
 import { configuredProviderName, createExtendProvider } from "@/server/ai/provider-factory";
 import { buildExtendInstruction } from "@/server/ai/extend-instruction";
@@ -9,6 +10,7 @@ import { ImageProviderError } from "@/server/ai/contracts";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (cloudAiMode()) return cloudAiPost(request, "extend");
   const projectId = request.headers.get("x-project-id") ?? crypto.randomUUID();
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const providerName = configuredProviderName();

@@ -9,7 +9,7 @@ export class OpenAITransformPlanner implements TransformPlanner {
   private readonly client: OpenAI;
 
   constructor(apiKey: string, private readonly model: string) {
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   }
 
   async plan(request: TransformPlannerRequest, diagnostics?: ImageEditDiagnosticSink): Promise<TransformPlannerResult> {
@@ -18,10 +18,12 @@ export class OpenAITransformPlanner implements TransformPlanner {
     await diagnostics?.beginProviderCall("transform-planner", "openai", this.model);
     await diagnostics?.event("transform-planner-call", "Calling the OpenAI full-image preservation planner.");
     let providerRequestId: string | null = null;
+    let providerCompleted = false;
     try {
       const { data: response, request_id: requestId } = await this.client.responses.parse({
         model: this.model,
         store: false,
+        max_output_tokens: 4096,
         reasoning: { effort: "low" },
         input: [{ role: "user", content: [
           { type: "input_text", text: instruction },
@@ -29,6 +31,7 @@ export class OpenAITransformPlanner implements TransformPlanner {
         ] }],
         text: { format: zodTextFormat(transformPlanSchema, "transform_plan") },
       }).withResponse();
+      providerCompleted = true;
       providerRequestId = requestId;
       const plan = response.output_parsed;
       if (!plan) throw new ImageProviderError("The Transform planner returned no usable source plan.", false, { providerRequestId });
@@ -37,10 +40,11 @@ export class OpenAITransformPlanner implements TransformPlanner {
       await diagnostics?.artifact("transform-plan.json", jsonBytes(plan), "application/json");
       await diagnostics?.artifact("planner-response.json", jsonBytes({ providerRequestId, responseId: response.id, model: response.model, status: response.status, usage: response.usage }), "application/json");
       await diagnostics?.metadata({ transformPlan: plan });
-      return { plan, providerRequestId: providerRequestId ?? `openai-transform-planner-unreported-${crypto.randomUUID()}` };
+      return { usage: response.usage, plan, providerRequestId: providerRequestId ?? `openai-transform-planner-unreported-${crypto.randomUUID()}` };
     } catch (error) {
       const providerError = toProviderError(error, providerRequestId, "OpenAI Transform planning failed.");
       await diagnostics?.failProviderCall("transform-planner", toDiagnosticError(providerError), providerError.retryable, providerError.diagnostics?.providerRequestId);
+      if (providerCompleted) Object.assign(providerError, { diagnostics: { ...providerError.diagnostics, providerCompleted: true } });
       throw providerError;
     }
   }
