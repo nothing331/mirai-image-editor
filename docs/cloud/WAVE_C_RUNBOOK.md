@@ -1,6 +1,6 @@
 # Wave C personal product and maintenance
 
-**Status:** P08–P13 and the P18 dependency are implemented together on `codex/wave-c-personal-product`. The Wave C migration is applied to staging Supabase. As checked on 2026-10-02, Render was serving `d24adb0`, before the later editor save-control fixes; deploy the matching PR head and complete the protected maintenance and staging walkthrough gates below.
+**Status:** P08–P13 and the P18 dependency are implemented together on `codex/wave-c-personal-product`. The Wave C migration is applied to staging Supabase. Render must serve the matching PR head before the save-first editor behavior can be verified there; complete the protected maintenance and staging walkthrough gates below.
 
 ## Release sequence
 
