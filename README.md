@@ -91,9 +91,9 @@ The deterministic fake provider is enabled by default. To test real generation, 
 
 ## Cloud foundation
 
-Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B adds controlled-beta accounts, private originals, owned projects, deterministic cloud edits, and immutable history. Wave C adds a searchable thumbnail library, browser draft recovery, accepted-version/original downloads, trash, account settings/deletion, portable account export, and protected maintenance. Local-only diagnostic and real-AI APIs remain closed in cloud modes. `npm run start:cloud` refuses unsafe configuration and never falls back to Render's ephemeral disk. Wave C requires its migration and maintenance secrets before hosted rollout.
+Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B adds controlled-beta accounts, private originals, owned projects, deterministic cloud edits, and immutable history. Wave C adds a searchable thumbnail library, browser draft recovery, accepted-version/original downloads, trash, account settings/deletion, portable account export, and protected maintenance. Wave D adds guarded cloud AI across localized edits, Transform, Extend and creation, with 25 one-time shared welcome credits, durable private previews, recovery and metered provider stages. Local disk diagnostics remain closed in cloud modes; real AI stays disabled until a funded hosted qualification passes. `npm run start:cloud` refuses unsafe configuration and never falls back to Render's ephemeral disk. Waves C and D require their migrations and maintenance secrets before hosted rollout.
 
-Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations, the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for authentication, the [P06/P07 runbook](./docs/cloud/WAVE_B_P06_P07_RUNBOOK.md) for cloud editing/history, and the [Wave C runbook](./docs/cloud/WAVE_C_RUNBOOK.md) for personal-product migration and lifecycle verification.
+Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations, the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for authentication, the [P06/P07 runbook](./docs/cloud/WAVE_B_P06_P07_RUNBOOK.md) for cloud editing/history, and the [Wave C runbook](./docs/cloud/WAVE_C_RUNBOOK.md) for personal-product migration and lifecycle verification, and the [Wave D runbook](./docs/cloud/WAVE_D_RUNBOOK.md) for credits, AI qualification and uncertain-outcome recovery.
 
 ## Troubleshooting
 
@@ -107,7 +107,7 @@ Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and
 
 ## Current limitations
 
-- Cloud AI editing and creation remain disabled; cloud editing currently uses deterministic tools and local Monochrome
+- Cloud AI is implemented but disabled by default; hosted real-provider qualification and an approved budget are still required
 - Linear history; no independent layers or history branches
 - Real AI edits require an OpenAI API key and may incur usage costs
 - Semantic checks reduce unintended changes but cannot guarantee perfect results
