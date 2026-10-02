@@ -51,7 +51,7 @@ The rail chooses the workflow; the inspector configures it; the canvas performs 
 - Hand owns navigation and removes the inspector because it has no settings.
 - Create with AI, Select & edit, AI Transform, and AI Extend form one high-visibility group at the start of the rail. Select & edit uses the standard rail treatment and no AI marker because it combines local Recolor with AI Remove, Replace, and Restyle; each operation exposes its execution type in the inspector.
 - Transform is image-wide but behaves as a first-class rail selection; its presets and controls live in the inspector.
-- Size & position, Text, and Watermark are direct rail workflows. Their inspector settings update a source-space canvas draft immediately. Leaving a changed draft opens one Save edit / Discard changes / Keep editing decision; saving creates one accepted version without opening comparison.
+- Size & position, Text, and Watermark are direct rail workflows. Their inspector settings update a source-space canvas draft immediately. The local editor offers Save edit / Discard changes / Keep editing when switching tools. In the cloud editor, changing tools, history versions, or in-app screens with a valid edit offers a save-first decision with Keep editing and no discard action; it continues only after the cloud save succeeds. Incomplete work stays in place or can be kept as a device draft when leaving the editor. Saving creates one accepted version without opening comparison.
 - Every icon-only rail control must reveal its full name on hover and keyboard focus. Show its shortcut when one exists.
 - Selecting a tool must not generate pixels, accept history, or trigger an external request by itself.
 
@@ -185,6 +185,7 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Error/block: coral edge or surface with an actionable recovery message.
 - Disabled controls must explain themselves through nearby state, tooltip, or error text.
 - Never advance history on failure or discard.
+- A leave decision must say whether work is saved to the cloud or only kept as a device draft. A failed save keeps the user in the editor with a retry path.
 
 ### Review
 
