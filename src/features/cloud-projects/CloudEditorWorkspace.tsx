@@ -411,8 +411,8 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
           }} onSelectWorkflow={changeWorkflow} onToggleInspector={() => setInspectorCollapsed((value) => !value)} />
           {!inspectorCollapsed && <div className={cn("grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] border-t border-line md:border-t-0", editor.pendingAcceptance && "pointer-events-none opacity-50")}>
             <CloudAiBalance usage={ai.usage} error={ai.error} />
-            <CloudAiRecovery projectId={projectId} currentVersionId={editor.currentVersionId} hasDraft={Boolean(editor.preview || editor.pendingAcceptance || editor.localDraftDirty || editor.paintSession)} />
-            <EditorInspector cloudCredits aiUnavailable={!ai.available} phase={phase} providerCapabilities={null} workflow={workflow} onSelectGeometryEdit={selectGeometry}
+            <CloudAiRecovery unlimited={ai.usage?.unlimited} projectId={projectId} currentVersionId={editor.currentVersionId} hasDraft={Boolean(editor.preview || editor.pendingAcceptance || editor.localDraftDirty || editor.paintSession)} />
+            <EditorInspector cloudCredits={!ai.usage?.unlimited} cloudUnlimited={ai.usage?.unlimited} aiUnavailable={!ai.available} phase={phase} providerCapabilities={null} workflow={workflow} onSelectGeometryEdit={selectGeometry}
               onGenerate={() => { const state = useEditorStore.getState(); if (state.editType === "recolor") state.createPreview(); else if (ai.available) void state.requestGenerativePreview(); }}
               onGenerateTransform={async (input) => { if ((input.presetId === "monochrome" && !input.userPrompt.trim()) || ai.available) return editor.requestTransformPreview(input); return false; }}
               onPlanExtend={(input) => { const state = useEditorStore.getState(); return ai.available || Boolean(state.currentVersionId && state.extendAnalysisCache[state.currentVersionId]) ? state.planExtend(input) : Promise.resolve(false); }}

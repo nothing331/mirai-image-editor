@@ -116,3 +116,44 @@ test("checks direct API authorization and preserves local editing after credit e
   await expect(page.getByTestId("preview-comparison")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Export accepted image" })).toBeEnabled();
 });
+
+test("admin has unlimited projects and AI after member credits are exhausted", async ({ page, context }) => {
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+  expect((await admin.from("profiles").update({ account_role: "owner" }).eq("id", ownerId)).error).toBeNull();
+  await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: "http://127.0.0.1:3100" })));
+  await page.goto("/settings");
+  await expect(page.getByText("Unlimited AI previews for your admin account.", { exact: false })).toBeVisible();
+  await expect(page.getByText("2 · Unlimited", { exact: true })).toBeVisible();
+  const source = await sharp({ create: { width: 320, height: 200, channels: 4, background: "#dc6a48" } }).png().toBuffer();
+  for (let n = 1; n <= 5; n++) {
+    await page.goto("/projects/new");
+    await expect(page.getByText("Unlimited AI · admin account", { exact: true })).toBeVisible();
+    await page.locator('input[type="file"]').setInputFiles({ name: "admin.png", mimeType: "image/png", buffer: source });
+    await page.getByLabel("Project name").fill(`Admin project ${n}`);
+    await page.getByRole("button", { name: "Save project" }).click();
+    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/);
+    await expect(page.getByText("Unlimited AI · admin account", { exact: true })).toBeVisible();
+  }
+  await page.goto("/projects");
+  await expect(page.getByText("Private workspace / 7 projects · unlimited admin account", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "New project" })).toBeVisible();
+  await page.getByRole("button", { name: "Load more projects" }).click();
+  for (let n = 1; n <= 5; n++) await expect(page.getByRole("link", { name: new RegExp(`Admin project ${n}`) })).toBeVisible();
+  await page.goto(`/projects/${projectId}`);
+  await page.getByTestId("open-transform").click();
+  await page.getByRole("radio", { name: "Sketch", exact: true }).click();
+  await expect(page.getByTestId("generate-transform")).toBeEnabled();
+  await expect(page.getByTestId("generate-transform")).not.toContainText("1 credit");
+  await page.getByTestId("generate-transform").click();
+  await expect(page.getByTestId("preview-comparison")).toBeVisible();
+  await page.getByTestId("accept-preview").click();
+  await expect(page.getByTestId("preview-comparison")).toHaveCount(0);
+  await page.goto("/projects/new");
+  await page.getByRole("button", { name: "Create with AI", exact: true }).click();
+  await expect(page.getByTestId("generate-assets")).not.toContainText("1 credit");
+  await page.getByTestId("generate-assets").click();
+  await expect(page.getByTestId("use-generated-asset")).toBeEnabled();
+  await page.getByTestId("use-generated-asset").click();
+  await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/);
+  await expect(page.getByText("Unlimited AI · admin account", { exact: true })).toBeVisible();
+});

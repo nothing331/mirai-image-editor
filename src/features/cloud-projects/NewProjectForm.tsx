@@ -16,7 +16,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   return body as T;
 }
 
-export function NewProjectForm({ ownerId }: { ownerId: string }) {
+export function NewProjectForm({ ownerId, unlimited = false }: { ownerId: string; unlimited?: boolean }) {
   const router = useRouter();
   const ai = useCloudAiUsage();
   const [aiSessionId, setAiSessionId] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
     try {
       setPhase("reserving");
       const existing = await readResponse<{ projects: unknown[] }>(await fetch("/api/cloud-projects", { signal: controller.signal }));
-      if (existing.projects.length >= 5) throw new Error("The five-project limit has been reached.");
+      if (!unlimited && existing.projects.length >= 5) throw new Error("The five-project limit has been reached.");
       const reservation = await readResponse<{ id: string }>(await fetch("/api/original-uploads", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ requestKey: crypto.randomUUID(), originalName: file.name,
@@ -165,7 +165,7 @@ export function NewProjectForm({ ownerId }: { ownerId: string }) {
         {phase === "reserving" || phase === "uploading" ? <button type="button" onClick={() => abortRef.current?.abort()} className="min-h-11 text-sm underline underline-offset-4">Stop upload</button> : null}</div>
     </form></div>
   </section>
-    {aiSessionId && <AssetGenerationDialog open={aiOpen} cloudSessionId={aiSessionId} cloudAiAvailable={ai.available} onClose={() => setAiOpen(false)} onUseCandidate={async (candidate) => {
+    {aiSessionId && <AssetGenerationDialog open={aiOpen} cloudSessionId={aiSessionId} cloudAiAvailable={ai.available} cloudUnlimited={ai.usage?.unlimited} onClose={() => setAiOpen(false)} onUseCandidate={async (candidate) => {
       const result = await cloudAiJson<{ project: { id: string } }>(await fetch(`/api/ai/attempts/${candidate.response.requestId}/use`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() || "AI creation" }) }));
       sessionStorage.removeItem(`mirai-ai-session-${ownerId}`);
       router.push(`/projects/${result.project.id}`);

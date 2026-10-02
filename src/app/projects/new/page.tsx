@@ -10,5 +10,5 @@ export default async function NewProjectPage() {
   const account = await resolveCurrentAccount();
   if (!account) redirect("/sign-in?next=/projects/new");
   if (account.profile.status !== "active") redirect("/access");
-  return <ProjectShell email={account.profile.email} ownerId={account.profile.id}><NewProjectForm ownerId={account.profile.id} /></ProjectShell>;
+  return <ProjectShell email={account.profile.email} ownerId={account.profile.id}><NewProjectForm ownerId={account.profile.id} unlimited={account.profile.account_role === "owner"} /></ProjectShell>;
 }

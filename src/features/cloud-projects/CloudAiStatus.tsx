@@ -18,16 +18,16 @@ export function useCloudAiUsage() {
     return () => { clearTimeout(timer); window.removeEventListener("mirai-ai-usage-updated", updated); };
   }, [refresh]);
   const remaining = usage ? Math.max(0, usage.granted - usage.spent - usage.pending) : 0;
-  return { usage, error, remaining, available: Boolean(usage?.enabled && remaining > 0 && usage.pending === 0), refresh };
+  return { usage, error, remaining, available: Boolean(usage?.enabled && (usage.unlimited || remaining > 0) && usage.pending === 0), refresh };
 }
 
 export function CloudAiBalance({ usage, error }: { usage: AiUsage | null; error: string | null }) {
   return <div className="border-b border-line px-3 py-2 text-[10px] leading-5 text-muted" role="status">
-    {error ?? (usage ? <><strong className="text-ink">{Math.max(0, usage.granted - usage.spent - usage.pending)} of {usage.granted} AI credits remaining</strong>{usage.pending > 0 && <span> · {usage.pending} pending</span>}<br />{!usage.enabled ? "AI is currently unavailable. Local edits and export remain available." : "Each generated preview uses 1 credit. Local edits use no credits."}</> : "Checking AI availability…")}
+    {error ?? (usage ? <><strong className="text-ink">{usage.unlimited ? "Unlimited AI · admin account" : `${Math.max(0, usage.granted - usage.spent - usage.pending)} of ${usage.granted} AI credits remaining`}</strong>{usage.pending > 0 && <span> · {usage.pending} pending</span>}<br />{!usage.enabled ? "AI is currently unavailable. Local edits and export remain available." : usage.unlimited ? "No account allowance. Service availability still applies." : "Each generated preview uses 1 credit. Local edits use no credits."}</> : "Checking AI availability…")}
   </div>;
 }
 interface RecoverableAttempt { id: string; status: string; workflow: string; input_version_id: string }
-export function CloudAiRecovery({ projectId, currentVersionId, hasDraft }: { projectId: string; currentVersionId: string | null; hasDraft: boolean }) {
+export function CloudAiRecovery({ projectId, currentVersionId, hasDraft, unlimited = false }: { projectId: string; currentVersionId: string | null; hasDraft: boolean; unlimited?: boolean }) {
   const [attempts, setAttempts] = useState<RecoverableAttempt[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,7 +64,7 @@ export function CloudAiRecovery({ projectId, currentVersionId, hasDraft }: { pro
   }
   if (!attempts.length && !error) return null;
   return <div className="border-b border-line bg-paper px-3 py-2 text-[10px] leading-5" aria-label="AI request recovery">
-    {active.map((attempt) => <p key={attempt.id} role="status">{attempt.status === "unknown" ? "Provider outcome unknown · credit pending" : "AI request processing · credit pending"}<span className="block font-mono text-muted">Reference: {attempt.id.slice(0, 8)}</span></p>)}
+    {active.map((attempt) => <p key={attempt.id} role="status">{attempt.status === "unknown" ? "Provider outcome unknown" : "AI request processing"}{!unlimited && " · credit pending"}<span className="block font-mono text-muted">Reference: {attempt.id.slice(0, 8)}</span></p>)}
     {ready.map((attempt) => <div key={attempt.id} className="flex flex-wrap items-center gap-2"><span>Saved {attempt.workflow} preview</span><button type="button" disabled={busy || hasDraft || attempt.input_version_id !== currentVersionId} onClick={() => void recover(attempt.id)} className="border border-line px-2 hover:border-ink focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40">Review result</button><button type="button" disabled={busy || hasDraft} onClick={() => { setBusy(true); void discardCloudAiPreview(attempt.id).then(refresh).catch(() => setError("The preview could not be discarded.")).finally(() => setBusy(false)); }} className="text-muted underline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40">Discard result</button></div>)}
     {error && <p role="alert" className="text-accent">{error}</p>}
   </div>;

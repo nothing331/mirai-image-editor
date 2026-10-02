@@ -39,6 +39,7 @@ export function EditorInspector({
   localOnly = false,
   aiUnavailable = false,
   cloudCredits = false,
+  cloudUnlimited = false,
 }: {
   phase: WorkspacePhase;
   providerCapabilities: ProviderCapabilities | null;
@@ -55,6 +56,7 @@ export function EditorInspector({
   localOnly?: boolean;
   aiUnavailable?: boolean;
   cloudCredits?: boolean;
+  cloudUnlimited?: boolean;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const state = useEditorStore(useShallow((editor) => ({
@@ -100,7 +102,7 @@ export function EditorInspector({
   if (workflow.kind === "text") return <TextInspector />;
   if (workflow.kind === "watermark") return <WatermarkInspector />;
   if (workflow.kind === "transform") {
-    return <TransformInspector aiUnavailable={aiUnavailable} cloudCredits={cloudCredits} providerCapabilities={providerCapabilities} onGenerate={onGenerateTransform} onRetry={onRetry} onOpenDiagnostics={onOpenDiagnostics} />;
+    return <TransformInspector cloudUnlimited={cloudUnlimited} aiUnavailable={aiUnavailable} cloudCredits={cloudCredits} providerCapabilities={providerCapabilities} onGenerate={onGenerateTransform} onRetry={onRetry} onOpenDiagnostics={onOpenDiagnostics} />;
   }
   if (workflow.kind === "extend") return <ExtendInspector aiUnavailable={aiUnavailable} cloudCredits={cloudCredits} onPlan={onPlanExtend} onGenerate={onGenerateExtend} previewAdjustmentOpen={extendPreviewAdjustmentOpen} onReturnToComparison={onReturnToExtendComparison} />;
 
@@ -284,7 +286,7 @@ export function EditorInspector({
             <span>{state.generativeState.error}</span>
             <code className="break-all font-mono text-[8px]">Request {state.generativeState.snapshot.requestId}</code>
             <div className="flex flex-wrap gap-2">
-              {!cloudCredits && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink hover:bg-white" onClick={onOpenDiagnostics}><Activity className="mr-1 inline size-3" />View diagnostics</button>}
+              {!cloudCredits && !cloudUnlimited && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink hover:bg-white" onClick={onOpenDiagnostics}><Activity className="mr-1 inline size-3" />View diagnostics</button>}
               {state.generativeState.retryable && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink hover:bg-white" onClick={() => void onRetry()}>Retry same request</button>}
             </div>
           </div>

@@ -69,9 +69,10 @@ const defaultBrief: AssetGenerationBrief = {
 
 const defaultCustomColors = ["#171714", "#d8f441"];
 
-export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSessionId, cloudAiAvailable = true }: {
+export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSessionId, cloudAiAvailable = true, cloudUnlimited = false }: {
   cloudSessionId?: string;
   cloudAiAvailable?: boolean;
+  cloudUnlimited?: boolean;
   open: boolean;
   onClose: () => void;
   onUseCandidate: (candidate: DisplayedAssetCandidate) => Promise<boolean>;
@@ -98,7 +99,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
       const attempt = await result.json() as { status: string; result: import("@/shared/asset-generation").AssetGenerationResponse | null };
       if (cancelled) return;
       if (attempt.result?.creation && attempt.result.candidates[0]) setCandidate({ ...attempt.result.candidates[0], response: attempt.result, request: attempt.result.creation });
-      else if (["running", "unknown"].includes(attempt.status)) setError("The last generation is still processing or has an unknown outcome. Close and reopen to check its status; its credit is pending.");
+      else if (["running", "unknown"].includes(attempt.status)) setError("The last generation is still processing or has an unknown outcome. Close and reopen to check its status; the request is pending.");
     }).catch(() => { if (!cancelled) setError("Generation recovery is unavailable. Close and reopen to retry."); });
     return () => { cancelled = true; };
   }, [open, cloudSessionId]);
@@ -230,9 +231,9 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
             {error && <p role="alert" className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{error}</p>}
             <button data-testid="generate-assets" type="submit" className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-paper outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35" disabled={!cloudAiAvailable || !validation.success || !capabilities || status !== "idle"}>
               {status === "generating" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 text-acid" />}
-              {status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}${cloudSessionId ? " · 1 credit" : ""}` : `Create ${choiceLabel}${cloudSessionId ? " · 1 credit" : ""}`}
+              {status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}` : `Create ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}
             </button>
-            <p className="text-center font-mono text-[8px] uppercase tracking-wider text-muted">{cloudSessionId ? "1 welcome credit per result · local edits use no credits" : capabilities ? `${capabilities.model} · low quality · 1 result` : "Loading configuration…"}</p>
+            <p className="text-center font-mono text-[8px] uppercase tracking-wider text-muted">{cloudSessionId ? cloudUnlimited ? "Unlimited AI · admin account" : "1 welcome credit per result · local edits use no credits" : capabilities ? `${capabilities.model} · low quality · 1 result` : "Loading configuration…"}</p>
           </form>
 
           <div className="grid min-h-[430px] grid-rows-[auto_1fr] bg-[#c9c6bc] lg:min-h-0 lg:overflow-y-auto" aria-live="polite">
@@ -253,7 +254,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-ink bg-paper px-4 py-3 sm:px-6">
-          <p className="max-w-xl text-[10px] leading-relaxed text-muted">Using this result makes it the immutable original of a new project. {cloudSessionId ? "Closing keeps it recoverable for 24 hours; its credit remains spent." : "Closing this window discards the temporary result."}</p>
+          <p className="max-w-xl text-[10px] leading-relaxed text-muted">Using this result makes it the immutable original of a new project. {cloudSessionId ? cloudUnlimited ? "Closing keeps it recoverable for 24 hours." : "Closing keeps it recoverable for 24 hours; its credit remains spent." : "Closing this window discards the temporary result."}</p>
           <button data-testid="use-generated-asset" type="button" className="flex h-10 items-center gap-2 bg-acid px-4 text-xs font-bold outline-none hover:bg-ink hover:text-paper focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-35" disabled={!candidate || status !== "idle"} onClick={() => void openSelected()}>{status === "using" ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}Use in Mirai</button>
         </footer>
       </section>

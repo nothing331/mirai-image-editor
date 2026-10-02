@@ -19,6 +19,7 @@ export function TransformInspector({
   providerCapabilities,
   aiUnavailable = false,
   cloudCredits = false,
+  cloudUnlimited = false,
   onGenerate,
   onRetry,
   onOpenDiagnostics,
@@ -26,6 +27,7 @@ export function TransformInspector({
   providerCapabilities: ProviderCapabilities | null;
   aiUnavailable?: boolean;
   cloudCredits?: boolean;
+  cloudUnlimited?: boolean;
   onGenerate: (input: TransformInput) => Promise<boolean>;
   onRetry: () => Promise<boolean>;
   onOpenDiagnostics: () => void;
@@ -117,12 +119,12 @@ export function TransformInspector({
         )}
 
         {state.paintSession && <p className="border-l-2 border-accent bg-[#ffd5cc] p-3 text-[10px] text-[#8f1d10]">Apply or discard the pending paint before transforming the image.</p>}
-        {failed && <div className="grid gap-2 border-l-2 border-accent bg-[#ffd5cc] p-3 text-[10px] text-[#8f1d10]" role="alert"><span>{state.generativeState.error}</span><div className="flex flex-wrap gap-2">{!cloudCredits && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink" onClick={onOpenDiagnostics}><Activity className="mr-1 inline size-3" />Diagnostics</button>}{state.generativeState.retryable && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink" onClick={() => void onRetry()}>Retry same request</button>}</div></div>}
+        {failed && <div className="grid gap-2 border-l-2 border-accent bg-[#ffd5cc] p-3 text-[10px] text-[#8f1d10]" role="alert"><span>{state.generativeState.error}</span><div className="flex flex-wrap gap-2">{!cloudCredits && !cloudUnlimited && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink" onClick={onOpenDiagnostics}><Activity className="mr-1 inline size-3" />Diagnostics</button>}{state.generativeState.retryable && <button type="button" className="h-8 bg-paper px-2 font-bold text-ink" onClick={() => void onRetry()}>Retry same request</button>}</div></div>}
       </div>
 
       <div className="border-t border-line bg-[#e8e5dc] p-3">
         <div className="mb-2 flex items-center gap-1.5 font-mono text-[7px] uppercase leading-relaxed text-muted">
-          {localMonochrome ? <><Film className="size-3 shrink-0" />No model call</> : <><Sparkles className="size-3 shrink-0" />{cloudCredits ? "1 AI credit per generated preview" : providerCapabilities?.provider === "openai" ? "Paid image request" : "Deterministic fake pipeline"}</>}
+          {localMonochrome ? <><Film className="size-3 shrink-0" />No model call</> : <><Sparkles className="size-3 shrink-0" />{cloudCredits ? "1 AI credit per generated preview" : cloudUnlimited ? "Unlimited AI · admin account" : providerCapabilities?.provider === "openai" ? "Paid image request" : "Deterministic fake pipeline"}</>}
         </div>
         <button type="button" data-testid="generate-transform" className="flex h-10 w-full items-center justify-center gap-2 bg-ink px-3 text-xs font-bold text-paper outline-none hover:bg-acid hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-35" disabled={!ready} onClick={() => void generate()}>{processing ? <><LoaderCircle className="size-4 animate-spin" />Transforming…</> : state.preview ? <><WandSparkles className="size-4" />Review on canvas</> : <><WandSparkles className="size-4" />{cloudCredits && !localMonochrome ? "Generate preview · 1 credit" : "Generate preview"}</>}</button>
       </div>
