@@ -69,6 +69,43 @@ The browser helper derives dummy keys from `supabase status -o json` internally,
 
 Local checks cover strict dimensions/masks/configuration, ownership/origin/ineligible denial, 25-credit exhaustion, racing same-key execution and competing admission, known rejection/downstream failure/unknown timeout, process fencing, persistent global spend, result-before-success, cleanup accounting, preview recovery, exact protected pixels, complete review candidate, server-owned Transform fidelity, Extend plan tampering/cache, one-original creation, local editing/export after exhaustion, and existing cloud lifecycle flows. Repeat these hosted with disposable data before rollout; fake timing is not representative model latency.
 
+## Authenticated real-AI testing on localhost
+
+Use the local Next.js app with an existing staging Supabase project to exercise the full Google login, invitations, private projects, shared credits, admin exemptions and durable AI flow. Supabase and provider calls still use hosted services; Docker is unnecessary for this setup. Verify all repository migrations, including both Wave D migrations, are applied through the protected migration workflow before starting.
+
+Configure the ignored `.env` or `.env.local` with the matching staging public URL/publishable key, server-only secret key, owner email and OpenAI key, plus:
+
+```dotenv
+MIRAI_APP_MODE=local
+MIRAI_PERSISTENCE_MODE=disabled
+MIRAI_AUTH_ENABLED=true
+MIRAI_AI_ENABLED=true
+MIRAI_CANONICAL_URL=http://localhost:3000
+MIRAI_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+MIRAI_AI_HOST_QUALIFIED=false
+IMAGE_EDIT_PROVIDER=openai
+ASSET_GENERATION_PROVIDER=openai
+OPENAI_IMAGE_QUALITY=low
+OPENAI_IMAGE_MAX_EDGE=1024
+OPENAI_EXTEND_PROVIDER_MAX_EDGE=1024
+# Supply reviewed positive stage ceilings; they reserve spending, not exact invoice prices.
+MIRAI_AI_IMAGE_STAGE_MICROUSD=<image-stage ceiling in micro-USD>
+MIRAI_AI_TEXT_STAGE_MICROUSD=<text-stage ceiling in micro-USD>
+```
+
+The local qualification exception requires `local` mode, a loopback canonical origin included in allowed origins, exclusively loopback allowed origins, and no Render runtime/service markers. Remote origins, CI, staging and beta retain the hosted qualification requirement. Local requests still enforce authentication, ownership, member credits, positive stage ceilings, database funding, storage and concurrency. It is not a hosted smoke-test exemption and does not resolve first-run Render qualification.
+
+In Supabase Authentication → URL Configuration, retain the deployed Site URL and add `http://localhost:3000/**` to Redirect URLs. This includes Mirai's `/auth/callback?next=...`. The existing Google provider credentials and Supabase callback stay in place. Use `localhost` consistently for sign-in so cookies and redirect origins agree.
+
+After obtaining a specific test budget, inspect `public.ai_control` and configure its total `budget_microusd` and `enabled=true` through service-only access. A five-dollar total is 5,000,000 micro-USD. Never reset `committed_microusd`; existing spend consumes that total. This gate and budget affect every app connected to the same Supabase project, including Render. Stage-ceiling accounting is conservative and can stop testing before actual invoiced spend reaches the total; compare provider usage/billing to validate the estimates.
+
+```bash
+nvm use
+npm run dev -- --hostname 127.0.0.1
+```
+
+Open `http://localhost:3000`, sign in with the configured owner Google account, and verify Unlimited in My projects. Test both new-project paths, one real preview, accept/discard, undo/reopen and export. Use another browser profile with an invited Google account to check 25 shared credits and the five-project member cap. Do not auto-exhaust 25 real credits: use the fake-provider suite for exhaustion/failure cases. No paid generation is triggered by opening the page or studio. Disable the shared database AI gate when the test session is over.
+
 ## Off switch and rollback
 
 Set database `ai_control.enabled=false` to stop new attempts/stages promptly; keep the current runtime configured while resolving in-flight work. Ready stored previews can still be inspected and accepted through owned routes. To remove real provider configuration completely, also disable runtime AI, set providers to fake, remove the OpenAI key and redeploy; local reads/saves/export remain available. Preserve the additive schema, receipts, private results and accounting during app rollback. An older app may again display the former grant wording, so verify welcome/settings against the deployed revision.
