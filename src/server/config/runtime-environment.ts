@@ -127,7 +127,10 @@ export function readRuntimeEnvironment(
   if (authEnabled && aiEnabled && (!["fake", "openai"].includes(imageEditProvider) || !["fake", "openai"].includes(assetGenerationProvider))) issues.push("AI providers must be fake or openai");
   if (authEnabled && aiEnabled && (imageEditProvider === "openai" || assetGenerationProvider === "openai")) {
     if (!environment.OPENAI_API_KEY) issues.push("OPENAI_API_KEY is required for real AI");
-    if (environment.MIRAI_AI_HOST_QUALIFIED !== "true") issues.push("MIRAI_AI_HOST_QUALIFIED must confirm hosted AI timeout and recovery qualification");
+    const localAiDevelopment = mode === "local" && environment.RENDER !== "true" && !environment.RENDER_SERVICE_ID &&
+      canonicalUrl !== null && isLoopbackOrigin(canonicalUrl.origin) && allowedOrigins.includes(canonicalUrl.origin) &&
+      allowedOrigins.every(isLoopbackOrigin);
+    if (!localAiDevelopment && environment.MIRAI_AI_HOST_QUALIFIED !== "true") issues.push("MIRAI_AI_HOST_QUALIFIED must confirm hosted AI timeout and recovery qualification; local development requires a loopback canonical URL and allowed origins");
     for (const name of ["MIRAI_AI_IMAGE_STAGE_MICROUSD", "MIRAI_AI_TEXT_STAGE_MICROUSD"]) {
       parseInteger(name, environment[name] ?? "0", 1, 10_000_000, issues);
     }
@@ -168,6 +171,10 @@ function parseEmails(value: string | undefined, issues: string[]): string[] {
 
 export function isCloudMode(mode: ApplicationMode): boolean {
   return cloudModes.has(mode);
+}
+
+function isLoopbackOrigin(origin: string): boolean {
+  return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(origin).hostname);
 }
 
 function parseChoice<const Choice extends readonly string[]>(

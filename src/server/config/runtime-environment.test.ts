@@ -110,7 +110,49 @@ describe("runtime environment", () => {
       ]));
     }
   });
+
+  it.each(["localhost", "127.0.0.1", "[::1]"])("allows authenticated real AI on loopback %s without hosted qualification", (host) => {
+    const configuration = readRuntimeEnvironment(localRealAiEnvironment(`http://${host}:3000`));
+    expect(configuration).toMatchObject({ mode: "local", aiEnabled: true, auth: { enabled: true }, imageEditProvider: "openai" });
+  });
+
+  it.each([
+    ["missing canonical URL", { MIRAI_CANONICAL_URL: "" }],
+    ["remote canonical URL", { MIRAI_CANONICAL_URL: "https://mirai.example" }],
+    ["missing allowed origins", { MIRAI_ALLOWED_ORIGINS: "" }],
+    ["remote allowed origin", { MIRAI_ALLOWED_ORIGINS: "http://localhost:3000,https://mirai.example" }],
+    ["mismatched loopback origin", { MIRAI_ALLOWED_ORIGINS: "http://127.0.0.1:3000" }],
+    ["CI mode", { MIRAI_APP_MODE: "ci" }],
+    ["Render process", { RENDER: "true" }],
+    ["Render service", { RENDER_SERVICE_ID: "srv-test" }],
+  ])("keeps hosted qualification required for %s", (_label, changes) => {
+    expect(() => readRuntimeEnvironment({ ...localRealAiEnvironment(), ...changes })).toThrow("MIRAI_AI_HOST_QUALIFIED");
+  });
+
+  it.each(["MIRAI_AI_IMAGE_STAGE_MICROUSD", "MIRAI_AI_TEXT_STAGE_MICROUSD"])("still requires %s during local authenticated AI development", (name) => {
+    expect(() => readRuntimeEnvironment({ ...localRealAiEnvironment(), [name]: "0" })).toThrow(name);
+  });
 });
+
+function localRealAiEnvironment(origin = "http://localhost:3000"): Record<string, string> {
+  return {
+    MIRAI_APP_MODE: "local",
+    MIRAI_AUTH_ENABLED: "true",
+    MIRAI_AI_ENABLED: "true",
+    MIRAI_CANONICAL_URL: origin,
+    MIRAI_ALLOWED_ORIGINS: origin,
+    MIRAI_OWNER_EMAILS: "owner@example.com",
+    NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test-key-12345",
+    SUPABASE_SECRET_KEY: "server-only-placeholder-secret",
+    IMAGE_EDIT_PROVIDER: "openai",
+    ASSET_GENERATION_PROVIDER: "openai",
+    OPENAI_API_KEY: "test-only-placeholder",
+    MIRAI_AI_HOST_QUALIFIED: "false",
+    MIRAI_AI_IMAGE_STAGE_MICROUSD: "1000000",
+    MIRAI_AI_TEXT_STAGE_MICROUSD: "100000",
+  };
+}
 
 function stagingEnvironment(): Record<string, string> {
   return {
