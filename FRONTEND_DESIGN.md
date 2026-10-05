@@ -4,9 +4,9 @@ This document is the durable design contract for Mirai's editor interface. Read 
 
 ## Design thesis
 
-Mirai is an **industrial editorial image workstation** for ordinary users. It should feel focused and capable without resembling a professional suite full of floating palettes. The image is always the visual anchor; controls form a quiet, precise frame around it.
+Mirai is a **refined editorial image workspace** for ordinary users. It should feel focused and capable without resembling a professional suite full of floating palettes. The image is always the visual anchor; controls form a quiet, precise frame around it.
 
-The memorable visual signature is warm paper and near-black structure interrupted by one sharp acid-lime action color. The interface is compact, square-edged, typographically disciplined, and visibly stateful.
+The visual signature is soft warm paper, charcoal canvas, and one sharp acid-lime action color. The interface uses quiet surface boundaries, readable typography, gently rounded controls, and deliberate spacing. The image-first shell and reversible editing model remain central to the design.
 
 When making a design decision, prefer:
 
@@ -35,11 +35,11 @@ The shell has five stable regions:
 
 | Region | Role | Current measure |
 |---|---|---|
-| Header | Project commands, save, diagnostics, export | 56px high |
-| Tool rail | Select one editing workflow | 48px wide on desktop |
-| Contextual inspector | Options for the selected workflow | 208px content beside the rail; 256px total sidebar |
+| Header | Project commands, save, diagnostics, export | 64px high locally; 56px in the cloud project toolbar |
+| Tool rail | Select one editing workflow | 56px wide on desktop |
+| Contextual inspector | Options for the selected workflow | 264px content beside the rail; 320px total sidebar |
 | Canvas | Image interaction and proposal comparison | Receives all remaining space |
-| Canvas status | Dimensions, zoom, active mode, history count | 28px high |
+| Canvas status | Dimensions, zoom, active mode, history count | 32px high |
 
 The rail chooses the workflow; the inspector configures it; the canvas performs or reviews it. Do not place the same primary action in multiple regions merely for visibility.
 
@@ -64,7 +64,7 @@ Use the contextual inspector for persistent options belonging to a tool. Use the
 ### Brand identity
 
 - Use the approved transparent Mirai image-editor mark from `src/app/icon.png`; do not redraw it or place it inside another tile.
-- In the application header, pair the mark with an uppercase, extra-bold Manrope `MIRAI` wordmark and the mono uppercase descriptor `REVERSIBLE AI IMAGE EDITOR`.
+- In the application header, pair the mark with an uppercase, extra-bold Manrope `MIRAI` wordmark and the mono uppercase descriptor `IMAGE STUDIO`.
 - On constrained widths, hide the wordmark before shrinking the mark or displacing project controls.
 
 ### Color
@@ -74,17 +74,17 @@ The canonical semantic tokens live in `src/app/globals.css`.
 | Token | Value | Purpose |
 |---|---:|---|
 | `ink` | `#171714` | Primary text, selected tools, strongest actions |
-| `paper` | `#f2f0e8` | Main interface surface |
-| `line` | `#b9b5a9` | Dividers and control boundaries |
-| `muted` | `#656259` | Secondary text and inactive icons |
+| `paper` | `#faf9f6` | Main interface surface |
+| `line` | `#deddd6` | Dividers and control boundaries |
+| `muted` | `#6b6b62` | Secondary text and inactive icons |
 | `accent` | `#ef4b32` | Errors, destructive emphasis, serious warnings |
 | `acid` | `#d8f441` | Primary action, successful readiness, active highlight |
 
 Supporting neutrals already used by the shell:
 
-- `#e8e5dc` / `#e9e7df`: recessed controls and rail surfaces.
-- `#cfcdc5`: canvas surround.
-- `#151513`: canvas and review stage.
+- `surface` / `#eeeee8`: recessed controls.
+- `workspace` / `#e8e8e1`: canvas surround.
+- `stage` / `#20211e`: canvas and review stage. A subtle 20px dot texture gives the editing stage depth; keep it behind the image and away from review results.
 - Pale acid (`#edf5c4`): selected or ready informational state.
 - Pale coral (`#ffd5cc`): error and blocked state.
 
@@ -108,19 +108,19 @@ Typical scale:
 
 | Use | Size |
 |---|---:|
-| Micro metadata / eyebrow | 7–9px mono |
-| Supporting label | 9–10px |
-| Control and body copy | 10–12px |
-| Inspector heading | 14px bold |
+| Micro metadata / eyebrow | 9–10px mono |
+| Supporting label | 11–12px |
+| Control and body copy | 12–14px |
+| Inspector heading | 16px bold |
 | Product mark / major compact heading | 16px+ bold |
 
 Small type is appropriate only for short interface metadata. Explanations, errors, and instructions must remain readable and use comfortable line height.
 
 ### Shape, depth, and texture
 
-- Default to square corners. Rounded pills and generic rounded cards do not belong in the editor chrome.
+- Use 6–8px corners on buttons, fields, rail controls, and the canvas frame. Keep the shell and inspector sections adjoining and cardless; do not turn each group into a floating card. Sliders use circular handles and a rounded track.
 - Use 1px borders and adjoining surfaces to establish structure.
-- Use hard offset shadows sparingly for elevated, consequential layers such as loading states or tooltips.
+- Use subtle shadows for elevated menus, tooltips, blocking dialogs, and evidence drawers. Dialog frames may use 12px corners; their controls retain the shared 6–8px treatment. The empty-state illustration may use a solid offset backing to suggest an image sheet; keep it separate from interactive chrome.
 - Avoid soft, diffuse card shadows, glassmorphism, decorative blur, and purple/blue SaaS gradients.
 - The image or generated result supplies visual richness. The surrounding interface should remain controlled.
 
@@ -128,11 +128,11 @@ Small type is appropriate only for short interface metadata. Explanations, error
 
 Use a compact 4px-based rhythm. Common values are 4, 8, 12, 16, and 24px.
 
-- Rail target: 44 × 44px inside a 48px rail.
-- Header icon target: 32 × 32px.
+- Rail target: 44 × 44px inside a 56px rail, with 4px between tools.
+- Local header icon target: 36 × 36px.
 - Primary inspector action: 40px high and full width.
 - Compact segmented control: 32–36px high.
-- Inspector horizontal padding: 16px.
+- Inspector horizontal padding: 16px; heading vertical padding: 20px.
 - Separate inspector groups with a top border and 12–16px vertical padding.
 
 Maintain comfortable pointer targets even when the visible icon is 16–18px.
@@ -141,12 +141,12 @@ Maintain comfortable pointer targets even when the visible icon is 16–18px.
 
 ### Tool rail
 
-- AI workflows appear first and share the acid surface and compact `AI` marker established by Create with AI. Select & edit sits among them for workflow prominence but uses the standard rail treatment without an AI marker. Any selected workflow uses the standard selected ink surface with acid content.
-- Inactive: muted icon on the warm neutral rail.
+- AI workflows appear first with a pale acid surface and compact `AI` marker. Create with AI uses the solid acid treatment. Select & edit sits among them for workflow prominence but uses the standard rail treatment without an AI marker. Any selected workflow uses the standard selected ink surface with acid content.
+- Inactive: muted icon on the paper rail.
 - Hover: lighter surface and ink icon.
 - Selected: ink surface with acid icon.
 - Disabled: reduced opacity but retain the hover label so users can identify the control.
-- Tooltip: ink background, paper text, optional acid shortcut, hard acid-tinted offset shadow.
+- Tooltip: ink background, paper text, optional acid shortcut, 6px corners, and a subtle shadow.
 - Do not show two tools as selected. An image-wide workflow may preserve an underlying canvas mode internally, but only the visible workflow is highlighted.
 
 ### Contextual inspector
@@ -157,6 +157,14 @@ Maintain comfortable pointer targets even when the visible icon is 16–18px.
 - Keep configuration visible during processing and review, but prevent competing requests.
 - Switching tools replaces the inspector content; do not accumulate permanent panels.
 - Retain meaningful draft inputs through review and Adjust flows.
+
+### Empty workspace
+
+- Use a warm paper stage with a clear “Open an image” action and a quieter “Create with AI” action.
+- Pair concise intake copy with a locally rendered landscape illustration at desktop widths. The illustration explains selection and review; it is decorative and never becomes an image version.
+- Hide the illustration below 1024px to prioritize intake controls. On short screens, the empty stage may scroll internally while the application viewport stays locked.
+- Keep file inputs keyboard accessible with a visible focus ring on their enclosing label. Both intake actions are disabled during project I/O.
+- Cloud projects show a project-loading placeholder rather than local upload or AI creation commands.
 
 ### Buttons
 
@@ -172,7 +180,7 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 ### Inputs and option groups
 
 - Use recessed neutral surfaces for text fields and selects.
-- Use a visible accent focus ring.
+- Use a visible ink focus ring on light surfaces and a paper or acid focus ring on dark surfaces. Coral is reserved for error states; it is no longer the default field focus or slider color.
 - Use radio semantics for mutually exclusive presets and segmented controls.
 - Selected options should change both contrast and structure; do not rely on color alone.
 - Placeholder copy should demonstrate the expected input without becoming an instruction manual.
@@ -204,7 +212,7 @@ Motion communicates a state transition; it is not ambient decoration.
 
 ## Responsive behavior
 
-Desktop prioritizes a vertical rail, contextual inspector, and maximum canvas area. On narrow screens, the tool rail becomes horizontal below the canvas and the inspector occupies a bounded lower region.
+Desktop prioritizes a vertical rail, contextual inspector, and maximum canvas area. On narrow screens, the tool rail becomes horizontal below the canvas and the inspector occupies a bounded lower region of at most 40dvh or 320px. The canvas retains at least 180px including its status strip, even on short phone viewports.
 
 - Preserve the same tool order and names across breakpoints.
 - Tooltips move above horizontal rail icons and to the right of vertical rail icons.
