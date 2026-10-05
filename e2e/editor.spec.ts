@@ -1,5 +1,38 @@
 import { expect, test, type Page } from "@playwright/test";
 
+for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 }, { width: 375, height: 568 }]) {
+  test(`workspace keeps intake and review actions reachable at ${viewport.width} × ${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const intake = page.getByLabel("Open an image", { exact: true });
+    await intake.focus();
+    await expect(intake).toBeFocused();
+    await expect(page.getByTestId("open-asset-generator")).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Export current image" })).toBeDisabled();
+    await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
+
+    await uploadTestImage(page, 320, 200);
+    const canvas = await page.getByTestId("editor-canvas").boundingBox();
+    expect(canvas!.height).toBeGreaterThanOrEqual(130);
+    await expect(page.getByTestId("apply-edit")).toBeInViewport();
+    await page.getByRole("radio", { name: "Brush" }).click();
+    await expect(page.getByTestId("apply-paint")).toBeDisabled();
+    await page.getByTestId("open-lasso-edit").click();
+    await drawSourceSelection(page, 2, 2, 16, 16);
+    await page.getByTestId("apply-edit").click();
+    await expect(page.getByTestId("preview-comparison")).toBeVisible();
+    await expect(page.getByTestId("accept-preview")).toBeInViewport();
+    await expect(page.getByRole("button", { name: "Discard", exact: true })).toBeInViewport();
+    await page.getByRole("button", { name: "Discard", exact: true }).click();
+    await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => ({
+      vertical: document.documentElement.scrollHeight === document.documentElement.clientHeight,
+      horizontal: document.documentElement.scrollWidth === document.documentElement.clientWidth,
+    }))).toEqual({ vertical: true, horizontal: true });
+  });
+}
+
 test("fake asset generator creates a transparent, auto-saved project with no edit history", async ({ page }) => {
   const conceptName = `Orbital compass ${Date.now()}`;
   await page.goto("/");
@@ -165,7 +198,7 @@ test("upload, select, and recolor an image", async ({ page }) => {
   const initialX = Number(await canvas.getAttribute("data-viewport-x"));
   const initialY = Number(await canvas.getAttribute("data-viewport-y"));
   await expect(page.getByRole("heading", { name: "MIRAI", exact: true })).toBeVisible();
-  await expect(page.getByText("REVERSIBLE AI IMAGE EDITOR", { exact: true })).toBeVisible();
+  await expect(page.getByText("IMAGE STUDIO", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Size", { exact: true })).toHaveCount(0);
   await page.mouse.move(bounds.x + initialX + 2, bounds.y + initialY + 2);
   await page.mouse.down();

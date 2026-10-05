@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme inline {
@@ -8,23 +8,36 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-acid: var(--acid);
+  --color-surface: var(--surface);
+  --color-workspace: var(--workspace);
+  --color-stage: var(--stage);
   --font-sans: "Manrope", sans-serif;
   --font-mono: "DM Mono", monospace;
 }
 
 :root {
   --ink: #171714;
-  --paper: #f2f0e8;
-  --line: #b9b5a9;
-  --muted: #656259;
+  --paper: #faf9f6;
+  --line: #deddd6;
+  --muted: #6b6b62;
   --accent: #ef4b32;
   --acid: #d8f441;
+  --surface: #eeeee8;
+  --workspace: #e8e8e1;
+  --stage: #20211e;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 body { background: var(--paper); color: var(--ink); font-family: "Manrope", sans-serif; }
 .public-page { height: 100dvh; overflow-y: auto; overscroll-behavior-y: auto; }
+.editor-inspector :where(button, select, textarea, input:not([type="checkbox"])), .editor-dialog :where(button, select, textarea, input:not([type="checkbox"])) { border-radius: 6px; }
+.editor-inspector :where(input, select, textarea) { border: 1px solid var(--line); }
+.editor-inspector :where(input[type="color"]) { border: 0; }
+.editor-inspector :where(h2) { font-size: 16px; line-height: 1.4; }
+.editor-inspector :where(button:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+.editor-inspector { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.canvas-stage { background-color: var(--stage); background-image: radial-gradient(#ffffff0c .8px, transparent .8px); background-size: 20px 20px; }
 button, label, select, input, textarea { -webkit-tap-highlight-color: transparent; }
 button, select, input, textarea { transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, opacity 140ms ease; }
 ::selection { background: var(--acid); color: var(--ink); }

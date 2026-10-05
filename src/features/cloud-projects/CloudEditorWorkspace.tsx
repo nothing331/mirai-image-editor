@@ -368,7 +368,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
   const cloudStatusLabel = status === "loading" ? "Opening" : status === "saving" ? "Saving…"
     : status === "failed" ? "Save needs attention" : draftStatus === "unavailable" ? "Draft cache unavailable"
       : draftStatus === "stored" ? "Draft on device" : "Cloud saved";
-  return <section className="grid h-[calc(100dvh-56px)] min-h-[440px] grid-rows-[56px_minmax(0,1fr)] bg-[#cfcdc5] text-ink" aria-label="Cloud editor">
+  return <section className="grid h-[calc(100dvh-56px)] min-h-[440px] grid-rows-[56px_minmax(0,1fr)] bg-workspace text-ink" aria-label="Cloud editor">
     {draftOffer && <div className="absolute left-1/2 top-20 z-50 w-[min(90vw,420px)] -translate-x-1/2 border border-ink bg-paper p-4 shadow-[5px_5px_0_#d8f441]" role="dialog" aria-label="Stored browser draft"><strong className="text-sm">Draft stored on this device</strong><p className="mt-2 text-xs leading-5 text-muted">This draft matches the current saved version. It has not been saved to the cloud.</p><div className="mt-4 flex gap-3"><button type="button" className="min-h-10 bg-acid px-3 text-xs font-bold" onClick={() => { if (draftOffer.pendingAcceptance && draftOffer.commitKeys) saveKeys.current.set(draftOffer.pendingAcceptance.operation.id, draftOffer.commitKeys); if (!editor.restoreCloudDraft(draftOffer)) editor.setError("The stored draft no longer matches this image."); if (draftOffer.localDraft) setWorkflow(draftOffer.localDraft.type === "text" ? { kind: "text" } : draftOffer.localDraft.type === "watermark" ? { kind: "watermark" } : { kind: "size-position" }); else if (draftOffer.paintSession) setWorkflow({ kind: "canvas", tool: "brush" }); setDraftOffer(null); setDraftReady(true); }}>Restore draft</button><button type="button" className="min-h-10 px-3 text-xs underline" onClick={() => { void clearCloudDraft(ownerId, projectId); setDraftOffer(null); setDraftReady(true); }}>Discard draft</button></div></div>}
     <header className="flex min-w-0 items-center gap-2 border-b border-line bg-paper px-3">
       <Link href="/projects" className="shrink-0 font-mono text-[9px] uppercase text-muted underline underline-offset-4 hover:text-ink">← Projects</Link>
@@ -388,10 +388,10 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
       <button type="button" aria-label="History" aria-expanded={historyOpen} className="flex h-8 items-center gap-1 px-2 font-mono text-[9px] uppercase hover:bg-white/70" onClick={() => setHistoryOpen((open) => !open)}><History className="size-4" /><span className="hidden sm:inline">History</span></button>
     </header>
     <div className={cn("grid min-h-0 min-w-0", historyOpen ? "lg:grid-cols-[minmax(0,1fr)_280px]" : "grid-cols-1")}>
-      <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] md:grid-cols-[256px_minmax(0,1fr)] md:grid-rows-1">
-        <aside className="order-2 grid min-h-0 bg-paper md:order-1 md:grid-cols-[48px_minmax(0,1fr)]" aria-label="Editor tools">
+      <div className={cn("grid min-h-0 min-w-0 grid-rows-[minmax(180px,1fr)_auto] md:grid-rows-1", inspectorCollapsed ? "md:grid-cols-[56px_minmax(0,1fr)]" : "md:grid-cols-[320px_minmax(0,1fr)]")}>
+        <aside className={cn("order-2 grid min-h-0 bg-paper md:order-1 md:grid-cols-[56px_minmax(0,1fr)]", !inspectorCollapsed && "max-md:grid-rows-[56px_minmax(0,min(40dvh,320px,calc(100dvh-348px)))]")} aria-label="Editor tools">
           <ToolRail collapsed={inspectorCollapsed} disabled={busy || Boolean(editor.pendingAcceptance || editor.preview)} generationDisabled localOnly workflow={workflow} onGenerateAsset={() => {}} onSelectWorkflow={changeWorkflow} onToggleInspector={() => setInspectorCollapsed((value) => !value)} />
-          {!inspectorCollapsed && <div className={cn("min-h-0 border-t border-line md:border-t-0", editor.pendingAcceptance && "pointer-events-none opacity-50")}>
+          {!inspectorCollapsed && <div className={cn("editor-inspector min-h-0 border-t border-line md:border-t-0", editor.pendingAcceptance && "pointer-events-none opacity-50")}>
             <EditorInspector localOnly phase={phase} providerCapabilities={null} workflow={workflow} onSelectGeometryEdit={selectGeometry}
               onGenerate={() => editor.createPreview()} onGenerateTransform={async () => false} onPlanExtend={async () => false}
               onGenerateExtend={async () => false} extendPreviewAdjustmentOpen={false}

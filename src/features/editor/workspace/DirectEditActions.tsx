@@ -20,8 +20,8 @@ export function DirectEditActions({ draft }: { draft: LocalEditDraft }) {
   const name = editNames[draft.type];
 
   return <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-line bg-paper p-3">
-    <button type="button" data-testid="save-direct-edit" className="flex h-10 items-center justify-center gap-2 bg-acid px-3 text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-35" disabled={!canSave || Boolean(pendingAcceptance)} onClick={applyLocalDraft}><Check className="size-4" />Save {name}</button>
-    <button type="button" data-testid="discard-direct-edit" className="flex h-10 items-center justify-center gap-1 px-2 font-mono text-[9px] uppercase text-muted outline-none hover:bg-[#e8e5dc] hover:text-ink focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-35" disabled={Boolean(pendingAcceptance)} onClick={discardLocalDraft}><X className="size-3.5" />Discard</button>
+    <button type="button" data-testid="save-direct-edit" className="flex h-10 items-center justify-center gap-2 bg-acid px-3 text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-35" disabled={!canSave || Boolean(pendingAcceptance)} onClick={applyLocalDraft}><Check className="size-4" />Save {name}</button>
+    <button type="button" data-testid="discard-direct-edit" className="flex h-10 items-center justify-center gap-1 px-2 font-mono text-[11px] uppercase text-muted outline-none hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-35" disabled={Boolean(pendingAcceptance)} onClick={discardLocalDraft}><X className="size-3.5" />Discard</button>
   </div>;
 }
 

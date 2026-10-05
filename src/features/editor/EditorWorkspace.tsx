@@ -297,7 +297,7 @@ export function EditorWorkspace() {
 
   return (
     <>
-      <main className="h-dvh overflow-hidden bg-[#cfcdc5] text-ink">
+      <main className="h-dvh overflow-hidden bg-workspace text-ink">
         <WorkspaceHeader
           busyAction={busyAction}
           savedProjects={savedProjects}
@@ -309,10 +309,10 @@ export function EditorWorkspace() {
           onOpenDiagnostics={() => setDiagnosticsOpen(true)}
         />
         <section className={cn(
-          "grid h-[calc(100dvh-3.5rem)] min-h-0 grid-rows-[minmax(300px,1fr)_auto] transition-[grid-template-columns] duration-200 ease-out md:grid-rows-1",
-          inspectorCollapsed ? "md:grid-cols-[48px_minmax(0,1fr)]" : "md:grid-cols-[256px_minmax(0,1fr)]",
+          "grid h-[calc(100dvh-4rem)] min-h-0 grid-rows-[minmax(180px,1fr)_auto] transition-[grid-template-columns] duration-200 ease-out md:grid-rows-1",
+          inspectorCollapsed ? "md:grid-cols-[56px_minmax(0,1fr)]" : "md:grid-cols-[320px_minmax(0,1fr)]",
         )}>
-          <aside className={cn("order-2 grid min-h-0 bg-paper md:order-1 md:grid-cols-[48px_minmax(0,1fr)]", !inspectorCollapsed && "max-md:grid-rows-[48px_minmax(0,42dvh)]")} aria-label="Editor tools">
+          <aside className={cn("order-2 grid min-h-0 bg-paper md:order-1 md:grid-cols-[56px_minmax(0,1fr)]", !inspectorCollapsed && "max-md:grid-rows-[56px_minmax(0,min(40dvh,320px,calc(100dvh-300px)))]")} aria-label="Editor tools">
             <ToolRail
               collapsed={inspectorCollapsed}
               disabled={!editor.currentVersionId || phase === "processing" || phase === "preview"}
@@ -323,7 +323,7 @@ export function EditorWorkspace() {
               onToggleInspector={() => setInspectorCollapsed((current) => !current)}
             />
             {!inspectorCollapsed && (
-              <div className="min-h-0 border-t border-line md:border-t-0" data-testid="editor-inspector">
+              <div className="editor-inspector min-h-0 border-t border-line md:border-t-0" data-testid="editor-inspector">
                 <EditorInspector
                   phase={phase}
                   providerCapabilities={providerCapabilities}
