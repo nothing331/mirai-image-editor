@@ -41,7 +41,7 @@ describe("OpenAIEditIntentPlanner", () => {
 
     const result = await new OpenAIEditIntentPlanner("test-key").plan(await plannerRequest());
 
-    expect(result).toEqual({ plan, providerRequestId: "planner-request-1" });
+    expect(result).toEqual({ plan, providerRequestId: "planner-request-1", usage: { input_tokens: 42, output_tokens: 18 } });
     expect(mocks.parse).toHaveBeenCalledWith(expect.objectContaining({
       model: "gpt-5-nano-2025-08-07",
       store: false,

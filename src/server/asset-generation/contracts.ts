@@ -19,6 +19,7 @@ export interface RawAssetCandidate {
 export interface AssetGeneratorResult {
   candidates: RawAssetCandidate[];
   providerRequestId: string;
+  usage?: unknown;
 }
 
 export interface AssetGenerator {
@@ -29,7 +30,7 @@ export class AssetGenerationProviderError extends Error {
   constructor(
     message: string,
     public readonly retryable: boolean,
-    public readonly diagnostics?: { providerRequestId?: string | null; status?: number; code?: string; type?: string },
+    public readonly diagnostics?: { providerCompleted?: boolean; providerRequestId?: string | null; status?: number; code?: string; type?: string },
   ) {
     super(message);
     this.name = "AssetGenerationProviderError";

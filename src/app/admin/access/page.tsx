@@ -20,7 +20,7 @@ export default async function AccessManagementPage() {
     <AuthShell
       eyebrow="OWNER CONTROL"
       title="Manage beta access."
-      description="Invitations and approvals converge on one durable account grant. Repeating an approval cannot replenish the five-image allowance."
+      description="Invitations and approvals converge on one durable account grant. Repeating an approval cannot replenish the 25-credit welcome allowance."
       secondary={<form action={signOutAction}><button className="font-mono text-[9px] uppercase tracking-[0.12em] underline underline-offset-4">Sign out</button></form>}
     >
       <div className="w-full max-w-xl space-y-7 py-4">

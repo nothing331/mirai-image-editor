@@ -10,6 +10,7 @@ export interface TransformPlannerRequest {
 export interface TransformPlannerResult {
   plan: TransformPlan;
   providerRequestId: string;
+  usage?: unknown;
 }
 
 export interface TransformPlanner {

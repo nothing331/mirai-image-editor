@@ -9,7 +9,7 @@ export class OpenAITransformValidator implements TransformValidator {
   private readonly client: OpenAI;
 
   constructor(apiKey: string, private readonly model: string) {
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   }
 
   async validate(request: TransformValidatorRequest, diagnostics?: ImageEditDiagnosticSink): Promise<TransformValidatorResult> {
@@ -18,10 +18,12 @@ export class OpenAITransformValidator implements TransformValidator {
     await diagnostics?.beginProviderCall("transform-validator", "openai", this.model);
     await diagnostics?.event("transform-validator-call", "Comparing the source and candidate for semantic fidelity.");
     let providerRequestId: string | null = null;
+    let providerCompleted = false;
     try {
       const { data: response, request_id: requestId } = await this.client.responses.parse({
         model: this.model,
         store: false,
+        max_output_tokens: 4096,
         reasoning: { effort: "low" },
         input: [{ role: "user", content: [
           { type: "input_text", text: instruction },
@@ -30,6 +32,7 @@ export class OpenAITransformValidator implements TransformValidator {
         ] }],
         text: { format: zodTextFormat(transformFidelityAssessmentSchema, "transform_fidelity_assessment") },
       }).withResponse();
+      providerCompleted = true;
       providerRequestId = requestId;
       const parsed = response.output_parsed;
       if (!parsed) throw new ImageProviderError("The Transform validator returned no usable assessment.", false, { providerRequestId });
@@ -39,10 +42,11 @@ export class OpenAITransformValidator implements TransformValidator {
       await diagnostics?.artifact("transform-assessment.json", jsonBytes(assessment), "application/json");
       await diagnostics?.artifact("transform-validator-response.json", jsonBytes({ providerRequestId, responseId: response.id, model: response.model, status: response.status, usage: response.usage }), "application/json");
       await diagnostics?.metadata({ transformFidelityAssessment: assessment });
-      return { assessment, providerRequestId: providerRequestId ?? `openai-transform-validator-unreported-${crypto.randomUUID()}` };
+      return { usage: response.usage, assessment, providerRequestId: providerRequestId ?? `openai-transform-validator-unreported-${crypto.randomUUID()}` };
     } catch (error) {
       const providerError = toProviderError(error, providerRequestId);
       await diagnostics?.failProviderCall("transform-validator", toDiagnosticError(providerError), providerError.retryable, providerError.diagnostics?.providerRequestId);
+      if (providerCompleted) Object.assign(providerError, { diagnostics: { ...providerError.diagnostics, providerCompleted: true } });
       throw providerError;
     }
   }

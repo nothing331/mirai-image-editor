@@ -1,3 +1,4 @@
+import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import sharp from "sharp";
 import { configuredProviderName, createExtendPlanner } from "@/server/ai/provider-factory";
 import { startRequestDiagnostics } from "@/server/diagnostics/request-diagnostic-service";
@@ -7,6 +8,7 @@ import { getExtendPreset, isExtendPresetId } from "@/shared/extend-presets";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (cloudAiMode()) return cloudAiPost(request, "extend-plan");
   const projectId = request.headers.get("x-project-id") ?? crypto.randomUUID();
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const diagnostics = await startRequestDiagnostics({ projectId, requestId, retryOfRequestId: null, provider: configuredProviderName() });

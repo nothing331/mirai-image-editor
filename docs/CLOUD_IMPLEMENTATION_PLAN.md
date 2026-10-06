@@ -1,6 +1,6 @@
 # Mirai cloud product implementation plan
 
-**Status:** Wave A complete. P03 accounts and invitations are working on staging; the remaining account walkthrough is tracked separately. P04 private original assets and P05 project creation/reopening passed local and Render/Supabase staging checks on 2026-09-26. P06/P07 cloud editing and history passed local automated checks and the primary Render/Supabase staging walkthrough on 2026-09-26; additional hosted failure, access, and geometry cases remain tracked in the runbook. Wave C P08–P13 and its P18 maintenance dependency are implemented together on a review branch and have local database/browser coverage; hosted migration, maintenance credentials, and staging walkthrough remain release gates.
+**Status:** Wave A complete. P03 accounts and invitations are working on staging; the remaining account walkthrough is tracked separately. P04 private original assets and P05 project creation/reopening passed local and Render/Supabase staging checks on 2026-09-26. P06/P07 cloud editing and history passed local automated checks and the primary Render/Supabase staging walkthrough on 2026-09-26; additional hosted failure, access, and geometry cases remain tracked in the runbook. Wave C P08–P13 and its P18 maintenance dependency are implemented together, merged in [PR #33](https://github.com/nothing331/mirai-image-editor/pull/33), and have local database/browser coverage; hosted migration, maintenance credentials, and staging walkthrough remain release gates. Wave D P14–P17 is implemented locally with shared credits, durable private results, all AI integrations, fake-provider database/browser verification, and a separate real-AI funding/host qualification gate. See [Wave D runbook](./cloud/WAVE_D_RUNBOOK.md).
 **Prepared:** 6 September 2026.
 **Repository baseline reviewed:** `aa2ef76`.
 **Goal:** Turn Mirai into a private, multi-user image editor with accounts, multiple projects, durable history, and export, while keeping the initial infrastructure bill as close to zero as practical.
@@ -68,7 +68,7 @@ The user's answers are matched by meaning where the later numbering shifted. App
 | D07 | History | Approved: linear history and the proposed non-destructive original navigation | Original selection preserves redo until a new accepted edit replaces the future. |
 | D08 | Concurrent editing | Dedicated multi-session conflict handling deferred at user's request | No conflict-resolution UI, collaboration or device synchronization feature. Atomic saves and valid input-version checks remain necessary to preserve the existing history contract. |
 | D09 | Project deletion | Approved: seven-day trash | Restore during retention; physical cleanup releases storage. |
-| D10 | AI eligibility and allowance | Approved: invited/owner-approved users receive an allowance of five AI images; others cannot use AI tools | Clarify whether five is lifetime or recurring, and whether AI editing shares it. No automatic replenishment or extra AI allowance is approved yet. |
+| D10 | AI eligibility and allowance | Approved 2026-10-02: five active projects and 25 one-time welcome AI credits shared across the account | One credit per produced preview across creation, localized edits, Transform and Extend. No reset, per-project allocation or refund on accept/discard/undo/delete. Confirmed failure restores a credit; unknown outcome holds it pending. Provider funding remains separate. |
 | D11 | Long AI requests | Approved: start with request-bound generation; revisit background processing only if needed | Keep durable status/results and test the host; a background worker is not part of the initial scope. |
 | D12 | Local data migration | User says old local projects are mostly tests and need not be carried over | Omit import/migration tooling from initial scope; leave local files untouched. |
 | D13 | Browser support | Approved: desktop editor with responsive account, library and invitation/access-request pages | Users can request access from phones; owner invitation/approval controls should also work on narrow screens. A mobile editor/app remains deferred. |
@@ -76,7 +76,7 @@ The user's answers are matched by meaning where the later numbering shifted. App
 
 Other release decisions: public operator name/contact, intended geography and audience, account-data retention, global AI funding, the storage service required beyond the zero-billing beta, and the supported image envelope. Decisions about privacy wording and legal applicability must be resolved before publishing those promises.
 
-**P00 status:** product direction agreed; proceed to P01. Source-size editing is confirmed, D11/D13 are approved and D08 remains deferred. Carry forward D10 allowance coverage/renewal to the AI allowance delivery before activation; it does not block infrastructure testing. The repository documentation conflicts identified in section 2 remain a tracked documentation task, not a completed reconciliation. Approval of choices does not mean their features already exist.
+**P00 status:** product direction agreed; proceed to P01. Source-size editing is confirmed, D11/D13 are approved and D08 remains deferred. D10 coverage and lifetime policy are now resolved; real-AI funding and hosted qualification remain separate activation gates. The repository documentation conflicts identified in section 2 remain a tracked documentation task, not a completed reconciliation. Approval of choices does not mean their features already exist.
 
 If email/password is chosen instead of D02, add a separate authentication delivery with sign-up, verification/resend and expiry, login, forgot/reset password, change password, account-enumeration-safe errors, resend throttling, transactional-email setup and deliverability tests. If Clerk is selected, replace the Supabase-auth integration with Clerk session validation and a deliberate identity-to-Postgres ownership integration; do not add both identity systems accidentally. These alternatives are recorded, not included in the Google-only beta implementation scope.
 
@@ -109,7 +109,7 @@ The following findings are from source inspection, not assumptions based on the 
 | G21 | CI covers lint/types/unit tests/build; browser suite is manually triggered | Add cloud integration, authorization, migration, browser smoke, release, and restore gates. |
 | G22 | No deployment manifest, cloud migration directory, runtime health route, or cloud configuration example was found in the inspected deployment surfaces | Add reproducible deployment/configuration and operational instructions as delivery work. |
 
-**Documentation conflict to reconcile:** `PROJECT.md` and local milestone 18 still describe exact retained-core compositing for Extend. `FEATURE_CONTEXT.md`, `extend-provider.ts`'s `finalizeCandidate`, and the current browser client describe/preserve the complete normalized proposal. Cloud work must follow source/tests and resolve the wording; it must not silently restore an older Extend algorithm.
+**Documentation conflict resolved in Wave D:** `PROJECT.md` and local milestone 18 previously described exact retained-core compositing for Extend. `FEATURE_CONTEXT.md`, `extend-provider.ts`'s `finalizeCandidate`, and the current browser client describe/preserve the complete normalized proposal. Cloud work must follow source/tests and resolve the wording; it must not silently restore an older Extend algorithm.
 
 **Existing work to retain:** source-coordinate selections, immutable edit pipeline, local deterministic processing, provider boundaries, generative review/protected distinction, dimension-aware history, fake providers, and current editing tests. Cloud infrastructure must not change these algorithms as incidental cleanup.
 
@@ -119,7 +119,7 @@ The following findings are from source inspection, not assumptions based on the 
 
 Landing → Continue with Google → provider consent → secure callback → invitation/approval eligibility → idempotent profile setup → short welcome/privacy explanation → empty My projects → Upload image or Create with AI.
 
-If not yet invited: Request access → request pending → owner approves or rejects → refresh eligibility → approved access and one five-image allowance grant. Direct invitation and approval of a request converge on the same grant; repeating either must not reset or duplicate the allowance. No fixed cap on the number of approved accounts.
+If not yet invited: Request access → request pending → owner approves or rejects → refresh eligibility → approved access and one 25-credit welcome grant. Direct invitation and approval of a request converge on the same grant; repeating either must not reset or duplicate the allowance. No fixed cap on the number of approved accounts.
 
 An unapproved identity gets a request-access/pending page, not an operational account. AI denial or allowance exhaustion disables AI actions; it does not sign an approved user out or remove their existing projects. Broader non-AI access before approval is not newly assumed. Authentication alone must not grant upload, generation, storage-signing, or project access. Failed onboarding can be retried without creating duplicate profiles or consuming another invitation.
 
@@ -169,7 +169,7 @@ Public/account pages scroll normally. Editor scrolling stays inside bounded regi
 |---|---|---|---|
 | UI01 | Landing `/` | Brand, short editor explanation, approved example image, Start/Sign in, beta notice, privacy/terms/help links; signed-in shortcut to My projects | Auth resolving, service notice, narrow layout, images disabled; no false unlimited/free-AI promise |
 | UI02 | Sign-in `/sign-in` | Continue with Google, back link, account/privacy explanation; same action creates eligible first-time accounts | Redirecting, consent cancelled, callback failed, cookies unavailable, provider unavailable, retry; safe return destination |
-| UI03 | Auth callback/access/welcome | Loading; Request access and request-status page; welcome text for projects, browser drafts, autosave and five-image allowance | Pending, approved, rejected, duplicate submission, revoked access, callback/setup failure; requests do not grant themselves access |
+| UI03 | Auth callback/access/welcome | Loading; Request access and request-status page; welcome text for projects, browser drafts, autosave and 25-credit welcome allowance | Pending, approved, rejected, duplicate submission, revoked access, callback/setup failure; requests do not grant themselves access |
 | UI04 | My projects `/projects` | Header/account menu, New project, search, sort by updated/name, thumbnail grid or list, name/dimensions/updated label, item menu, pagination/load more | Empty with upload/create actions, loading skeleton, zero search results, list failure/retry, missing thumbnail fallback, quota reached |
 | UI05 | New project flow | Upload/Create tabs or choices, optional name, PNG/JPEG chooser/drop target, visible upload limits | Drag active, invalid file, too large/dimensions, upload progress, cancel, retry, storage full, verifying, complete |
 | UI06 | AI creation dialog | Preserve current Logo Mark/Icon/Create Image fields, visual treatment, destination format, preview, Generate, Use image; show allowance | Disabled/unavailable, invalid prompt, generating, rejected request, failure/unknown outcome, result expiring/expired, save failure, previous result retained |
@@ -181,11 +181,11 @@ Public/account pages scroll normally. Editor scrolling stays inside bounded regi
 | UI12 | Export dialog/action | Selected accepted version, dimensions, PNG/JPEG, sanitized filename, transparency explanation/background for JPEG, Download | Image loading, encoding, failed download/retry, pending edit explicitly excluded; usable while AI is unavailable |
 | UI13 | Project actions and Trash `/projects/trash` | Rename; Move to trash confirmation; deleted date/deadline; Restore; Delete permanently confirmation | Action pending, failure/retry, restoration over project limit, expired/purging item, stale item, empty trash |
 | UI14 | Account `/settings` | Display name, read-only login identity, usage/storage, sign out, support, data export, delete account | Loading, update failure, account restricted, export preparing/ready/expired, reauthentication failed, deletion pending |
-| UI15 | Usage | Storage used/reserved/limit, active project count, five-image allowance remaining; reset policy only once confirmed, current availability; explain how to free space | Near limit, exhausted, usage unavailable, cleanup pending; no upgrade button until billing exists |
+| UI15 | Usage | Storage used/reserved/limit, active project count, 25-credit welcome allowance remaining; one-time/no-reset policy, pending credits and current availability; explain how to free space | Near limit, exhausted, usage unavailable, cleanup pending; no upgrade button until billing exists |
 | UI16 | Help and policy pages | Quick workflow guide, format/size limits, autosave/history behavior, support contact, privacy, terms, beta limitations | Readable mobile layout, functioning links; error report excludes images/prompts unless deliberately attached |
 | UI17 | Global error routes | Signed-out redirect, generic unavailable/not-found, offline/retry, service temporarily unavailable | Project IDs must not reveal someone else's existence; logged-in state must not loop between redirects |
 | UI18 | Minimal request recovery | On relevant project/creation surface, status of last outstanding attempt, result review link, request reference for support | Still processing, result ready, failed, outcome unknown, expired; polling stops in terminal states |
-| UI19 | Owner access management, responsive for phone use | Owner-only invitation action and pending-request list; Approve, Reject, revoke access; show whether the five-image grant was issued | Unauthorized, duplicate approval, already invited, revoked, action failure/retry; approving twice never grants ten images |
+| UI19 | Owner access management, responsive for phone use | Owner-only invitation action and pending-request list; Approve, Reject, revoke access; show whether the 25-credit welcome grant was issued | Unauthorized, duplicate approval, already invited, revoked, action failure/retry; approving twice never grants another 25 credits |
 
 ### 4.3 Existing controls: retain, change, or remove
 
@@ -263,7 +263,7 @@ This is an entity/constraint plan, not final SQL. The implementation ticket defi
 |---|---|
 | Auth identity | Managed by Supabase; Mirai does not store passwords. |
 | Profile/account | Auth user ID, display name, active/pending/suspended/deleting status, onboarding/policy acknowledgement timestamps. |
-| Invitation/access request | Direct invitation or pending/approved/rejected/revoked request, requester identity, owner decision/audit timestamps; idempotent approval and exactly one five-image grant, never user-editable eligibility. |
+| Invitation/access request | Direct invitation or pending/approved/rejected/revoked request, requester identity, owner decision/audit timestamps; idempotent approval and exactly one 25-credit welcome grant, never user-editable eligibility. |
 | Project | Owner, name, lifecycle status, original/current version, revision, thumbnail reference, created/updated/deleted/purge timestamps. |
 | Image version | Project, parent, immutable asset ID, dimensions/type, accepted timestamp; one original, at most one active linear successor. |
 | Edit operation | Project, input/output version, type/method, immutable parameters with schema version, mask/overlay references, creation timestamp, verified request provenance when generative. |
@@ -372,7 +372,7 @@ No database transaction remains open while calling a provider or transferring la
 
 ### 6.4 Durable AI attempts, budgets, and recovery
 
-The five-image allowance grant must be persisted server-side and issued once per approved identity, regardless of invitation/approval retries or browser changes. Its renewal period and coverage of edits are awaiting clarification. All paid AI entry points still require metering and an explicitly authorized budget; do not interpret an ambiguous allowance as unlimited free editing.
+The 25-credit welcome allowance grant must be persisted server-side and issued once per approved identity, regardless of invitation/approval retries or browser changes. It is a one-time account-wide allowance covering all generated previews, including creation and edits. All paid AI entry points still require metering and an explicitly authorized budget; do not interpret an ambiguous allowance as unlimited free editing.
 
 All AI entry points use the same admission service: creation, localized edits, Replace planning, Transform planning/generation/fidelity checks, Extend analysis, and Extend generation. Local recolor and local Monochrome do not consume AI allowance.
 
@@ -501,12 +501,12 @@ Old browser tabs may live across deployments. Version contracts so old clients f
 | Limit | Proposal | Reason |
 |---|---|---|
 | Invitations | No fixed account-count ceiling; owner invitation or approval required | Owner controls admission; aggregate resource budgets independently control spend |
-| Active projects | 5 per account | Multiple projects without an unlimited library |
-| Total committed user assets | Proposed 100 MiB per account, including trash | Aggregate depends on actual approved accounts; global reserve still applies and this numeric per-user proposal is not yet approved |
+| Active projects | 5 per member; unlimited for active admins | Member beta allowance; trusted owners are exempt |
+| Total committed user assets | 100 MiB per member, including trash; unlimited account allowance for active admins | Global storage capacity remains enforced for everyone |
 | Upload file size | 10 MiB | Reasonable initial transport bound |
 | Editing dimensions | At most 2,048 px on either edge, at most 4,194,304 pixels | Starting benchmark envelope, not proof it fits the free instance |
 | Output dimensions | Same envelope, including Resize and Extend | Prevent bypassing limits after upload; incompatible presets must be disabled clearly |
-| AI images | Five per invited/owner-approved user; coverage and renewal pending clarification | No automatic daily/monthly reset is approved; exhausted/unapproved users cannot initiate AI work; global budget remains separate |
+| AI credits | 25 one-time welcome credits per invited/owner-approved member; active owner/admin accounts have unlimited account allowances | Shared across projects and AI workflows; one credit per produced preview; local processing/export use none; global provider budget remains separate |
 | Concurrent heavy processing | 1 globally and 1 per user initially | Reduce memory and spend spikes |
 | Temporary candidates | Proposed 24-hour maximum, earlier cleanup on discard where safe | Recovery window without a permanent generation gallery |
 | Trash | 7 days | Small recovery window; counts against quota |
@@ -518,7 +518,7 @@ Use a separate small aggregate temporary-upload/result reserve and backup reserv
 
 Proposed zero-billing global storage watermarks: warn at 600 MiB of managed objects, stop new large uploads/generations at 700 MiB, and leave the rest of the included 1 GB for in-flight reservations, staging, cleanup lag, and provider-reported accounting variance. Keep backups outside this live-object allowance or reduce the product cutoff further. Before enabling work, verify that predicted usage including reserved bytes stays below the cutoff. Bound temporary reservations in total, not just per user.
 
-Do not implement an automatic daily reset: the renewal period is awaiting the user's answer. If a recurring policy is chosen later, define its time boundary and show it clearly. One user-facing generation action may purchase several provider stages. A request rejected before all paid work releases its reservation; partial/unknown provider work keeps the corresponding cost reservation. A failed request does not enter edit history. Any courtesy restoration of user allowance is a separate audited decision and does not erase actual provider cost. Pure cached analysis/frame recalculation uses no new AI attempt; a newly purchased analysis must count under a defined planning allowance or the same overall request allowance.
+Do not implement an automatic reset: the approved welcome grant is one-time. A future recurring policy requires a new product decision. One user-facing generation action may purchase several provider stages. A request rejected before all paid work releases its reservation; partial/unknown provider work keeps the corresponding cost reservation. A failed request does not enter edit history. Any courtesy restoration of user allowance is a separate audited decision and does not erase actual provider cost. Pure cached analysis/frame recalculation uses no new AI attempt. Active owners are exempt from project, credit, account-storage, hourly-attempt and lifetime-analysis member allowances; global funding/capacity, execution and authorization gates remain enforced. New Extend analyses use the global provider budget with a separate lifetime cap of 25 analyses per member account, and require an available preview credit; they do not deduct a user credit.
 
 ### 8.2 Prevent waste before buying more infrastructure
 
@@ -654,13 +654,13 @@ At this checkpoint the main vertical slice is usable with local/fake edits. Depl
 
 | Unit | Work and dependency | Completion evidence |
 |---|---|---|
-| P14 | Shared durable attempt/usage admission foundation and sanitized diagnostics; after P03–P06 | No route can bypass limits; reservations/idempotency/unknown outcomes tested with fake stages |
-| P15a | Localized AI editing cloud integration; after P07/P09/P14 | Review/protected invariants; Replace stages metered; stored result survives lost response |
-| P15b | Transform cloud integration; after P15a | Local Monochrome remains unmetered; source planning/generation/fidelity metered; acceptance gate cannot be forged |
-| P16 | Extend cloud integration; after P15a/P14 | Owned cached analysis, plan tamper rejection, output caps, complete candidate review, stage charging |
-| P17 | AI creation cloud integration; after P14/P08 | Owned pre-project session; selecting result creates one original and zero edit operations |
+| P14 | Implemented locally: Shared durable attempt/usage admission foundation and sanitized diagnostics; after P03–P06 | No route can bypass limits; reservations/idempotency/unknown outcomes tested with fake stages |
+| P15a | Implemented locally: Localized AI editing cloud integration; after P07/P09/P14 | Review/protected invariants; Replace stages metered; stored result survives lost response |
+| P15b | Implemented locally: Transform cloud integration; after P15a | Local Monochrome remains unmetered; source planning/generation/fidelity metered; acceptance gate cannot be forged |
+| P16 | Implemented locally: Extend cloud integration; after P15a/P14 | Owned cached analysis, plan tamper rejection, output caps, complete candidate review, stage charging |
+| P17 | Implemented locally: AI creation cloud integration; after P14/P08 | Owned pre-project session; selecting result creates one original and zero edit operations |
 
-P15a, P15b, P16 and P17 are separate feature deliveries because they have different contracts. References to P15 below mean both P15 deliveries where applicable. Do not enable one while leaving another route unguarded. Paid smoke tests require an explicit budget and run outside ordinary CI.
+P15a, P15b, P16 and P17 retain distinct feature contracts. The user approved implementation of the whole Wave D on 2026-10-02; release review must cover every contract together with the shared admission foundation. References to P15 below mean both P15 deliveries where applicable. Do not enable one while leaving another route unguarded. Paid smoke tests require an explicit budget and run outside ordinary CI.
 
 ### Wave E — Lifecycle operation and release
 
@@ -745,7 +745,7 @@ Keep existing `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, 
 | T39 | Diagnostic failure/injection/oversized artifact | No history/provider effect; protected/disabled artifact routes | P14 |
 | T40 | Worst supported image on deployment host | Memory/time results meet chosen headroom; otherwise reduce envelope or change host | P01/P22 |
 | T41 | Refresh with cached draft; stale base; denied/evicted browser storage | Same-account valid draft can be restored without acceptance; incompatible/absent cache fails safely; logout clears entries | P09 |
-| T42 | Owner approves access request twice or also invites the same identity | One approval/grant only, five-image allowance not replenished; requester cannot self-approve | P03/P14 |
+| T42 | Owner approves access request twice or also invites the same identity | One approval/grant only, 25-credit welcome allowance not replenished; requester cannot self-approve | P03/P14 |
 | T43 | Owner approves more than 25 accounts | No artificial user-count rejection; resource limits remain separately enforced | P03 |
 
 ### 11.3 Launch gates
@@ -773,7 +773,7 @@ This plan is reviewed as a document, not as a deployed-system certification. The
 | C | Cross-service failures and hostile inputs | Staging overwrite race, signed-upload bounds, atomic reservations, trusted generative provenance, uncertain provider outcomes, late results after deletion, no fake worker promise |
 | D | Free-tier and operating model | Host sleep/ephemeral disk, Supabase Free storage/egress limits, backup bytes, scheduler delays, identity restoration and upgrade triggers |
 | E | Written-plan consistency and dependency audit | Split localized editing and Transform into separate PRs; made maintenance precede purge/export; clarified unknown commit versus discard, deletion receipts, backup amplification and global storage headroom |
-| F | User decision reconciliation | Removed account-count ceiling, added access requests/owner approval and browser draft recovery, deferred dedicated conflict UI, recorded five-image allowance with unresolved coverage/renewal, omitted local-data import |
+| F | User decision reconciliation | Removed account-count ceiling, added access requests/owner approval and browser draft recovery, deferred dedicated conflict UI, recorded 25-credit welcome allowance with unresolved coverage/renewal, omitted local-data import |
 
 ### 12.2 Remaining items that require implementation evidence
 
@@ -811,4 +811,4 @@ Final structural review checks section links, unique decision/gap/UI/delivery/te
 
 ### 12.4 Suggested next action
 
-Start P01; resolve the remaining D10 allowance clarification before P14 activates real AI: prove that the exact Mirai runtime, one private upload, an owned metadata record and representative image processing fit the chosen free services. This is the cheapest point to discover a hosting mismatch before implementing the full account/project interface.
+Waves A–D are implemented through local qualification. Complete the outstanding hosted walkthroughs, then measure representative bounded real requests under an explicitly approved budget before opening Gate C. Do not treat fake-provider tests or a host-qualified environment flag as evidence that real AI has passed the host gate.

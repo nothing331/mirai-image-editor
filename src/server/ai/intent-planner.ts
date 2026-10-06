@@ -13,6 +13,7 @@ export interface EditIntentPlannerRequest {
 export interface EditIntentPlannerResult {
   plan: EditPlan;
   providerRequestId: string;
+  usage?: unknown;
 }
 
 export interface EditIntentPlanner {

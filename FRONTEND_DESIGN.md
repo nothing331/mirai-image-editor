@@ -187,6 +187,13 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Never advance history on failure or discard.
 - A leave decision must say whether work is saved to the cloud or only kept as a device draft. A failed save keeps the user in the editor with a retry path.
 
+### Cloud AI usage and recovery
+
+- Keep the account balance and pending-credit state beside the active inspector and creation entry. Use plain copy: “25 AI credits shared across your projects” and “1 credit per generated preview.” State the one-time member policy in welcome/settings. Admin accounts show “Unlimited” for AI, projects and account storage, with no one-credit action prices; communicate service availability separately.
+- Price the generation action before the click. Local Monochrome, deterministic tools and export remain usable when credits are exhausted or AI is off. Cached frame changes remain free; do not imply a fresh generation is free.
+- Show processing and unknown outcomes separately. Unknown work has a pending credit and a short support reference, with no automatic repurchase. Offer saved-preview recovery without replacing another draft; preserve normal comparison and Save/Accept controls.
+- Developer provider/scenario controls and disk diagnostics are absent in cloud mode. A cloud error must have a usable recovery path rather than a dead diagnostics button.
+
 ### Review
 
 Review is a distinct dark stage owned by the canvas for generated proposals and explicitly reviewable local operations such as selection recolor. Show the comparison at the largest practical size. Accept, Discard, and feature-specific adjustment controls live with the preview. Fidelity or scope warnings must remain adjacent to those decisions. Do not route directly manipulated Text, Watermark, Crop, Resize, Rotate, or Flip drafts through this stage; they remain visible on the ordinary canvas and have a persistent Save/Discard inspector footer.

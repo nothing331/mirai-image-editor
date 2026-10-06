@@ -8,16 +8,18 @@ import sharp from "sharp";
 
 export class OpenAIExtendPlanner implements ExtendPlanner {
   private readonly client: OpenAI;
-  constructor(apiKey: string, private readonly model = "gpt-5.6-luna") { this.client = new OpenAI({ apiKey }); }
+  constructor(apiKey: string, private readonly model = "gpt-5.6-luna") { this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 }); }
 
   async analyze(request: ExtendPlannerRequest, diagnostics?: ImageEditDiagnosticSink): Promise<ExtendPlannerResult> {
     let providerRequestId: string | null = null;
+    let providerCompleted = false;
     try {
       await diagnostics?.beginProviderCall("extend-planner", "openai", this.model);
       const plannerImage = await sharp(request.imagePng).resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true }).png().toBuffer();
       const { data: response, request_id: requestId } = await this.client.responses.parse({
         model: this.model,
         store: false,
+        max_output_tokens: 4096,
         reasoning: { effort: "low" },
         input: [{ role: "user", content: [
           { type: "input_text", text: buildExtendPlannerInstruction() },
@@ -25,14 +27,16 @@ export class OpenAIExtendPlanner implements ExtendPlanner {
         ] }],
         text: { format: zodTextFormat(extendSceneAnalysisSchema, "extend_scene_analysis") },
       }).withResponse();
+      providerCompleted = true;
       providerRequestId = requestId;
       if (!response.output_parsed) throw new ImageProviderError("Smart Reframe returned no usable scene analysis.", false, { providerRequestId });
       await diagnostics?.completeProviderCall("extend-planner", providerRequestId);
-      return { analysis: response.output_parsed, providerRequestId: providerRequestId ?? `openai-extend-plan-${crypto.randomUUID()}` };
+      return { usage: response.usage, analysis: response.output_parsed, providerRequestId: providerRequestId ?? `openai-extend-plan-${crypto.randomUUID()}` };
     } catch (error) {
       const status = error instanceof OpenAI.APIError ? error.status : undefined;
       const providerError = error instanceof ImageProviderError ? error : new ImageProviderError(error instanceof Error ? error.message : "Smart Reframe analysis failed.", status === 408 || status === 409 || status === 429 || (status !== undefined && status >= 500), error instanceof OpenAI.APIError ? { providerRequestId: error.requestID ?? providerRequestId, status, code: error.code ?? undefined, type: error.type } : { providerRequestId });
       await diagnostics?.failProviderCall("extend-planner", { name: providerError.name, message: providerError.message, providerStatus: providerError.diagnostics?.status, providerCode: providerError.diagnostics?.code, providerType: providerError.diagnostics?.type }, providerError.retryable, providerError.diagnostics?.providerRequestId);
+      if (providerCompleted) Object.assign(providerError, { diagnostics: { ...providerError.diagnostics, providerCompleted: true } });
       throw providerError;
     }
   }

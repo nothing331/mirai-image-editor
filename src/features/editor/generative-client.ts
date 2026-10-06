@@ -1,3 +1,4 @@
+import { alphaBase64, postCloudAi } from "@/features/cloud-projects/cloud-ai-client";
 import { compositeCandidate } from "./composite";
 import { decodeImage, pixelsToDataUrl } from "./image-data";
 import type { CandidateAnalysis, EditBoundaryPolicy } from "@/shared/edit-boundary";
@@ -28,27 +29,7 @@ export class GenerativeRequestError extends Error {
 
 /** Calls the server provider and preserves its complete proposal unless protected mode was explicitly selected. */
 export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnapshot): Promise<GenerativeCandidate> {
-  const form = new FormData();
-  const sourcePng = pixelsToDataUrl(snapshot.inputVersion.pixels, snapshot.inputVersion.width, snapshot.inputVersion.height);
-  form.set("image", new File([await (await fetch(sourcePng)).blob()], "image.png", { type: "image/png" }));
-  if (snapshot.operation === "transform") {
-    form.set("presetId", snapshot.presetId ?? "");
-    form.set("presetVersion", snapshot.presetVersion === null ? "" : String(snapshot.presetVersion));
-    form.set("preservationMode", snapshot.preservationMode);
-  } else {
-    form.set("selectionMask", new File([maskToPngBlob(snapshot.selectionMask)], "selection-mask.png", { type: "image/png" }));
-    form.set("mask", new File([maskToPngBlob(snapshot.providerMask)], "provider-focus-mask.png", { type: "image/png" }));
-  }
-  form.set("boundaryPolicy", snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy);
-  form.set("operation", snapshot.operation);
-  form.set("prompt", snapshot.operation === "transform" ? snapshot.userPrompt : snapshot.prompt);
-  form.set("scenario", snapshot.scenario);
-  const headers: Record<string, string> = {
-    "x-project-id": snapshot.projectId,
-    "x-request-id": snapshot.requestId,
-  };
-  if (snapshot.retryOfRequestId) headers["x-retry-of-request-id"] = snapshot.retryOfRequestId;
-  const response = await fetch("/api/image-edits", { method: "POST", headers, body: form });
+  const response = snapshot.cloud ? await sendCloudGenerativeRequest(snapshot) : await sendLocalGenerativeRequest(snapshot);
   const payload = await response.json() as {
     candidateBase64?: string;
     providerRequestId?: string;
@@ -78,7 +59,7 @@ export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnap
   const boundaryPolicy = snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy;
   const pixels = prepareGenerativePreviewPixels(snapshot.inputVersion.pixels, candidate.pixels, snapshot.providerMask, boundaryPolicy);
   const dataUrl = pixelsToDataUrl(pixels, candidate.width, candidate.height);
-  await uploadFinalPreview(snapshot.projectId, responseRequestId, dataUrl, boundaryPolicy);
+  if (!snapshot.cloud) await uploadFinalPreview(snapshot.projectId, responseRequestId, dataUrl, boundaryPolicy);
   return {
     pixels,
     dataUrl,
@@ -100,6 +81,41 @@ export function prepareGenerativePreviewPixels(
   return boundaryPolicy === "protected"
     ? compositeCandidate(input, candidate, mask)
     : new Uint8ClampedArray(candidate);
+}
+
+async function sendCloudGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
+  const cloudPayload = {
+    requestId: snapshot.requestId, projectId: snapshot.projectId, inputVersionId: snapshot.inputVersion.id,
+    operation: snapshot.operation, boundaryPolicy: snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy,
+    prompt: snapshot.operation === "transform" ? snapshot.userPrompt : snapshot.prompt,
+    ...(snapshot.operation === "transform" ? { presetId: snapshot.presetId, presetVersion: snapshot.presetVersion, preservationMode: snapshot.preservationMode }
+      : { selectionMaskBase64: alphaBase64(snapshot.selectionMask.data), providerMaskBase64: alphaBase64(snapshot.providerMask.data) }),
+  };
+  return Response.json(await postCloudAi("/api/image-edits", cloudPayload));
+}
+
+async function sendLocalGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
+  const form = new FormData();
+  const sourcePng = pixelsToDataUrl(snapshot.inputVersion.pixels, snapshot.inputVersion.width, snapshot.inputVersion.height);
+  form.set("image", new File([await (await fetch(sourcePng)).blob()], "image.png", { type: "image/png" }));
+  if (snapshot.operation === "transform") {
+    form.set("presetId", snapshot.presetId ?? "");
+    form.set("presetVersion", snapshot.presetVersion === null ? "" : String(snapshot.presetVersion));
+    form.set("preservationMode", snapshot.preservationMode);
+  } else {
+    form.set("selectionMask", new File([maskToPngBlob(snapshot.selectionMask)], "selection-mask.png", { type: "image/png" }));
+    form.set("mask", new File([maskToPngBlob(snapshot.providerMask)], "provider-focus-mask.png", { type: "image/png" }));
+  }
+  form.set("boundaryPolicy", snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy);
+  form.set("operation", snapshot.operation);
+  form.set("prompt", snapshot.operation === "transform" ? snapshot.userPrompt : snapshot.prompt);
+  form.set("scenario", snapshot.scenario);
+  const headers: Record<string, string> = {
+    "x-project-id": snapshot.projectId,
+    "x-request-id": snapshot.requestId,
+  };
+  if (snapshot.retryOfRequestId) headers["x-retry-of-request-id"] = snapshot.retryOfRequestId;
+  return fetch("/api/image-edits", { method: "POST", headers, body: form });
 }
 
 /** Encodes positive selection alpha as a full-resolution PNG mask for transport. */
