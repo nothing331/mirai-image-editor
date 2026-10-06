@@ -1,3 +1,4 @@
+import { ArrowUpRight, Layers3, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import type { AccountSnapshot } from "@/server/auth/account";
 import { AuthShell } from "./AuthShell";
@@ -9,7 +10,7 @@ export function CloudLanding({ account }: { account: AccountSnapshot | null }) {
     <AuthShell
       eyebrow="ONE IMAGE · EVERY VERSION REVERSIBLE"
       title="Edit boldly. Keep the original."
-      description="Mirai is becoming a private cloud image editor. Approved beta accounts can save and reopen their original images in My projects."
+      description="A little refinement. A whole new direction. Create and edit images in a workspace that keeps every version yours."
       secondary={account ? <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">{account.profile.email}</span> : null}
     >
       <div className="max-w-md">
@@ -17,8 +18,9 @@ export function CloudLanding({ account }: { account: AccountSnapshot | null }) {
         <p className="mt-3 text-2xl font-bold tracking-[-0.04em]">
           {!account ? "Sign in to continue" : account.profile.status === "active" ? "Account approved" : "Approval required"}
         </p>
-        <p className="mt-3 text-sm leading-6 text-muted">Authentication identifies you. Mirai separately checks whether the owner has approved your account before private product APIs become available.</p>
-        <Link href={destination} className="mt-6 inline-flex min-h-10 items-center border border-ink bg-acid px-5 text-sm font-bold hover:bg-ink hover:text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acid">{action}</Link>
+        <p className="mt-3 text-sm leading-6 text-muted">Keep your projects together, explore edits with AI, and return to any saved version. Mirai is in private beta; new accounts need an invitation or approval.</p>
+        <Link href={destination} className="workspace-action mt-7 w-full">{action}<ArrowUpRight className="size-4" aria-hidden="true" /></Link>
+        <div className="mt-8 space-y-3 border-t border-line pt-6 text-xs text-muted"><p className="flex items-center gap-3"><Layers3 className="size-4" aria-hidden="true" />Every accepted edit saves a new version.</p><p className="flex items-center gap-3"><ShieldCheck className="size-4" aria-hidden="true" />Private projects. An untouched original.</p></div>
       </div>
     </AuthShell>
   );

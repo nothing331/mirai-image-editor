@@ -21,11 +21,11 @@ export default async function AccessPage({ searchParams }: AccessPageProps) {
     <AuthShell
       eyebrow="CONTROLLED BETA"
       title={account.profile.status === "revoked" ? "Access revoked." : request?.status === "pending" ? "Request pending." : "Approval required."}
-      description="Your Google identity is authenticated. Mirai keeps account eligibility separate so signing in alone never opens private APIs, storage, or paid tools."
-      secondary={<form action={signOutAction}><button className="font-mono text-[9px] uppercase tracking-[0.12em] underline underline-offset-4">Sign out</button></form>}
+      description="You’re signed in. One more step brings you into your private image workspace."
+      secondary={<form action={signOutAction}><button className="workspace-quiet-action">Sign out</button></form>}
     >
       <div className="max-w-md">
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">{account.profile.email}</p>
+        <p className="font-mono text-[10px] break-all uppercase tracking-[0.16em] text-muted">{account.profile.email}</p>
         <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em]">{statusHeading(account)}</h2>
         <p className="mt-3 text-sm leading-6 text-muted">{statusDescription(account)}</p>
         {parameters.error && <p role="alert" className="mt-4 border-l-2 border-accent bg-[#ffd5cc] p-3 text-sm">{parameters.error === "invite" ? "That invitation is invalid, expired, or belongs to another Google email." : "Your request could not be saved. Please try again."}</p>}
@@ -55,8 +55,8 @@ function statusHeading(account: NonNullable<Awaited<ReturnType<typeof resolveCur
 }
 
 function statusDescription(account: NonNullable<Awaited<ReturnType<typeof resolveCurrentAccount>>>): string {
-  if (account.profile.status === "revoked") return "Signing in still proves your identity, but operational access remains blocked. Contact the owner if you believe this is incorrect.";
-  if (account.accessRequest?.status === "pending") return "You can safely close this page and return later. Repeating the request will not create duplicate access or allowances.";
+  if (account.profile.status === "revoked") return "This account no longer has workspace access. Contact the owner if you believe this is incorrect.";
+  if (account.accessRequest?.status === "pending") return "You can safely close this page and return later. Your request is already with the owner.";
   if (account.accessRequest?.status === "rejected") return "You may submit a new request. Approval remains an explicit owner decision.";
-  return "A request creates a pending record only. It cannot approve itself.";
+  return "Send a request to the owner, or open your invitation link to get started.";
 }

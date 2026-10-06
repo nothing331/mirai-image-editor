@@ -74,3 +74,17 @@ button, select, input, textarea { transition: border-color 140ms ease, backgroun
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+@layer components {
+  .workspace-content { @apply mx-auto w-full max-w-6xl px-6 py-9 sm:px-10 sm:py-12; }
+  .workspace-action { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-ink bg-ink px-5 text-sm font-semibold text-paper hover:bg-acid hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-wait disabled:opacity-50; }
+  .workspace-quiet-action { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-line px-4 text-xs font-semibold hover:border-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50; }
+  .workspace-field { @apply min-h-11 w-full rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none placeholder:text-muted/75 focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-60; }
+}
+.account-surface :where(button, input:not([type="checkbox"]):not([type="radio"]), select, textarea) { border-radius: 6px; }
+.account-surface :where(a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible) { outline-color: var(--ink); }
+.account-surface :where([role="alert"], [role="status"]:not(span)) { border-radius: 6px; }
+
+@media (max-width: 639px) {
+  [data-save-failed="true"] .cloud-version-command { display: none; }
+}
