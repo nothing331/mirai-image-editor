@@ -35,7 +35,7 @@ The shell has five stable regions:
 
 | Region | Role | Current measure |
 |---|---|---|
-| Header | Project commands, save, diagnostics, export | 64px high locally; 56px in the cloud project toolbar |
+| Header | Project commands, save, diagnostics, export | 64px high locally and in the cloud project toolbar |
 | Tool rail | Select one editing workflow | 56px wide on desktop |
 | Contextual inspector | Options for the selected workflow | 264px content beside the rail; 320px total sidebar |
 | Canvas | Image interaction and proposal comparison | Receives all remaining space |
@@ -195,9 +195,18 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Never advance history on failure or discard.
 - A leave decision must say whether work is saved to the cloud or only kept as a device draft. A failed save keeps the user in the editor with a retry path.
 
+### Account and project journey
+
+- Landing, sign-in, access status, welcome, administration, upload, and deletion receipt share the editor’s warm paper, Manrope/DM Mono typography, charcoal actions, acid emphasis, and softly rounded controls. Use `MiraiBrand` for the public/account identity and the shared `StudioIllustration` for the landscape motif. Illustration is decorative; it never becomes a project asset.
+- Account screens use a light editorial introduction beside the form on desktop. Hide the illustration on phones, stack the content, and allow vertical scrolling. Long names and emails must wrap without hiding actions. Authentication, eligibility, allowances, and recovery stay authoritative on the server.
+- The project shell has a 64px header and persistent Projects, Trash, and Settings navigation. Show active destinations; compact to accessible, named icons on narrow screens. Sign-out retains its device-draft cleanup.
+- Library pages use a padded, centered content region. Image previews own the visual hierarchy, with one, two, or three columns by available width. A project is an interaction surface with an 8px corner and subtle border; do not add decorative dashboard cards. Keep search, sort, rename, pagination, load failure, thumbnail fallback, and empty states visible.
+- Settings uses separated sections for profile, usage, data export, and deletion. Keep destructive actions visually distinct and preserve typed confirmation. Project rename, image export, save-first prompts, and device draft recovery use the same restrained modal treatment as the creation studio.
+- Use the shared `workspace-action`, `workspace-quiet-action`, and `workspace-field` patterns for account/project controls. Forms have 44px targets, ink focus, and readable pending/error feedback. Copy explains the user’s next step without exposing database or provider implementation details.
+
 ### New project entry
 
-- New project starts with two equally prominent choices: Upload an image to edit and Create an image with AI. Use adjoining square surfaces in the existing paper/ink visual system, side by side on desktop and stacked on mobile.
+- New project starts with two equally prominent choices: Upload an image to edit and Create an image with AI. Use two equally sized, rounded 12px interaction surfaces with quiet borders in the shared paper/ink visual system, side by side on desktop and stacked on mobile.
 - Keep upload inputs inside the chosen upload flow. AI creation opens in Create Image mode; opening the studio never generates a result by itself. Show availability and member pricing beside the AI choice.
 - Restore unfinished uploads before offering another starting point. Keep the recovery flow visible until it saves; a transfer cannot be replaced by another path. Closing the AI studio returns to the chooser.
 

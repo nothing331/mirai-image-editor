@@ -60,6 +60,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Dependencies and limits.** This feature requires Google OAuth configured in Supabase, the reviewed database migration, a Supabase publishable key, a server-only Supabase secret key, and at least one server-configured owner email. The local editor remains unchanged when `MIRAI_AUTH_ENABLED=false`. Later cloud units now own projects, private assets, browser draft cleanup, and account deletion. Wave D owns allowance consumption; email delivery and hosted real-AI activation remain deferred. A real staging OAuth walkthrough is documented in the runbook.
 
+**Presentation.** Landing, Google sign-in, access status, welcome, owner administration, and the signed-out deletion receipt share `AuthShell`, the editor’s paper/ink tokens, `MiraiBrand`, and a decorative `StudioIllustration`. Forms remain native server actions with visible pending, error, and signed-out states. The illustration hides on phones; account content scrolls and long identities wrap. No authentication or eligibility rule is supplied by presentation state. `e2e/account.spec.ts` and `e2e/cloud-journey.spec.ts` cover return paths, errors, mobile overflow, access requests, welcome, and sign-out.
+
 **Code and verification.** `supabase/migrations/20260914044852_accounts_and_access.sql`, `supabase/tests/accounts_and_access_test.sql`, `src/server/auth/`, `src/server/supabase/`, `src/app/auth/`, `src/app/sign-in/`, `src/app/access/`, `src/app/welcome/`, `src/app/admin/access/`, `src/features/account/`, `src/proxy.ts`, adjacent unit tests, `e2e/account.spec.ts`, and `docs/cloud/WAVE_B_P03_RUNBOOK.md`.
 
 ## Private cloud original assets
@@ -88,6 +90,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Dependencies and limits.** P03 authentication and P04 private assets are required. P08 adds thumbnails, search, sort, and rename; P11 adds trash and purge. Members have an initial beta limit of five active projects; active owners are exempt.
 
+**Presentation.** The chosen upload flow uses the same light editorial split as account entry, with a visible file target, project name, format/size limits, and retryable transfer feedback. Existing session-scoped unfinished uploads still own recovery and block switching paths. `e2e/cloud-journey.spec.ts` covers empty-library entry, invalid upload, successful private upload, reopening in the editor, and desktop/mobile presentation.
+
 **Code and verification.** `supabase/migrations/20260926072932_cloud_projects.sql`, `supabase/tests/cloud_projects_test.sql`, `src/server/cloud-projects/`, `src/app/api/cloud-projects/`, `src/app/projects/`, `src/features/cloud-projects/`, `src/proxy.test.ts`, and `docs/cloud/WAVE_B_P05_RUNBOOK.md`.
 
 ## New project starting-point choice
@@ -99,6 +103,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 **Ownership and recovery.** Device-scoped pending uploads are restored before a path can be chosen and automatically reopen the upload flow. A pending finalization/attachment blocks AI navigation until Finish saving succeeds, including on the AI shortcut URL. Active transfer disables changing paths. Saved AI session references retain existing result recovery. The server continues to own sessions, eligibility, project/credit/storage admission, generation and original attachment; the chooser supplies no authorization override.
 
 **Unavailable and failure states.** Upload remains usable when AI is off, unavailable or exhausted. The AI option explains its disabled state; a saved session may still be reopened for recovery while new generation stays disabled. A session-opening failure remains on the chooser with an error and a retryable AI action. Member generation prices and unlimited admin usage remain visible. The two paths sit side by side on desktop and stack without horizontal overflow on mobile, using native keyboard-focusable buttons and the existing design tokens.
+
+**Presentation.** Upload and AI are equally sized interaction tiles using the shared rounded controls, typography, paper surfaces, and ink focus. Availability remains outside the disabled AI button so it stays readable. Closing the existing AI studio returns to this chooser. Both desktop columns and the stacked phone layout are verified by `e2e/cloud-ai.spec.ts` and `e2e/cloud-journey.spec.ts`.
 
 **Code and verification.** `src/features/cloud-projects/NewProjectForm.tsx`, `src/features/asset-generation/AssetGenerationDialog.tsx` (optional initial choice; local studio keeps its default), `src/app/projects/page.tsx`, `e2e/cloud-ai.spec.ts`, and the existing cloud upload/creation flows. Browser checks cover chooser entry, both paths, Image mode, no premature generation, direct AI navigation, mobile layout, unavailable AI with usable upload, failed attachment recovery and both member/admin project creation.
 
@@ -124,6 +130,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Ownership and failures.** Thumbnail and rename routes enforce the same account and owner boundary as the editor; rename also checks origin. A missing thumbnail has a visible fallback, a failed list offers refresh, and a failed rename stays in its dialog for retry. Thumbnails are generated on demand rather than kept as another canonical asset. Members retain a five-active-project allowance; owners have unlimited active projects. The server reads owned projects and trash in deterministic 100-row pages so extra admin projects are never silently truncated. The library filters the complete returned metadata list and reveals four more tiles at a time.
 
+**Presentation.** `ProjectShell` supplies a 64px shared brand header and active Projects/Trash/Settings navigation, compacting to named icons on phones. Library thumbnails lead a one/two/three-column layout; the empty library reuses the landscape motif. Search has a Clear search recovery action. The rounded rename dialog retains its inputs on failure. Pagination still reveals four items at a time. `e2e/cloud-journey.spec.ts` verifies navigation, mobile width, empty/populated/search states, and failed/successful rename.
+
 **Code and verification.** `src/features/cloud-projects/ProjectLibrary.tsx`, `src/app/projects/page.tsx`, `src/app/api/cloud-projects/[id]/thumbnail/route.ts`, `src/server/cloud-projects/cloud-projects.ts`, and `e2e/cloud-editor.spec.ts`.
 
 ## Cloud browser drafts
@@ -133,6 +141,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 **Working flow.** IndexedDB stores account/project/current-version/schema keys with transient local draft, paint, selection, preview, overlay, and pending-commit data. Store changes are debounced. In-app navigation with a valid unfinished edit opens a save-first dialog and waits for the cloud receipt before leaving; a failed save keeps the edit available for retry. A selection or incomplete edit can be kept as a device draft before leaving, with that narrower guarantee stated explicitly. The dialog has Keep editing and no discard action. Switching tools or history versions cannot silently clear incomplete work. Browser refresh and tab close retain the browser-native unsaved-work warning. On reopening, the server first loads the owned current version. Only a matching account, project, version, and current draft schema is offered. A restored pending commit retains its request and asset keys and retries through the shared cloud acceptance path; a later confirmed receipt remains authoritative. Sign-out and account changes purge the cache, including across open tabs through a browser channel.
 
 **Ownership and failures.** The editor store restores transient work but never adds an accepted operation from IndexedDB. The server still checks active eligibility, ownership, and valid input on every save. An unconfirmed cloud save does not navigate or advance client history and retains the pending operation for retry; a lost response after a successful server commit is recovered with the same request keys. Storage denial, eviction, a failed write, browser closure before a flush, or unsupported browser APIs can lose a device draft; in-app navigation stays in the editor when the explicit draft write fails. This is a browser cache, not cross-device backup or a multi-session merge interface.
+
+**Presentation.** Save-first and stored-device-draft prompts use the editor’s rounded dialog and control treatment. The cloud toolbar is 64px beneath the 64px project shell header; responsive inspector bounds account for both so the canvas remains reachable. On phones, a failed save gives Retry save and Discard edit priority over version-navigation commands. Existing receipt, draft, and navigation guards retain ownership of these decisions.
 
 **Code and verification.** `src/features/cloud-projects/cloud-draft-cache.ts`, `CloudEditorWorkspace.tsx`, `CloudPendingWorkDialog.tsx`, `CloudSignOutForm.tsx`, `CloudAccountScope.tsx`, `src/features/editor/store.ts`, `src/features/editor/store.test.ts`, and `e2e/cloud-editor.spec.ts`.
 
@@ -144,6 +154,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Ownership and failures.** Pending acceptance disables ordinary export. Encoding failure stays in the dialog for retry. Original downloads are private, non-cacheable, and use a sanitized attachment name. The original may differ from the normalized editor base in orientation, format, and bytes.
 
+**Presentation.** The export dialog shares the creation studio’s restrained overlay, rounded border, field styling, and ink focus. PNG/JPEG controls and original download remain available through the existing export path; `e2e/cloud-journey.spec.ts` checks the dialog at desktop and phone sizes.
+
 **Code and verification.** `src/features/cloud-projects/CloudExportDialog.tsx`, `src/app/api/cloud-projects/[id]/original-file/route.ts`, `src/server/assets/original-assets.ts`, and `e2e/cloud-editor.spec.ts`.
 
 ## Cloud project trash and maintenance
@@ -154,6 +166,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 
 **Ownership and failures.** Browser roles cannot call lifecycle or maintenance functions. The API derives owner from the active session and checks mutation origin. A purging project cannot be restored; duplicate purge requests reuse its task. Interrupted Storage cleanup stays charged and retries; after ten failures it remains operator-visible as failed. Accepted detached redo versions are intentionally retained and charged until a later reference-safe pruning policy exists. The workflow requires protected environment `SUPABASE_URL` and `SUPABASE_SECRET_KEY` secrets before hosted execution.
 
+**Presentation.** Trash shares workspace navigation and section styling, with a clear empty state and readable restore deadlines. Restore and permanent deletion retain existing lifecycle actions and native destructive confirmation. `e2e/cloud-journey.spec.ts` exercises trash and restore through the shared navigation.
+
 **Code and verification.** `supabase/migrations/20260926180939_wave_c_lifecycle.sql`, `supabase/tests/wave_c_lifecycle_test.sql`, `src/server/cloud-projects/cloud-lifecycle.ts`, `src/app/api/cloud-projects/[id]/lifecycle/route.ts`, `src/app/projects/trash/page.tsx`, `scripts/cloud-maintenance/run.mjs`, `.github/workflows/cloud-maintenance.yml`, and `e2e/cloud-editor.spec.ts`.
 
 ## Cloud account settings and deletion
@@ -163,6 +177,8 @@ Keep entries focused on current behavior. Link to project-wide decisions instead
 **Working flow.** `/settings` reads usage from owner-scoped asset and project records. Profile updates whitelist `display_name` and rely on the authenticated row policy. Account deletion checks the current verified session ID against `auth.sessions.created_at` within ten minutes, then atomically revokes application eligibility and enqueues project and account purge tasks. The route signs out globally and returns a non-sensitive support reference before redirecting to a signed-out receipt page. After project/object cleanup, maintenance removes orphan uploads, export archives, invitations, and the Auth identity; the profile cascades away.
 
 **Ownership and failures.** Mutation routes validate origin and active eligibility. Revoked profiles block cached sessions and new result writes immediately; previously issued 60-second signed image links cannot be recalled. The deletion task survives sign-out and retries cleanup, and a failed task is retained for operator review. No completion email is promised. Usage counts ready and reserved original/edit/AI-result bytes; pending cleanup remains charged. Settings show member welcome credits and the one-time/no-reset policy; active owners see Unlimited for AI, projects and account storage. Account purge waits for unknown/running AI reconciliation, deletes temporary AI objects, then deletes the identity; the global provider spending aggregate survives account-row deletion.
+
+**Presentation.** Profile, usage, archive export, and account deletion sit in separated, scrollable sections with shared fields/actions. Long account identities wrap, destructive confirmation remains explicit, and the deletion receipt returns to the shared account shell. `e2e/cloud-journey.spec.ts` covers mobile settings and navigation; `e2e/cloud-editor.spec.ts` covers export and deletion behavior.
 
 **Code and verification.** `src/app/settings/`, `src/features/account/AccountSettings.tsx`, `src/server/auth/account-usage.ts`, `src/app/api/account/`, the Wave C migration and account pgTAP test, and the maintenance/browser tests above.
 
