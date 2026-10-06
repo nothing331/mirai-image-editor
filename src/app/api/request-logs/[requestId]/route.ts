@@ -1,8 +1,10 @@
+import { cloudAiMode } from "@/server/cloud-ai/http";
 import { requestDiagnosticRepository } from "@/server/diagnostics/request-diagnostic-service";
 
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ requestId: string }> }) {
+  if (cloudAiMode()) return Response.json({ error: "Not found." }, { status: 404 });
   const { requestId } = await context.params;
   try {
     const manifest = await requestDiagnosticRepository.get(requestId);
@@ -13,6 +15,7 @@ export async function GET(_request: Request, context: { params: Promise<{ reques
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ requestId: string }> }) {
+  if (cloudAiMode()) return Response.json({ error: "Not found." }, { status: 404 });
   const { requestId } = await context.params;
   try {
     const payload = await request.json() as { pinned?: unknown };

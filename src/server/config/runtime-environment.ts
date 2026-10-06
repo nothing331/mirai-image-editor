@@ -103,12 +103,12 @@ export function readRuntimeEnvironment(
     } else if (canonicalUrl && !allowedOrigins.includes(canonicalUrl.origin)) {
       issues.push("MIRAI_ALLOWED_ORIGINS must include the MIRAI_CANONICAL_URL origin");
     }
-    if (aiEnabled) issues.push("MIRAI_AI_ENABLED must remain false until cloud AI admission is implemented");
-    if (imageEditProvider !== "fake" || assetGenerationProvider !== "fake") {
-      issues.push("IMAGE_EDIT_PROVIDER and ASSET_GENERATION_PROVIDER must both be fake until cloud AI admission is implemented");
+    if (aiEnabled && !authEnabled) issues.push("Cloud AI requires MIRAI_AUTH_ENABLED=true");
+    if (!aiEnabled && (imageEditProvider !== "fake" || assetGenerationProvider !== "fake")) {
+      issues.push("IMAGE_EDIT_PROVIDER and ASSET_GENERATION_PROVIDER must both be fake while cloud AI is disabled");
     }
-    if (environment.OPENAI_API_KEY) {
-      issues.push("OPENAI_API_KEY must not be installed before cloud AI admission is implemented");
+    if (!aiEnabled && environment.OPENAI_API_KEY) {
+      issues.push("OPENAI_API_KEY must not be installed while cloud AI is disabled");
     }
     if (environment.CLOUD_SPIKE_ENABLED === "true") {
       issues.push("CLOUD_SPIKE_ENABLED must be false after P01");
@@ -124,6 +124,21 @@ export function readRuntimeEnvironment(
     }
   }
 
+  if (authEnabled && aiEnabled && (!["fake", "openai"].includes(imageEditProvider) || !["fake", "openai"].includes(assetGenerationProvider))) issues.push("AI providers must be fake or openai");
+  if (authEnabled && aiEnabled && (imageEditProvider === "openai" || assetGenerationProvider === "openai")) {
+    if (!environment.OPENAI_API_KEY) issues.push("OPENAI_API_KEY is required for real AI");
+    const localAiDevelopment = mode === "local" && environment.RENDER !== "true" && !environment.RENDER_SERVICE_ID &&
+      canonicalUrl !== null && isLoopbackOrigin(canonicalUrl.origin) && allowedOrigins.includes(canonicalUrl.origin) &&
+      allowedOrigins.every(isLoopbackOrigin);
+    if (!localAiDevelopment && environment.MIRAI_AI_HOST_QUALIFIED !== "true") issues.push("MIRAI_AI_HOST_QUALIFIED must confirm hosted AI timeout and recovery qualification; local development requires a loopback canonical URL and allowed origins");
+    for (const name of ["MIRAI_AI_IMAGE_STAGE_MICROUSD", "MIRAI_AI_TEXT_STAGE_MICROUSD"]) {
+      parseInteger(name, environment[name] ?? "0", 1, 10_000_000, issues);
+    }
+    if (environment.OPENAI_IMAGE_QUALITY && !["low", "medium"].includes(environment.OPENAI_IMAGE_QUALITY)) issues.push("OPENAI_IMAGE_QUALITY must be low or medium in the cloud beta");
+    for (const name of ["OPENAI_IMAGE_MAX_EDGE", "OPENAI_EXTEND_PROVIDER_MAX_EDGE"]) {
+      if (environment[name]) parseInteger(name, environment[name], 1, 1536, issues);
+    }
+  }
   if (issues.length > 0) throw new RuntimeEnvironmentError(issues);
 
   return {
@@ -156,6 +171,10 @@ function parseEmails(value: string | undefined, issues: string[]): string[] {
 
 export function isCloudMode(mode: ApplicationMode): boolean {
   return cloudModes.has(mode);
+}
+
+function isLoopbackOrigin(origin: string): boolean {
+  return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(origin).hostname);
 }
 
 function parseChoice<const Choice extends readonly string[]>(

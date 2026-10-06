@@ -19,7 +19,7 @@ const EditorCanvas = dynamic(() => import("../EditorCanvas").then((module) => mo
   loading: () => <div className="absolute inset-0 grid place-items-center font-mono text-xs text-white">Preparing canvas…</div>,
 });
 
-export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend, cloudMode = false, cloudStatusLabel }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void; cloudMode?: boolean; cloudStatusLabel?: string }) {
+export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelected, extendPreviewAdjustmentOpen, onAdjustTransform, onAdjustExtend, onDiscardPreview, cloudMode = false, cloudStatusLabel }: { busyAction: BusyAction; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; onGenerateAsset: () => void; extendSelected: boolean; extendPreviewAdjustmentOpen: boolean; onAdjustTransform: () => void; onAdjustExtend: () => void; onDiscardPreview?: () => void; cloudMode?: boolean; cloudStatusLabel?: string }) {
   const [compareWith, setCompareWith] = useState<ComparisonBase>("original");
   const state = useEditorStore(useShallow((editor) => ({
     currentVersion: getCurrentVersion(editor),
@@ -41,7 +41,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
     extendState: editor.extendState,
   })));
   const currentIndex = state.versions.findIndex((version) => version.id === state.currentVersionId);
-  const comparisonVersion = !cloudMode && compareWith === "previous" && currentIndex > 0 ? state.versions[currentIndex - 1] : state.originalVersion;
+  const comparisonVersion = cloudMode ? state.currentVersion : compareWith === "previous" && currentIndex > 0 ? state.versions[currentIndex - 1] : state.originalVersion;
 
   return (
     <section className="order-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_32px] bg-workspace p-2 pb-0 md:order-2 md:p-4 md:pb-0" aria-label="Image canvas">
@@ -56,7 +56,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
           </div>
         ) : state.preview && comparisonVersion && state.currentVersion && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") ? (
           <PreviewComparison
-            baseLabel={!cloudMode && compareWith === "previous" ? "Previous" : "Original"}
+            baseLabel={cloudMode ? "Current saved" : compareWith === "previous" ? "Previous" : "Original"}
             originalUrl={comparisonVersion.dataUrl}
             previewUrl={state.preview.dataUrl}
             boundaryPolicy={state.preview.method === "generative" && (state.preview.type === "remove" || state.preview.type === "replace" || state.preview.type === "restyle") ? state.preview.parameters.boundaryPolicy : null}
@@ -67,7 +67,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
             scopeMismatch={state.preview.method === "generative" && (state.preview.type === "remove" || state.preview.type === "replace" || state.preview.type === "restyle") ? isReplaceScopeMismatch(state.preview.type, state.preview.parameters.boundaryPolicy, state.preview.parameters.candidateAnalysis) : false}
             acceptanceBlocked={state.preview.method === "generative" && state.preview.type === "transform" ? blocksTransformAcceptance(state.preview.parameters.preservationMode, state.preview.parameters.transformFidelityAssessment) : false}
             onAccept={state.acceptPreview}
-            onDiscard={state.discardPreview}
+            onDiscard={onDiscardPreview ?? state.discardPreview}
             onAdjustTransform={onAdjustTransform}
             onAdjustExtend={onAdjustExtend}
           />

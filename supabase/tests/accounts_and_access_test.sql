@@ -63,9 +63,9 @@ SELECT results_eq(
 );
 
 SELECT results_eq(
-  $$ SELECT count(*)::bigint FROM public.account_allowance_grants WHERE account_id = '22222222-2222-4222-8222-222222222222' AND granted_quantity = 5 $$,
+  $$ SELECT count(*)::bigint FROM public.account_allowance_grants WHERE account_id = '22222222-2222-4222-8222-222222222222' AND granted_quantity = 25 $$,
   ARRAY[1::bigint],
-  'approval creates one five-image grant'
+  'approval creates one 25-credit welcome grant'
 );
 
 SELECT public.mirai_decide_access(
@@ -100,9 +100,9 @@ SELECT results_eq(
 );
 
 SELECT results_eq(
-  $$ SELECT count(*)::bigint FROM public.account_allowance_grants WHERE account_id = '33333333-3333-4333-8333-333333333333' AND granted_quantity = 5 $$,
+  $$ SELECT count(*)::bigint FROM public.account_allowance_grants WHERE account_id = '33333333-3333-4333-8333-333333333333' AND granted_quantity = 25 $$,
   ARRAY[1::bigint],
-  'an invitation claim creates one five-image grant'
+  'an invitation claim creates one 25-credit welcome grant'
 );
 
 SELECT results_eq(

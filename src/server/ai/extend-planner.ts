@@ -2,7 +2,7 @@ import type { ImageEditDiagnosticSink } from "@/shared/request-diagnostics";
 import type { ExtendSceneAnalysis } from "@/shared/extend-plan";
 
 export interface ExtendPlannerRequest { imagePng: Uint8Array; width: number; height: number }
-export interface ExtendPlannerResult { analysis: ExtendSceneAnalysis; providerRequestId: string }
+export interface ExtendPlannerResult { analysis: ExtendSceneAnalysis; providerRequestId: string; usage?: unknown }
 export interface ExtendPlanner { analyze(request: ExtendPlannerRequest, diagnostics?: ImageEditDiagnosticSink): Promise<ExtendPlannerResult> }
 
 export function buildExtendPlannerInstruction(): string {

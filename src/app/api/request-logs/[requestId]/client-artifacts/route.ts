@@ -1,9 +1,11 @@
+import { cloudAiMode } from "@/server/cloud-ai/http";
 import sharp from "sharp";
 import { requestDiagnosticRepository } from "@/server/diagnostics/request-diagnostic-service";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request, context: { params: Promise<{ requestId: string }> }) {
+  if (cloudAiMode()) return Response.json({ error: "Not found." }, { status: 404 });
   const { requestId } = await context.params;
   try {
     const manifest = await requestDiagnosticRepository.get(requestId);

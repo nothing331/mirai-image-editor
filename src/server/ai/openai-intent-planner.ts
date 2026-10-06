@@ -10,7 +10,7 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
   private readonly client: OpenAI;
 
   constructor(apiKey: string, private readonly model = "gpt-5-nano-2025-08-07") {
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, maxRetries: 0, timeout: 60_000 });
   }
 
   async plan(request: EditIntentPlannerRequest, diagnostics?: ImageEditDiagnosticSink): Promise<EditIntentPlannerResult> {
@@ -27,10 +27,12 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
     await diagnostics?.event("planner-call", "Calling the OpenAI edit-intent planner.");
 
     let providerRequestId: string | null = null;
+    let providerCompleted = false;
     try {
       const { data: response, request_id: requestId } = await this.client.responses.parse({
         model: this.model,
         store: false,
+        max_output_tokens: 4096,
         reasoning: { effort: "low" },
         input: [{
           role: "user",
@@ -42,6 +44,7 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
         }],
         text: { format: zodTextFormat(editPlanSchema, "edit_plan") },
       }).withResponse();
+      providerCompleted = true;
       providerRequestId = requestId;
       const plan = response.output_parsed;
       if (!plan) throw new ImageProviderError("The edit planner returned no usable structured plan.", false, { providerRequestId });
@@ -61,10 +64,11 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
         usage: response.usage,
       }), "application/json");
       await diagnostics?.metadata({ editPlan: plan });
-      return { plan, providerRequestId: providerRequestId ?? `openai-planner-unreported-${crypto.randomUUID()}` };
+      return { usage: response.usage, plan, providerRequestId: providerRequestId ?? `openai-planner-unreported-${crypto.randomUUID()}` };
     } catch (error) {
       const providerError = toProviderError(error, providerRequestId);
       await diagnostics?.failProviderCall("intent-planner", toDiagnosticError(providerError), providerError.retryable, providerError.diagnostics?.providerRequestId);
+      if (providerCompleted) Object.assign(providerError, { diagnostics: { ...providerError.diagnostics, providerCompleted: true } });
       throw providerError;
     }
   }

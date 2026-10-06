@@ -45,8 +45,9 @@ The plan assumes approximately 1–2 hours per day. Complete and verify one mile
 | 15. Icon and logo-mark generation | Complete | Structured brief, one-result generation, local transparency, project provenance, persistence, diagnostics, and fake-environment verification |
 | 16. Purpose-led AI image creation | Complete | Logo Mark, Icon, and Create Image choices with server-owned treatments, four destination formats, one low-quality result, provenance, diagnostics, and browser verification |
 | 17. Full-image Transform | Complete | Versioned visual presets, local Monochrome, source-content planning, maskless generation, aspect enforcement, semantic fidelity review, persistence, and diagnostics |
-| 18. Smart Extend | Complete | Versioned social formats, cached scene analysis, deterministic Smart Reframe, low-quality outpainting, exact retained-core compositing, dimension-changing history, and frame preview |
+| 18. Smart Extend | Complete | Versioned social formats, cached scene analysis, deterministic Smart Reframe, low-quality outpainting, complete-candidate review, dimension-changing history, and frame preview |
 | 19. Direct utility edits | Complete | Main-shell Size & position, Text, and Watermark workflows with live canvas drafts, pointer manipulation, guarded Save/Discard navigation, persistence, and immutable history |
+| 20. Controlled cloud AI (Wave D) | Implemented and locally qualified; hosted/funding gates pending | Shared 25-credit grant, durable attempts/stages/results, localized edits, Transform, authoritative Extend, owned AI creation, recovery and cleanup |
 
 Update this table whenever a milestone begins or completes.
 

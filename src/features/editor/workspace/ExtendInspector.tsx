@@ -8,8 +8,9 @@ import { extendPresets, type ExtendPresetId } from "@/shared/extend-presets";
 import type { ExtendInput } from "../types";
 import { useEditorStore } from "../store";
 
-export function ExtendInspector({ onPlan, onGenerate, previewAdjustmentOpen, onReturnToComparison }: { onPlan: (input: ExtendInput) => Promise<boolean>; onGenerate: () => Promise<boolean>; previewAdjustmentOpen: boolean; onReturnToComparison: () => void }) {
+export function ExtendInspector({ aiUnavailable = false, cloudCredits = false, onPlan, onGenerate, previewAdjustmentOpen, onReturnToComparison }: { aiUnavailable?: boolean; cloudCredits?: boolean; onPlan: (input: ExtendInput) => Promise<boolean>; onGenerate: () => Promise<boolean>; previewAdjustmentOpen: boolean; onReturnToComparison: () => void }) {
   const extendState = useEditorStore(useShallow((state) => state.extendState));
+  const hasCachedAnalysis = useEditorStore((state) => Boolean(state.currentVersionId && state.extendAnalysisCache[state.currentVersionId]));
   const [presetId, setPresetId] = useState<ExtendPresetId>(extendState.input?.presetId ?? "instagram-classic");
   const [strategy, setStrategy] = useState<ExtendInput["strategy"]>(extendState.input?.strategy ?? "smart");
   const [userPrompt, setUserPrompt] = useState(extendState.input?.userPrompt ?? "");
@@ -75,12 +76,12 @@ export function ExtendInspector({ onPlan, onGenerate, previewAdjustmentOpen, onR
           <button type="button" data-testid="return-to-extend-comparison" className="flex h-10 items-center justify-center gap-2 border border-ink bg-paper px-3 text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30" onClick={onReturnToComparison}><ArrowLeft className="size-4" />Back to comparison</button>
         )}
         {!hasCurrentPlan ? (
-          <button type="button" className="flex h-10 items-center justify-center gap-2 bg-ink px-3 text-xs font-bold text-paper hover:text-acid disabled:opacity-40" disabled={busy} onClick={() => void onPlan({ ...input, userPrompt: userPrompt.trim() })}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}{processingLabel ?? "Preview smart frame"}</button>
+          <button type="button" className="flex h-10 items-center justify-center gap-2 bg-ink px-3 text-xs font-bold text-paper hover:text-acid disabled:opacity-40" disabled={(aiUnavailable && !hasCachedAnalysis) || busy} onClick={() => void onPlan({ ...input, userPrompt: userPrompt.trim() })}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}{processingLabel ?? "Preview smart frame"}</button>
         ) : (
-          <button type="button" className="flex h-10 items-center justify-center gap-2 bg-acid px-3 text-xs font-bold text-ink hover:bg-ink hover:text-acid disabled:opacity-40" disabled={busy} onClick={() => void onGenerate()}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{processingLabel ?? "Generate extension"}</button>
+          <button type="button" className="flex h-10 items-center justify-center gap-2 bg-acid px-3 text-xs font-bold text-ink hover:bg-ink hover:text-acid disabled:opacity-40" disabled={aiUnavailable || busy} onClick={() => void onGenerate()}>{busy ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{processingLabel ?? (cloudCredits ? "Generate extension · 1 credit" : "Generate extension")}</button>
         )}
         {processingLabel && <span className="sr-only" role="status" aria-live="polite">{processingLabel}</span>}
-        <span className="flex items-center justify-center gap-1.5 font-mono text-[10px] uppercase tracking-[.1em] text-muted"><Expand className="size-3" />{selected.ratio[0]}:{selected.ratio[1]} · GPT Image 2 low</span>
+        <span className="flex items-center justify-center gap-1.5 font-mono text-[8px] uppercase tracking-[.1em] text-muted"><Expand className="size-3" />{selected.ratio[0]}:{selected.ratio[1]} · {cloudCredits ? "1 credit per generated preview" : "GPT Image 2 low"}</span>
       </div>
     </div>
   );
