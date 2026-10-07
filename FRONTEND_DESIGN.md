@@ -201,6 +201,8 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Explain the workflow, show comparison, cover the complete toolset in open divided rows, then present the actual workspace, export, questions, and a final CTA. Avoid generic feature-card mosaics, invented social proof, and unsupported capability claims.
 - Use static, purpose-created public artwork and an actual workspace screenshot. A labelled illustrative comparison may change browser presentation only; it must never buy provider work or create project history. Keep customer images and account data out of marketing assets.
 - Use native range and details/summary controls for keyboard-accessible exploration. Section links scroll within the public page; account-aware start links retain the existing eligibility destinations. Respect reduced motion for entry animation and anchor scrolling.
+- The landing may use a slow photographic drift and selection-frame illustration, one looping tool strip, and staggered scroll reveals. Give continuous motion a visible pause/resume control; pause loops outside the viewport and on strip hover. Reduced-motion preferences override manual animation state, including when the preference changes during the visit. Static/no-JavaScript rendering keeps content and navigation visible. Keyboard focus reveals a pending section immediately.
+- Prefer locally bundled, purpose-created Mirai output when showing product capabilities. Label actual generated/edit results accurately and keep the demonstration passive: visiting the page never buys an AI preview.
 
 ### Account and project journey
 
@@ -230,7 +232,7 @@ Review is a distinct dark stage owned by the canvas for generated proposals and 
 
 ## Motion
 
-Motion communicates a state transition; it is not ambient decoration.
+In the editor and account flows, motion communicates a state transition. The public landing may use the controlled visual storytelling described above.
 
 - Inspector entry: short fade with a 6px horizontal shift, approximately 160ms.
 - Preview entry: subtle fade/scale, approximately 180ms.
