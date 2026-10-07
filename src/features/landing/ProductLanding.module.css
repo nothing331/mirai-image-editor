@@ -10,6 +10,36 @@
   outline: 2px solid var(--ink);
   outline-offset: 5px;
 }
+.page button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.motionControl {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+.motionControl:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+}
+.motionControl:disabled {
+  color: var(--muted);
+  cursor: default;
+}
 .skipLink {
   position: absolute;
   left: 20px;
@@ -80,12 +110,17 @@
   object-fit: cover;
   object-position: center;
 }
+.heroContrast {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, #faf9f666, #faf9f600 65%);
+}
 .heroContent {
   position: relative;
   z-index: 1;
   width: min(52%, 720px);
   padding: 64px clamp(24px, 5.5vw, 96px) 76px;
-  animation: heroEnter 650ms ease-out both;
 }
 .eyebrow {
   font-family: "DM Mono", monospace;
@@ -157,6 +192,193 @@
   font-family: "DM Mono", monospace;
   font-size: 9px;
   letter-spacing: 0.15em;
+}
+.heroSelection {
+  position: absolute;
+  pointer-events: none;
+  right: 4.5%;
+  top: 49%;
+  width: 28%;
+  height: 39%;
+  color: var(--paper);
+  transform-origin: center;
+}
+.heroSelection > span {
+  display: block;
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  margin-bottom: 12px;
+}
+.heroSelection svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.heroSelection path {
+  stroke: currentColor;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.heroSelection rect {
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-dasharray: 5 6;
+  opacity: 0.45;
+  vector-effect: non-scaling-stroke;
+}
+.motionStrip {
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+}
+.marquee {
+  display: flex;
+  width: max-content;
+}
+.marquee ul {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 48px;
+  padding: 26px 48px 26px 0;
+}
+.marquee li {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+.marquee li span {
+  font-size: 24px;
+  font-weight: 400;
+  color: #a4a69a;
+}
+.page[data-motion="static"] .marquee ul[aria-hidden="true"] {
+  display: none;
+}
+.page[data-motion="static"] .marquee {
+  width: auto;
+}
+.page[data-motion="static"] .marquee ul {
+  flex-wrap: wrap;
+  padding-left: 24px;
+  gap: 16px 32px;
+}
+.page[data-motion="static"] .marquee li {
+  gap: 24px;
+}
+.page[data-motion="running"] [data-reveal],
+.page[data-motion="paused"] [data-reveal] {
+  transition:
+    opacity 650ms ease,
+    transform 850ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.page[data-motion="running"] [data-reveal-state="pending"] {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.page[data-motion="running"]
+  [data-reveal="workspace"][data-reveal-state="pending"] {
+  transform: perspective(1400px) rotateX(6deg) translateY(40px) scale(0.97);
+}
+.page:is([data-motion="running"], [data-motion="paused"]) .heroImage {
+  animation: sceneDrift 18s ease-in-out infinite alternate;
+}
+.page:is([data-motion="running"], [data-motion="paused"]) .heroSelection {
+  animation: selectionDrift 7s ease-in-out infinite alternate;
+}
+.page:is([data-motion="running"], [data-motion="paused"]) .heroSelection rect {
+  animation: selectionTrace 2s linear infinite;
+}
+.page:is([data-motion="running"], [data-motion="paused"]) .marquee {
+  animation: toolMarquee 36s linear infinite;
+}
+.page[data-motion="running"] .heroContent > * {
+  animation: heroEnter 750ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.page[data-motion="running"] .heroContent > :nth-child(2) {
+  animation-delay: 80ms;
+}
+.page[data-motion="running"] .heroContent > :nth-child(3) {
+  animation-delay: 160ms;
+}
+.page[data-motion="running"] .heroContent > :nth-child(4) {
+  animation-delay: 240ms;
+}
+.page[data-motion="running"] .heroContent > :nth-child(5) {
+  animation-delay: 320ms;
+}
+.page[data-motion="running"] .heroContent > :nth-child(6) {
+  animation-delay: 400ms;
+}
+.page[data-motion="paused"]
+  :is(.heroImage, .heroSelection, .heroSelection rect, .marquee) {
+  animation-play-state: paused;
+}
+.page[data-motion="paused"] [data-reveal] {
+  transition: none;
+}
+.page[data-motion="paused"] {
+  scroll-behavior: auto;
+}
+.page:is([data-motion="running"], [data-motion="paused"])
+  [data-reveal-state="focused"] {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+.motionStrip:hover .marquee {
+  animation-play-state: paused;
+}
+.hero[data-motion-visible="false"]
+  :is(.heroImage, .heroSelection, .heroSelection rect),
+.motionStrip[data-motion-visible="false"] .marquee {
+  animation-play-state: paused;
+}
+.toolList article {
+  transition: border-color 180ms ease;
+}
+.toolHeading > span {
+  transition:
+    transform 180ms ease,
+    color 180ms ease;
+}
+.toolList article:hover {
+  border-color: var(--ink);
+}
+.toolList article:hover .toolHeading > span {
+  transform: translateX(6px);
+  color: var(--ink);
+}
+@keyframes sceneDrift {
+  from {
+    transform: scale(1.035) translateX(-0.5%);
+  }
+  to {
+    transform: scale(1.07) translateX(0.5%);
+  }
+}
+@keyframes selectionDrift {
+  from {
+    transform: translate(0, 0) rotate(-2deg);
+  }
+  to {
+    transform: translate(-12px, -12px) rotate(1deg);
+  }
+}
+@keyframes selectionTrace {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+@keyframes toolMarquee {
+  to {
+    transform: translateX(-50%);
+  }
 }
 .workflow,
 .reviewSection,
@@ -285,9 +507,6 @@
   height: 100%;
   object-fit: cover;
   object-position: 80% center;
-}
-.comparisonImage .monochrome {
-  filter: grayscale(1);
 }
 .compareLabel {
   position: absolute;
@@ -666,6 +885,33 @@
   .headerAction {
     gap: 12px;
   }
+  .headerActions {
+    gap: 8px;
+  }
+  .motionControl {
+    width: 36px;
+    height: 40px;
+  }
+  .headerAction {
+    padding-left: 10px;
+    padding-right: 10px;
+    gap: 8px;
+  }
+  .heroSelection {
+    display: none;
+  }
+  .heroContrast {
+    display: none;
+  }
+  .marquee ul {
+    padding-top: 20px;
+    padding-bottom: 20px;
+    gap: 32px;
+  }
+  .marquee li {
+    font-size: 20px;
+    gap: 32px;
+  }
   .hero {
     min-height: calc(100svh - 64px);
     flex-direction: column;
@@ -817,5 +1063,32 @@
   }
   .heroContent {
     animation: none;
+  }
+  .page
+    :is(
+      .heroImage,
+      .heroSelection,
+      .heroSelection rect,
+      .marquee,
+      .heroContent > *
+    ) {
+    animation: none !important;
+  }
+  .page [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .page
+    :is(
+      .toolHeading > span,
+      .explore svg,
+      .finalAction svg,
+      .questions summary span
+    ) {
+    transition: none;
+  }
+  .toolList article:hover .toolHeading > span {
+    transform: none;
   }
 }

@@ -5,29 +5,28 @@ import { useState } from "react";
 import styles from "./ProductLanding.module.css";
 
 export function LandingComparison() {
-  const [position, setPosition] = useState(58);
+  const [position, setPosition] = useState(72);
   return (
-    <figure className={styles.comparison}>
+    <figure className={styles.comparison} data-reveal>
       <div className={styles.comparisonImage}>
         <Image
           src="/landing/studio-scene.webp"
           width={1672}
           height={941}
           sizes="(max-width: 760px) 100vw, 65vw"
-          alt="An orange lounge chair in a sunlit studio, compared with a monochrome version"
+          alt="Original studio with an orange chair"
         />
         <Image
-          src="/landing/studio-scene.webp"
+          src="/landing/studio-ai-edit.webp"
           width={1672}
           height={941}
           sizes="(max-width: 760px) 100vw, 65vw"
-          alt=""
-          className={styles.monochrome}
+          alt="AI-transformed studio with a green chair and cream cushion"
           style={{ clipPath: `inset(0 0 0 ${position}%)` }}
         />
         <span className={styles.compareLabel}>Original</span>
         <span className={`${styles.compareLabel} ${styles.compareLabelRight}`}>
-          Monochrome
+          AI edit
         </span>
         <span
           className={styles.compareDivider}
@@ -39,7 +38,7 @@ export function LandingComparison() {
       </div>
       <figcaption className={styles.comparisonCaption}>
         <label htmlFor="landing-comparison">Slide to compare</label>
-        <span>Local Monochrome · interactive example</span>
+        <span>AI Transform · actual Mirai result</span>
       </figcaption>
       <input
         id="landing-comparison"
@@ -47,8 +46,8 @@ export function LandingComparison() {
         min={0}
         max={100}
         value={position}
-        aria-label="Compare original and monochrome"
-        aria-valuetext={`${position}% original, ${100 - position}% monochrome`}
+        aria-label="Compare original and AI edit"
+        aria-valuetext={`${position}% original, ${100 - position}% AI edit`}
         onChange={(event) => setPosition(Number(event.target.value))}
         className={styles.comparisonSlider}
       />

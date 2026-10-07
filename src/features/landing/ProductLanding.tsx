@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUpRight, Check, ShieldCheck } from "lucide-react";
 import { MiraiBrand } from "@/shared/ui/MiraiBrand";
 import { LandingComparison } from "./LandingComparison";
+import { LandingMotionControls } from "./LandingMotionControls";
 import styles from "./ProductLanding.module.css";
 
 const tools = [
@@ -130,7 +131,10 @@ export function ProductLanding({
   access,
 }: ProductLandingProps) {
   return (
-    <main className={`public-page account-surface ${styles.page}`}>
+    <main
+      className={`public-page account-surface ${styles.page}`}
+      data-motion="static"
+    >
       <a href="#landing-content" className={styles.skipLink}>
         Skip to content
       </a>
@@ -141,25 +145,37 @@ export function ProductLanding({
           <a href="#workflow">How it works</a>
           <a href="#questions">Questions</a>
         </nav>
-        <Link href={destination} className={styles.headerAction}>
-          Open Mirai
-          <ArrowUpRight className="size-3.5" aria-hidden="true" />
-        </Link>
+        <div className={styles.headerActions}>
+          <LandingMotionControls />
+          <Link href={destination} className={styles.headerAction}>
+            Open Mirai
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        </div>
       </header>
 
       <section
         id="landing-content"
         className={styles.hero}
         aria-labelledby="landing-title"
+        data-motion-loop
       >
         <Image
-          src="/landing/studio-scene.webp"
+          src="/landing/studio-created.webp"
           alt="A sculptural orange chair beside a sunlit arch overlooking olive hills"
           fill
           sizes="100vw"
           preload
           className={styles.heroImage}
         />
+        <div className={styles.heroContrast} aria-hidden="true" />
+        <div className={styles.heroSelection} aria-hidden="true">
+          <span>SELECT / EXPLORE</span>
+          <svg viewBox="0 0 400 360" fill="none">
+            <path d="M40 1H1V40 M360 1H399V40 M399 320V359H360 M40 359H1V320" />
+            <rect x="1" y="1" width="398" height="358" />
+          </svg>
+        </div>
         <div className={styles.heroContent}>
           <p className={styles.eyebrow}>A REVERSIBLE AI IMAGE STUDIO</p>
           <p className={styles.heroWordmark} aria-hidden="true">
@@ -189,15 +205,44 @@ export function ProductLanding({
             Private beta · <span>{access}</span>
           </p>
         </div>
-        <p className={styles.heroCaption}>ONE IMAGE. ROOM TO EXPLORE.</p>
+        <p className={styles.heroCaption}>MADE WITH MIRAI / CREATE WITH AI</p>
       </section>
+
+      <div className={styles.motionStrip} data-motion-loop>
+        <div className={styles.marquee}>
+          {[false, true].map((duplicate) => (
+            <ul
+              key={String(duplicate)}
+              aria-label={duplicate ? undefined : "Tools at a glance"}
+              aria-hidden={duplicate || undefined}
+            >
+              {[
+                "CREATE",
+                "SELECT",
+                "RECOLOR",
+                "REPLACE",
+                "TRANSFORM",
+                "EXTEND",
+                "COMPARE",
+                "UNDO",
+                "EXPORT",
+              ].map((tool) => (
+                <li key={tool}>
+                  {tool}
+                  <span aria-hidden="true">↗</span>
+                </li>
+              ))}
+            </ul>
+          ))}
+        </div>
+      </div>
 
       <section
         id="workflow"
         className={styles.workflow}
         aria-labelledby="workflow-title"
       >
-        <div className={styles.sectionLabel}>
+        <div className={styles.sectionLabel} data-reveal>
           <span>01 / THE FLOW</span>
           <h2 id="workflow-title">An idea in. Your image out.</h2>
         </div>
@@ -220,7 +265,11 @@ export function ProductLanding({
               "Save a new version, revisit your history, and export when you’re ready.",
             ],
           ].map(([title, description], index) => (
-            <li key={title}>
+            <li
+              key={title}
+              data-reveal
+              style={{ transitionDelay: `${index * 70}ms` }}
+            >
               <span className={styles.stepNumber}>0{index + 1}</span>
               <h3>{title}</h3>
               <p>{description}</p>
@@ -230,7 +279,7 @@ export function ProductLanding({
       </section>
 
       <section className={styles.reviewSection} aria-labelledby="review-title">
-        <div className={styles.reviewIntroduction}>
+        <div className={styles.reviewIntroduction} data-reveal>
           <p className={styles.eyebrow}>02 / BUILT TO BE REVERSIBLE</p>
           <h2 id="review-title">
             Every edit.
@@ -266,7 +315,7 @@ export function ProductLanding({
         className={styles.toolkit}
         aria-labelledby="features-title"
       >
-        <div className={styles.sectionHeading}>
+        <div className={styles.sectionHeading} data-reveal>
           <p className={styles.eyebrow}>03 / THE COMPLETE TOOLSET</p>
           <h2 id="features-title">
             From first idea
@@ -281,7 +330,11 @@ export function ProductLanding({
         </div>
         <div className={styles.toolList}>
           {tools.map((tool, index) => (
-            <article key={tool.category}>
+            <article
+              key={tool.category}
+              data-reveal
+              style={{ transitionDelay: `${(index % 2) * 80}ms` }}
+            >
               <div className={styles.toolHeading}>
                 <span>0{index + 1}</span>
                 <p className={styles.eyebrow}>{tool.category}</p>
@@ -302,7 +355,7 @@ export function ProductLanding({
         className={styles.workspaceSection}
         aria-labelledby="workspace-title"
       >
-        <div className={styles.workspaceHeading}>
+        <div className={styles.workspaceHeading} data-reveal>
           <p className={styles.eyebrow}>04 / A FOCUSED WORKSPACE</p>
           <h2 id="workspace-title">The image takes center stage.</h2>
           <p>
@@ -310,7 +363,7 @@ export function ProductLanding({
             creation, precise edits, comparison, and saved history in one place.
           </p>
         </div>
-        <figure className={styles.workspacePreview}>
+        <figure className={styles.workspacePreview} data-reveal="workspace">
           <Image
             src="/landing/editor-workspace.webp"
             width={1440}
@@ -320,7 +373,7 @@ export function ProductLanding({
           />
           <figcaption>Mirai workspace · example project</figcaption>
         </figure>
-        <div className={styles.exportRow}>
+        <div className={styles.exportRow} data-reveal>
           <div>
             <p className={styles.eyebrow}>READY TO TAKE IT WITH YOU</p>
             <h3>Your image. Your files.</h3>
@@ -339,14 +392,14 @@ export function ProductLanding({
         className={styles.faq}
         aria-labelledby="questions-title"
       >
-        <div>
+        <div data-reveal>
           <p className={styles.eyebrow}>05 / BEFORE YOU START</p>
           <h2 id="questions-title">A few good questions.</h2>
           <p>Clear boundaries make it easier to explore.</p>
         </div>
         <div className={styles.questions}>
           {questions.map(({ question, answer }) => (
-            <details key={question}>
+            <details key={question} data-reveal>
               <summary>
                 {question}
                 <span aria-hidden="true">+</span>
@@ -358,7 +411,7 @@ export function ProductLanding({
       </section>
 
       <section className={styles.finalCta} aria-labelledby="get-started-title">
-        <div>
+        <div data-reveal>
           <p className={styles.eyebrow}>MAKE ROOM FOR YOUR NEXT IDEA</p>
           <h2 id="get-started-title">
             Start with an image.

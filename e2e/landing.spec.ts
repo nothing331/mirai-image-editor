@@ -5,6 +5,112 @@ test.skip(
   "The product landing belongs to the authenticated app entry.",
 );
 
+test("motion can be paused and stays static when reduced motion is requested", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const surface = page.locator("main.public-page");
+  await expect(surface).toHaveAttribute("data-motion", "running");
+  const image = page.getByAltText(
+    "A sculptural orange chair beside a sunlit arch overlooking olive hills",
+  );
+  await expect(image).toHaveCSS("animation-play-state", "running");
+  await page
+    .getByRole("button", { name: "Pause animations", exact: true })
+    .click();
+  await expect(surface).toHaveAttribute("data-motion", "paused");
+  await expect(image).toHaveCSS("animation-play-state", "paused");
+  const pausedTransform = await image.evaluate(
+    (element) => getComputedStyle(element).transform,
+  );
+  await page
+    .getByRole("heading", { name: "Create your starting point", exact: true })
+    .scrollIntoViewIfNeeded();
+  await expect(
+    page.getByRole("heading", {
+      name: "Create your starting point",
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(
+    await image.evaluate((element) => getComputedStyle(element).transform),
+  ).toBe(pausedTransform);
+  await page
+    .getByRole("button", { name: "Resume animations", exact: true })
+    .click();
+  await expect(surface).toHaveAttribute("data-motion", "running");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(surface).toHaveAttribute("data-motion", "static");
+  await expect(
+    page.getByRole("button", { name: "Animations off: reduced motion" }),
+  ).toBeDisabled();
+  await expect(image).toHaveCSS("animation-name", "none");
+  await expect(page.locator("[data-reveal]").last()).toHaveCSS("opacity", "1");
+  expect(
+    await surface.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+});
+
+test("scroll reveals finish and stop the hero loop outside the viewport", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("main.public-page")).toHaveAttribute(
+    "data-motion",
+    "running",
+  );
+  const article = page.getByRole("article").filter({
+    has: page.getByRole("heading", {
+      name: "Create your starting point",
+      exact: true,
+    }),
+  });
+  await expect(article).toHaveAttribute("data-reveal-state", "pending");
+  await page
+    .getByRole("link", { name: "Explore the tools", exact: true })
+    .click();
+  await article.scrollIntoViewIfNeeded();
+  await expect(article).toHaveAttribute("data-reveal-state", "visible");
+  await expect(article).toHaveCSS("opacity", "1");
+  await expect(page.locator("#landing-content")).toHaveAttribute(
+    "data-motion-visible",
+    "false",
+  );
+  await expect(
+    page.getByAltText(
+      "A sculptural orange chair beside a sunlit arch overlooking olive hills",
+    ),
+  ).toHaveCSS("animation-play-state", "paused");
+});
+
+test("landing content and entry links remain available without JavaScript", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.locator("main.public-page")).toHaveAttribute(
+    "data-motion",
+    "static",
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: "Create your starting point",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .locator("summary")
+    .filter({ hasText: "What happens to my original image?" })
+    .click();
+  await expect(page.getByText(/Saved edits are flattened/)).toBeVisible();
+  await page.getByRole("link", { name: "Get started", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in\?next=\/projects$/);
+  await context.close();
+});
+
 test("explains the complete toolkit and lets visitors compare an example without generating", async ({
   page,
 }) => {
@@ -30,17 +136,35 @@ test("explains the complete toolkit and lets visitors compare an example without
     ).toHaveCount(1);
   }
   const slider = page.getByRole("slider", {
-    name: "Compare original and monochrome",
+    name: "Compare original and AI edit",
   });
   await slider.focus();
+  expect(
+    await slider.evaluate(
+      (element) => element.closest("figure")?.dataset.revealState,
+    ),
+  ).toBe("focused");
   await slider.press("Home");
   await expect(slider).toHaveValue("0");
   await expect(slider).toHaveAttribute(
     "aria-valuetext",
-    "0% original, 100% monochrome",
+    "0% original, 100% AI edit",
   );
   await slider.press("End");
   await expect(slider).toHaveValue("100");
+  await expect
+    .poll(() =>
+      page
+        .getByAltText(
+          "AI-transformed studio with a green chair and cream cushion",
+        )
+        .evaluate(
+          (image) =>
+            (image as HTMLImageElement).complete &&
+            (image as HTMLImageElement).naturalWidth > 0,
+        ),
+    )
+    .toBe(true);
   const credits = page
     .locator("summary")
     .filter({ hasText: "How do private-beta access and AI credits work?" });
@@ -77,7 +201,7 @@ for (const viewport of [
       .evaluate(async (heading) => {
         await Promise.all(
           heading
-            .parentElement!.getAnimations()
+            .parentElement!.getAnimations({ subtree: true })
             .map((animation) => animation.finished),
         );
         await document.fonts.ready;
