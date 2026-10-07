@@ -195,9 +195,16 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Never advance history on failure or discard.
 - A leave decision must say whether work is saved to the cloud or only kept as a device draft. A failed save keeps the user in the editor with a retry path.
 
+### Product landing
+
+- Use a full-bleed photographic hero with the Mirai wordmark, one promise, and an account-aware start action. Keep the same paper/ink palette and fonts as the editor. On phones, stack readable copy above a compact full-width scene; keep the start action in the initial viewport.
+- Explain the workflow, show comparison, cover the complete toolset in open divided rows, then present the actual workspace, export, questions, and a final CTA. Avoid generic feature-card mosaics, invented social proof, and unsupported capability claims.
+- Use static, purpose-created public artwork and an actual workspace screenshot. A labelled illustrative comparison may change browser presentation only; it must never buy provider work or create project history. Keep customer images and account data out of marketing assets.
+- Use native range and details/summary controls for keyboard-accessible exploration. Section links scroll within the public page; account-aware start links retain the existing eligibility destinations. Respect reduced motion for entry animation and anchor scrolling.
+
 ### Account and project journey
 
-- Landing, sign-in, access status, welcome, administration, upload, and deletion receipt share the editor’s warm paper, Manrope/DM Mono typography, charcoal actions, acid emphasis, and softly rounded controls. Use `MiraiBrand` for the public/account identity and the shared `StudioIllustration` for the landscape motif. Illustration is decorative; it never becomes a project asset.
+- The product landing, sign-in, access status, welcome, administration, upload, and deletion receipt share the editor’s warm paper, Manrope/DM Mono typography, charcoal actions, acid emphasis, and softly rounded controls. Use `MiraiBrand` for the public/account identity and the shared `StudioIllustration` for the landscape motif. Illustration is decorative; it never becomes a project asset.
 - Account screens use a light editorial introduction beside the form on desktop. Hide the illustration on phones, stack the content, and allow vertical scrolling. Long names and emails must wrap without hiding actions. Authentication, eligibility, allowances, and recovery stay authoritative on the server.
 - The project shell has a 64px header and persistent Projects, Trash, and Settings navigation. Show active destinations; compact to accessible, named icons on narrow screens. Sign-out retains its device-draft cleanup.
 - Library pages use a padded, centered content region. Image previews own the visual hierarchy, with one, two, or three columns by available width. A project is an interaction surface with an 8px corner and subtle border; do not add decorative dashboard cards. Keep search, sort, rename, pagination, load failure, thumbnail fallback, and empty states visible.
