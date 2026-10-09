@@ -158,37 +158,13 @@ export function ProductLanding({
         id="landing-content"
         className={styles.hero}
         aria-labelledby="landing-title"
-        data-motion-loop
       >
-        <Image
-          src="/landing/studio-created.webp"
-          alt="A sculptural orange chair beside a sunlit arch overlooking olive hills"
-          fill
-          sizes="100vw"
-          preload
-          className={styles.heroImage}
-        />
-        <div className={styles.heroContrast} aria-hidden="true" />
-        <div className={styles.heroSelection} aria-hidden="true">
-          <span>SELECT / EXPLORE</span>
-          <svg viewBox="0 0 400 360" fill="none">
-            <path d="M40 1H1V40 M360 1H399V40 M399 320V359H360 M40 359H1V320" />
-            <rect x="1" y="1" width="398" height="358" />
-          </svg>
-        </div>
         <div className={styles.heroContent}>
-          <p className={styles.eyebrow}>A REVERSIBLE AI IMAGE STUDIO</p>
-          <p className={styles.heroWordmark} aria-hidden="true">
-            MIRAI
-          </p>
-          <h1 id="landing-title">
-            Edit boldly.
-            <br />
-            Keep the original.
-          </h1>
+          <p className={styles.eyebrow}>MIRAI / AI IMAGE EDITOR</p>
+          <h1 id="landing-title">Create and edit images with AI.</h1>
           <p className={styles.heroDescription}>
-            From a small refinement to a whole new direction. Create, edit, and
-            keep every version yours.
+            Start with an image or an idea. Select what you want to change,
+            compare the result, and keep every version.
           </p>
           <div className={styles.heroActions}>
             <Link href={destination} className="workspace-action">
@@ -205,37 +181,25 @@ export function ProductLanding({
             Private beta · <span>{access}</span>
           </p>
         </div>
-        <p className={styles.heroCaption}>MADE WITH MIRAI / CREATE WITH AI</p>
+        <figure className={styles.heroWorkspace}>
+          <div className={styles.previewHeading}>
+            <span>THE MIRAI WORKSPACE</span>
+            <span>UPLOAD → SELECT → EDIT</span>
+          </div>
+          <Image
+            src="/landing/editor-poster.webp"
+            width={1440}
+            height={900}
+            sizes="(max-width: 1024px) 95vw, 68vw"
+            preload
+            alt="Mirai’s actual editor with a blue wave poster on the canvas and selection editing controls beside it"
+          />
+          <figcaption>
+            <span>Actual workspace · example project</span>
+            <span>Your original stays untouched.</span>
+          </figcaption>
+        </figure>
       </section>
-
-      <div className={styles.motionStrip} data-motion-loop>
-        <div className={styles.marquee}>
-          {[false, true].map((duplicate) => (
-            <ul
-              key={String(duplicate)}
-              aria-label={duplicate ? undefined : "Tools at a glance"}
-              aria-hidden={duplicate || undefined}
-            >
-              {[
-                "CREATE",
-                "SELECT",
-                "RECOLOR",
-                "REPLACE",
-                "TRANSFORM",
-                "EXTEND",
-                "COMPARE",
-                "UNDO",
-                "EXPORT",
-              ].map((tool) => (
-                <li key={tool}>
-                  {tool}
-                  <span aria-hidden="true">↗</span>
-                </li>
-              ))}
-            </ul>
-          ))}
-        </div>
-      </div>
 
       <section
         id="workflow"
@@ -243,8 +207,8 @@ export function ProductLanding({
         aria-labelledby="workflow-title"
       >
         <div className={styles.sectionLabel} data-reveal>
-          <span>01 / THE FLOW</span>
-          <h2 id="workflow-title">An idea in. Your image out.</h2>
+          <span>01 / HOW IT WORKS</span>
+          <h2 id="workflow-title">One workspace, from start to export.</h2>
         </div>
         <ol>
           {[
@@ -278,49 +242,17 @@ export function ProductLanding({
         </ol>
       </section>
 
-      <section className={styles.reviewSection} aria-labelledby="review-title">
-        <div className={styles.reviewIntroduction} data-reveal>
-          <p className={styles.eyebrow}>02 / BUILT TO BE REVERSIBLE</p>
-          <h2 id="review-title">
-            Every edit.
-            <br />A way back.
-          </h2>
-          <p>
-            Explore a result before it becomes part of your image. Your original
-            is always there, and every accepted change gets its own version.
-          </p>
-          <ul>
-            <li>
-              <Check aria-hidden="true" />
-              Compare before accepting AI edits
-            </li>
-            <li>
-              <Check aria-hidden="true" />
-              Undo, redo, or return to the original
-            </li>
-            <li>
-              <Check aria-hidden="true" />
-              Keep failed and discarded edits out of history
-            </li>
-          </ul>
-          <p className={styles.smallNote}>
-            Try the example. Move the slider to see both sides.
-          </p>
-        </div>
-        <LandingComparison />
-      </section>
-
       <section
         id="features"
         className={styles.toolkit}
         aria-labelledby="features-title"
       >
         <div className={styles.sectionHeading} data-reveal>
-          <p className={styles.eyebrow}>03 / THE COMPLETE TOOLSET</p>
+          <p className={styles.eyebrow}>02 / YOUR EDITING TOOLS</p>
           <h2 id="features-title">
-            From first idea
+            Tools for every
             <br />
-            to final image.
+            part of your edit.
           </h2>
           <p>
             AI when you want a new possibility.
@@ -351,28 +283,50 @@ export function ProductLanding({
         </div>
       </section>
 
+      <section className={styles.reviewSection} aria-labelledby="review-title">
+        <div className={styles.reviewIntroduction} data-reveal>
+          <p className={styles.eyebrow}>03 / REVIEW & HISTORY</p>
+          <h2 id="review-title">
+            Compare before
+            <br />you accept.
+          </h2>
+          <p>
+            Explore a result before it becomes part of your image. Your original
+            is always there, and every accepted change gets its own version.
+          </p>
+          <ul>
+            <li>
+              <Check aria-hidden="true" />
+              Compare before accepting AI edits
+            </li>
+            <li>
+              <Check aria-hidden="true" />
+              Undo, redo, or return to the original
+            </li>
+            <li>
+              <Check aria-hidden="true" />
+              Keep failed and discarded edits out of history
+            </li>
+          </ul>
+          <p className={styles.smallNote}>
+            Try the example. Move the slider to see both sides.
+          </p>
+        </div>
+        <LandingComparison />
+      </section>
+
       <section
         className={styles.workspaceSection}
         aria-labelledby="workspace-title"
       >
         <div className={styles.workspaceHeading} data-reveal>
-          <p className={styles.eyebrow}>04 / A FOCUSED WORKSPACE</p>
-          <h2 id="workspace-title">The image takes center stage.</h2>
+          <p className={styles.eyebrow}>04 / PROJECTS & EXPORT</p>
+          <h2 id="workspace-title">Save your work. Export your image.</h2>
           <p>
-            A canvas, a tool rail, and the options you need. Move between
-            creation, precise edits, comparison, and saved history in one place.
+            Reopen private projects, return to saved versions, and pick up where
+            you left off. Export the accepted image when you’re ready.
           </p>
         </div>
-        <figure className={styles.workspacePreview} data-reveal="workspace">
-          <Image
-            src="/landing/editor-workspace.webp"
-            width={1440}
-            height={900}
-            sizes="(max-width: 760px) 100vw, 90vw"
-            alt="Mirai’s editor with the studio image on its canvas and selection tools beside it"
-          />
-          <figcaption>Mirai workspace · example project</figcaption>
-        </figure>
         <div className={styles.exportRow} data-reveal>
           <div>
             <p className={styles.eyebrow}>READY TO TAKE IT WITH YOU</p>
@@ -394,7 +348,7 @@ export function ProductLanding({
       >
         <div data-reveal>
           <p className={styles.eyebrow}>05 / BEFORE YOU START</p>
-          <h2 id="questions-title">A few good questions.</h2>
+          <h2 id="questions-title">Before you start.</h2>
           <p>Clear boundaries make it easier to explore.</p>
         </div>
         <div className={styles.questions}>
@@ -412,11 +366,11 @@ export function ProductLanding({
 
       <section className={styles.finalCta} aria-labelledby="get-started-title">
         <div data-reveal>
-          <p className={styles.eyebrow}>MAKE ROOM FOR YOUR NEXT IDEA</p>
+          <p className={styles.eyebrow}>OPEN YOUR WORKSPACE</p>
           <h2 id="get-started-title">
-            Start with an image.
+            Ready to edit?
             <br />
-            See where it goes.
+            Open Mirai.
           </h2>
         </div>
         <div>

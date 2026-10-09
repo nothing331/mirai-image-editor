@@ -99,28 +99,16 @@
   border-color: var(--ink);
 }
 .hero {
-  position: relative;
-  min-height: min(860px, calc(100svh - 64px));
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.8fr);
   align-items: center;
-  overflow: hidden;
-  background: #c1baa3;
-}
-.heroImage {
-  object-fit: cover;
-  object-position: center;
-}
-.heroContrast {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(90deg, #faf9f666, #faf9f600 65%);
+  gap: clamp(28px, 4vw, 64px);
+  min-height: min(740px, calc(100svh - 64px));
+  padding: 48px clamp(24px, 4vw, 64px);
+  border-bottom: 1px solid var(--line);
 }
 .heroContent {
-  position: relative;
-  z-index: 1;
-  width: min(52%, 720px);
-  padding: 64px clamp(24px, 5.5vw, 96px) 76px;
+  min-width: 0;
 }
 .eyebrow {
   font-family: "DM Mono", monospace;
@@ -129,33 +117,28 @@
   letter-spacing: 0.15em;
   line-height: 1.6;
 }
-.heroWordmark {
-  margin-top: 22px;
-  font-size: clamp(70px, 8.4vw, 130px);
-  font-weight: 800;
-  letter-spacing: -0.075em;
-  line-height: 0.95;
-}
 .hero h1 {
-  margin-top: 30px;
-  font-size: clamp(32px, 3.35vw, 54px);
-  font-weight: 600;
+  max-width: 430px;
+  margin-top: 20px;
+  font-size: clamp(38px, 3.8vw, 58px);
+  font-weight: 650;
   letter-spacing: -0.055em;
   line-height: 1.08;
+  text-wrap: balance;
 }
 .heroDescription {
-  max-width: 355px;
+  max-width: 360px;
   margin-top: 22px;
   font-size: 14px;
-  font-weight: 500;
   line-height: 1.8;
+  color: var(--muted);
 }
 .heroActions {
   display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-top: 30px;
+  align-items: flex-start;
+  gap: 12px;
+  flex-direction: column;
+  margin-top: 28px;
 }
 .explore {
   display: flex;
@@ -174,9 +157,11 @@
 .heroAccess {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 24px;
+  margin-top: 20px;
   font-size: 10px;
+  color: var(--muted);
 }
 .heroAccess span[aria-hidden="true"] {
   width: 5px;
@@ -184,121 +169,47 @@
   border-radius: 50%;
   background: var(--ink);
 }
-.heroCaption {
-  position: absolute;
-  z-index: 1;
-  right: 32px;
-  bottom: 24px;
-  font-family: "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: 0.15em;
+.heroWorkspace {
+  min-width: 0;
 }
-.heroSelection {
-  position: absolute;
-  pointer-events: none;
-  right: 4.5%;
-  top: 49%;
-  width: 28%;
-  height: 39%;
-  color: var(--paper);
-  transform-origin: center;
-}
-.heroSelection > span {
-  display: block;
-  font-family: "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  margin-bottom: 12px;
-}
-.heroSelection svg {
+.heroWorkspace img {
   width: 100%;
-  height: 100%;
-  overflow: visible;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
-.heroSelection path {
-  stroke: currentColor;
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
-.heroSelection rect {
-  stroke: currentColor;
-  stroke-width: 1;
-  stroke-dasharray: 5 6;
-  opacity: 0.45;
-  vector-effect: non-scaling-stroke;
-}
-.motionStrip {
-  overflow: hidden;
-  background: var(--ink);
-  color: var(--paper);
-}
-.marquee {
+.previewHeading {
   display: flex;
-  width: max-content;
-}
-.marquee ul {
-  display: flex;
-  flex: none;
+  justify-content: space-between;
   align-items: center;
-  gap: 48px;
-  padding: 26px 48px 26px 0;
+  gap: 16px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
 }
-.marquee li {
+.heroWorkspace figcaption {
   display: flex;
-  align-items: center;
-  gap: 48px;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  white-space: nowrap;
-}
-.marquee li span {
-  font-size: 24px;
-  font-weight: 400;
-  color: #a4a69a;
-}
-.page[data-motion="static"] .marquee ul[aria-hidden="true"] {
-  display: none;
-}
-.page[data-motion="static"] .marquee {
-  width: auto;
-}
-.page[data-motion="static"] .marquee ul {
-  flex-wrap: wrap;
-  padding-left: 24px;
-  gap: 16px 32px;
-}
-.page[data-motion="static"] .marquee li {
-  gap: 24px;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
 }
 .page[data-motion="running"] [data-reveal],
 .page[data-motion="paused"] [data-reveal] {
   transition:
-    opacity 650ms ease,
-    transform 850ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 350ms ease,
+    transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .page[data-motion="running"] [data-reveal-state="pending"] {
   opacity: 0;
-  transform: translateY(28px);
-}
-.page[data-motion="running"]
-  [data-reveal="workspace"][data-reveal-state="pending"] {
-  transform: perspective(1400px) rotateX(6deg) translateY(40px) scale(0.97);
-}
-.page:is([data-motion="running"], [data-motion="paused"]) .heroImage {
-  animation: sceneDrift 18s ease-in-out infinite alternate;
-}
-.page:is([data-motion="running"], [data-motion="paused"]) .heroSelection {
-  animation: selectionDrift 7s ease-in-out infinite alternate;
-}
-.page:is([data-motion="running"], [data-motion="paused"]) .heroSelection rect {
-  animation: selectionTrace 2s linear infinite;
-}
-.page:is([data-motion="running"], [data-motion="paused"]) .marquee {
-  animation: toolMarquee 36s linear infinite;
+  transform: translateY(12px);
 }
 .page[data-motion="running"] .heroContent > * {
-  animation: heroEnter 750ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: heroEnter 450ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .page[data-motion="running"] .heroContent > :nth-child(2) {
   animation-delay: 80ms;
@@ -315,10 +226,6 @@
 .page[data-motion="running"] .heroContent > :nth-child(6) {
   animation-delay: 400ms;
 }
-.page[data-motion="paused"]
-  :is(.heroImage, .heroSelection, .heroSelection rect, .marquee) {
-  animation-play-state: paused;
-}
 .page[data-motion="paused"] [data-reveal] {
   transition: none;
 }
@@ -330,14 +237,6 @@
   opacity: 1;
   transform: none;
   transition: none;
-}
-.motionStrip:hover .marquee {
-  animation-play-state: paused;
-}
-.hero[data-motion-visible="false"]
-  :is(.heroImage, .heroSelection, .heroSelection rect),
-.motionStrip[data-motion-visible="false"] .marquee {
-  animation-play-state: paused;
 }
 .toolList article {
   transition: border-color 180ms ease;
@@ -353,32 +252,6 @@
 .toolList article:hover .toolHeading > span {
   transform: translateX(6px);
   color: var(--ink);
-}
-@keyframes sceneDrift {
-  from {
-    transform: scale(1.035) translateX(-0.5%);
-  }
-  to {
-    transform: scale(1.07) translateX(0.5%);
-  }
-}
-@keyframes selectionDrift {
-  from {
-    transform: translate(0, 0) rotate(-2deg);
-  }
-  to {
-    transform: translate(-12px, -12px) rotate(1deg);
-  }
-}
-@keyframes selectionTrace {
-  to {
-    stroke-dashoffset: -22;
-  }
-}
-@keyframes toolMarquee {
-  to {
-    transform: translateX(-50%);
-  }
 }
 .workflow,
 .reviewSection,
@@ -679,23 +552,6 @@
   font-size: 14px;
   line-height: 1.8;
 }
-.workspacePreview {
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--paper);
-  border: 1px solid #ffffff20;
-}
-.workspacePreview img {
-  width: 100%;
-  height: auto;
-}
-.workspacePreview figcaption {
-  padding: 12px 16px;
-  color: var(--muted);
-  font-family: "DM Mono", monospace;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-}
 .exportRow {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
@@ -862,10 +718,34 @@
   }
 }
 @media (max-width: 1024px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    gap: 32px;
+    padding: 40px 32px;
+  }
   .heroContent {
-    width: 58%;
-    padding-left: 32px;
-    padding-right: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 36px;
+    align-items: start;
+  }
+  .heroContent .eyebrow {
+    grid-column: 1 / -1;
+  }
+  .hero h1 {
+    grid-row: 2 / 5;
+  }
+  .heroDescription {
+    margin-top: 20px;
+  }
+  .heroActions {
+    margin-top: 16px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .heroAccess {
+    margin-top: 12px;
   }
   .reviewSection {
     gap: 36px;
@@ -897,55 +777,27 @@
     padding-right: 10px;
     gap: 8px;
   }
-  .heroSelection {
-    display: none;
-  }
-  .heroContrast {
-    display: none;
-  }
-  .marquee ul {
-    padding-top: 20px;
-    padding-bottom: 20px;
-    gap: 32px;
-  }
-  .marquee li {
-    font-size: 20px;
-    gap: 32px;
-  }
   .hero {
-    min-height: calc(100svh - 64px);
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .heroImage {
-    position: relative !important;
-    order: 2;
-    height: clamp(150px, calc(100svh - 460px), 230px) !important;
-    flex: none;
-    object-position: right center;
+    padding: 32px 20px;
+    gap: 26px;
   }
   .heroContent {
-    width: 100%;
-    flex: 1;
-    padding: 30px 24px 20px;
-  }
-  .heroWordmark {
-    font-size: 70px;
-    margin-top: 14px;
+    display: block;
   }
   .hero h1 {
-    font-size: 32px;
-    margin-top: 18px;
+    max-width: 400px;
+    font-size: 38px;
+    margin-top: 14px;
   }
   .heroDescription {
-    max-width: 315px;
+    max-width: 400px;
     font-size: 13px;
-    margin-top: 14px;
-    line-height: 1.6;
+    margin-top: 16px;
+    line-height: 1.7;
   }
   .heroActions {
-    gap: 12px;
-    margin-top: 18px;
+    gap: 8px 16px;
+    margin-top: 20px;
   }
   .heroActions :global(.workspace-action) {
     padding-left: 14px;
@@ -957,13 +809,19 @@
     gap: 6px;
   }
   .heroAccess {
-    margin-top: 14px;
+    margin-top: 12px;
   }
-  .heroCaption {
-    left: 24px;
-    right: auto;
-    bottom: 22px;
+  .previewHeading {
     font-size: 8px;
+  }
+  .previewHeading > span:last-child {
+    display: none;
+  }
+  .heroWorkspace figcaption {
+    font-size: 9px;
+  }
+  .heroWorkspace figcaption > span:last-child {
+    display: none;
   }
   .workflow,
   .reviewSection,
@@ -1032,10 +890,6 @@
   .toolList h3 {
     font-size: 23px;
   }
-  .workspacePreview {
-    margin-left: -12px;
-    margin-right: -12px;
-  }
   .exportRow,
   .faq,
   .finalCta {
@@ -1066,10 +920,6 @@
   }
   .page
     :is(
-      .heroImage,
-      .heroSelection,
-      .heroSelection rect,
-      .marquee,
       .heroContent > *
     ) {
     animation: none !important;

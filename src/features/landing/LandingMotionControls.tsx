@@ -31,10 +31,6 @@ export function LandingMotionControls() {
       (entries) => {
         for (const entry of entries) {
           const target = entry.target as HTMLElement;
-          if (target.hasAttribute("data-motion-loop")) {
-            target.dataset.motionVisible = String(entry.isIntersecting);
-            continue;
-          }
           if (!entry.isIntersecting) continue;
           target.dataset.revealState = "visible";
           observer.unobserve(target);
@@ -44,9 +40,6 @@ export function LandingMotionControls() {
     );
 
     const surfaceBounds = surface.getBoundingClientRect();
-    surface
-      .querySelectorAll<HTMLElement>("[data-motion-loop]")
-      .forEach((target) => observer.observe(target));
     surface.querySelectorAll<HTMLElement>("[data-reveal]").forEach((target) => {
       if (target.dataset.revealState === "visible") return;
       const bounds = target.getBoundingClientRect();

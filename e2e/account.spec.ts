@@ -5,7 +5,7 @@ test.skip(process.env.MIRAI_AUTH_ENABLED !== "true", "The account journey requir
 test("cloud landing sends a signed-out visitor to the Google sign-in journey", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Edit boldly. Keep the original." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create and edit images with AI." })).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/sign-in?next=/projects");
   await expect(page.getByText("Sign in to continue", { exact: true })).toBeVisible();
 

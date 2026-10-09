@@ -12,17 +12,13 @@ test("motion can be paused and stays static when reduced motion is requested", a
   const surface = page.locator("main.public-page");
   await expect(surface).toHaveAttribute("data-motion", "running");
   const image = page.getByAltText(
-    "A sculptural orange chair beside a sunlit arch overlooking olive hills",
+    "Mirai’s actual editor with a blue wave poster on the canvas and selection editing controls beside it",
   );
-  await expect(image).toHaveCSS("animation-play-state", "running");
+  await expect(image).toHaveCSS("animation-name", "none");
   await page
     .getByRole("button", { name: "Pause animations", exact: true })
     .click();
   await expect(surface).toHaveAttribute("data-motion", "paused");
-  await expect(image).toHaveCSS("animation-play-state", "paused");
-  const pausedTransform = await image.evaluate(
-    (element) => getComputedStyle(element).transform,
-  );
   await page
     .getByRole("heading", { name: "Create your starting point", exact: true })
     .scrollIntoViewIfNeeded();
@@ -32,9 +28,7 @@ test("motion can be paused and stays static when reduced motion is requested", a
       exact: true,
     }),
   ).toBeVisible();
-  expect(
-    await image.evaluate((element) => getComputedStyle(element).transform),
-  ).toBe(pausedTransform);
+  await expect(page.locator("[data-reveal]").last()).toHaveCSS("opacity", "1");
   await page
     .getByRole("button", { name: "Resume animations", exact: true })
     .click();
@@ -53,7 +47,7 @@ test("motion can be paused and stays static when reduced motion is requested", a
   ).toBe(true);
 });
 
-test("scroll reveals finish and stop the hero loop outside the viewport", async ({
+test("sections reveal on navigation while the workspace stays stationary", async ({
   page,
 }) => {
   await page.goto("/");
@@ -74,15 +68,8 @@ test("scroll reveals finish and stop the hero loop outside the viewport", async 
   await article.scrollIntoViewIfNeeded();
   await expect(article).toHaveAttribute("data-reveal-state", "visible");
   await expect(article).toHaveCSS("opacity", "1");
-  await expect(page.locator("#landing-content")).toHaveAttribute(
-    "data-motion-visible",
-    "false",
-  );
-  await expect(
-    page.getByAltText(
-      "A sculptural orange chair beside a sunlit arch overlooking olive hills",
-    ),
-  ).toHaveCSS("animation-play-state", "paused");
+  await expect(page.locator("[data-motion-loop]")).toHaveCount(0);
+  await expect(page.locator("#landing-content img")).toHaveCSS("transform", "none");
 });
 
 test("landing content and entry links remain available without JavaScript", async ({
@@ -194,10 +181,10 @@ for (const viewport of [
       page.getByRole("link", { name: "Sign in with Google", exact: true }),
     ).toBeInViewport();
     await expect(
-      page.getByRole("heading", { name: "Edit boldly. Keep the original." }),
+      page.getByRole("heading", { name: "Create and edit images with AI." }),
     ).toHaveCSS("opacity", "1");
     await page
-      .getByRole("heading", { name: "Edit boldly. Keep the original." })
+      .getByRole("heading", { name: "Create and edit images with AI." })
       .evaluate(async (heading) => {
         await Promise.all(
           heading
@@ -210,7 +197,7 @@ for (const viewport of [
       .poll(() =>
         page
           .getByAltText(
-            "A sculptural orange chair beside a sunlit arch overlooking olive hills",
+            "Mirai’s actual editor with a blue wave poster on the canvas and selection editing controls beside it",
           )
           .evaluate(
             (image) =>
@@ -219,17 +206,13 @@ for (const viewport of [
           ),
       )
       .toBe(true);
-    if (viewport.width <= 760) {
-      const contentBottom = await page
-        .getByText("Private beta ·")
-        .evaluate((element) => element.getBoundingClientRect().bottom);
-      const imageTop = await page
-        .getByAltText(
-          "A sculptural orange chair beside a sunlit arch overlooking olive hills",
-        )
-        .evaluate((element) => element.getBoundingClientRect().top);
-      expect(contentBottom).toBeLessThan(imageTop);
-    }
+    await expect(page.locator("#landing-content img")).toBeInViewport();
+    await expect(page.locator("#landing-content img")).toHaveAttribute(
+      "src", /editor-poster/,
+    );
+    expect(await page.locator("#landing-content img").evaluate(
+      (image) => image.getBoundingClientRect().top,
+    )).toBeLessThan(viewport.height);
     await page.screenshot({
       path: `test-results/landing-hero-${viewport.width}.png`,
     });
@@ -247,7 +230,7 @@ for (const viewport of [
       )
       .toBeGreaterThanOrEqual(64);
     await expect(
-      page.getByRole("heading", { name: "From first idea to final image." }),
+      page.getByRole("heading", { name: "Tools for every part of your edit." }),
     ).toBeInViewport();
     expect(
       await page
@@ -258,21 +241,8 @@ for (const viewport of [
       path: `test-results/landing-features-${viewport.width}.png`,
     });
     await page
-      .getByRole("heading", { name: "The image takes center stage." })
+      .getByRole("heading", { name: "Save your work. Export your image." })
       .scrollIntoViewIfNeeded();
-    await expect
-      .poll(() =>
-        page
-          .getByAltText(
-            "Mirai’s editor with the studio image on its canvas and selection tools beside it",
-          )
-          .evaluate(
-            (image) =>
-              (image as HTMLImageElement).complete &&
-              (image as HTMLImageElement).naturalWidth > 0,
-          ),
-      )
-      .toBe(true);
     await page.screenshot({
       path: `test-results/landing-workspace-${viewport.width}.png`,
     });
