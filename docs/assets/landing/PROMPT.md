@@ -32,7 +32,7 @@ The project name is “Daydream / poster study.” A source-space selection surr
 
 The current landing uses four new images created on October 9, 2026 through Mirai's own local application API with its real OpenAI provider adapter. A browser confirmation dialog prevented automated submission through the local UI, so the requests were submitted to the existing `/api/asset-generations` endpoint. No separate image-generation tool output or direct provider SDK call is used for these assets. These are purpose-created examples, not customer work or a guarantee of future output.
 
-All four requests used Create with AI image mode, Instagram Post format, `gpt-image-2`, low quality, and 1024 × 1024 output. The complete results were encoded as WebP at quality 90, without cropping or compositing. The exact submitted prompts and treatments are stored in `src/features/landing/creation-examples.ts` and displayed in the gallery:
+All four requests used Create with AI image mode, Instagram Post format, `gpt-image-2`, low quality, and 1024 × 1024 output. The complete results were encoded as WebP at quality 90, without cropping or compositing. The exact submitted prompts and treatments are stored in `src/features/landing/creation-examples.ts`. The gallery displays short idea summaries rather than the full generation requests:
 
 - `public/landing/mirai-portrait.webp`: Photograph; an editorial portrait with a short black bob and lime sunglasses.
 - `public/landing/mirai-anime.webp`: Anime; a fox in a lime scarf overlooking a moonlit city.
@@ -46,3 +46,15 @@ All four requests used Create with AI image mode, Instagram Post format, `gpt-im
 `public/landing/editor-portrait.webp` is an actual 1440 × 900 local Mirai editor screenshot, encoded as WebP at quality 92. The original generated portrait was uploaded into a new workspace, named “Mirai / portrait study,” and a selection drawn around the glasses in source-image coordinates. Replace was configured with “Replace the lime sunglasses with sculptural chrome sunglasses. Keep the portrait and lighting.” That prepared Replace request was not submitted and no edit was accepted for the screenshot. Only the development indicator was hidden.
 
 The original generated PNGs, full edit PNG, capture PNG, request manifest, and reproducible local request scripts are retained outside version control under `.local-edit/ui-review/creative-studio/`. Public assets contain no credentials, diagnostics, or provider response payloads. The landing displays static assets; selecting a style only reveals its example prompt and never makes a paid request. Previous sofa and code-drawn poster assets are retained but unused by this composition.
+
+## Visual workflow: lime to chrome
+
+The workflow demonstration was completed through the actual local Mirai UI using the original generated portrait. A source-space polygon spanning `(300,260)` to `(990,450)` focused on the glasses. Select & edit → Replace used the default review boundary and the following instruction:
+
+> Replace the lime sunglasses with sculptural polished chrome sunglasses. Preserve the woman’s identity, pose, black bob hair, charcoal jacket, dark backdrop and cinematic side lighting. Keep the same composition and realistic editorial photograph style. No lettering or added objects.
+
+Exactly one preview was submitted through the existing real provider adapter. The complete review proposal was inspected, accepted through the shared pipeline as one immutable operation/version, and exported without another provider call. `public/landing/mirai-portrait-chrome.webp` is a quality-90 encoding of that complete 1024 × 1024 accepted export. Review mode allowed changes outside the selection hint; the demonstration does not claim exact protected-mode preservation.
+
+`editor-original.webp`, `editor-select.webp`, `editor-review.webp`, and `editor-finish.webp` are actual 1440 × 900 UI captures encoded at WebP quality 92. They show the original workspace, selected glasses and instruction, side-by-side complete proposal with review controls, and the accepted result with one history operation. The start capture was recaptured in a fresh workspace using the same input after canvas rendering completed; no second generation was made. Only the Next.js development indicator was hidden. No provider payloads or customer data are published.
+
+Original captures, full proposal PNG, accepted export PNG, exact request manifest, and UI capture scripts are retained in the ignored `.local-edit/ui-review/creative-studio/` directory. The main visual steps, horizontal tour, and vertical parallax story all display these bundled demonstrations and never generate, accept, or export a visitor’s project.
