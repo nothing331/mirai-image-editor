@@ -67,24 +67,6 @@
   align-items: center;
   gap: 12px;
 }
-.motionControl {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border: 1px solid #faf9f640;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.motionControl:hover:not(:disabled) {
-  background: var(--paper);
-  color: var(--ink);
-}
-.motionControl:disabled {
-  color: #faf9f699;
-  cursor: default;
-}
 .headerAction {
   display: inline-flex;
   min-height: 40px;
@@ -126,7 +108,7 @@
 }
 .hero h1 {
   margin-top: 28px;
-  font-size: clamp(62px, 6.7vw, 112px);
+  font-size: clamp(54px, 5.8vw, 94px);
   font-weight: 700;
   letter-spacing: -0.065em;
   line-height: .97;
@@ -171,17 +153,6 @@
 }
 .primaryAction:hover {
   background: var(--paper);
-}
-.invitationLink {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  font-size: 12px;
-  color: var(--paper);
-}
-.invitationLink:hover {
-  color: var(--acid);
 }
 .heroAccess {
   max-width: 400px;
@@ -427,8 +398,7 @@
 .workflow .sectionLabel h2 {
   font-size: 32px;
 }
-.page[data-motion="running"] [data-reveal],
-.page[data-motion="paused"] [data-reveal] {
+.page[data-motion="running"] [data-reveal] {
   transition:
     opacity 350ms ease,
     transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -455,13 +425,7 @@
 .page[data-motion="running"] .heroContent > :nth-child(6) {
   animation-delay: 400ms;
 }
-.page[data-motion="paused"] [data-reveal] {
-  transition: none;
-}
-.page[data-motion="paused"] {
-  scroll-behavior: auto;
-}
-.page:is([data-motion="running"], [data-motion="paused"])
+.page[data-motion="running"]
   [data-reveal-state="focused"] {
   opacity: 1;
   transform: none;
@@ -994,7 +958,7 @@
     gap: 36px;
   }
   .hero h1 {
-    font-size: 76px;
+    font-size: 64px;
   }
   .heroActions {
     gap: 12px;
@@ -1026,7 +990,7 @@
     max-width: 680px;
   }
   .hero h1 {
-    font-size: 84px;
+    font-size: 72px;
   }
   .hero h1 > span:last-child br {
     display: none;
@@ -1082,9 +1046,6 @@
     gap: 8px;
     padding: 0 12px;
   }
-  .motionControl {
-    width: 36px;
-  }
   .hero {
     padding: 30px 24px 56px;
     gap: 38px;
@@ -1094,7 +1055,7 @@
   }
   .hero h1 {
     margin-top: 22px;
-    font-size: clamp(54px, 12vw, 80px);
+    font-size: clamp(44px, 10.5vw, 72px);
   }
   .hero h1 > span:last-child {
     margin-top: 10px;
@@ -1116,10 +1077,6 @@
     padding: 0 16px;
     gap: 12px;
     font-size: 12px;
-  }
-  .invitationLink {
-    font-size: 10px;
-    gap: 4px;
   }
   .heroAccess {
     font-size: 10px;
@@ -1259,7 +1216,7 @@
     padding-right: 20px;
   }
   .hero h1 {
-    font-size: 52px;
+    font-size: 40px;
   }
   .heroActions {
     gap: 0 12px;
@@ -1295,16 +1252,4 @@
   .toolList article:hover .toolHeading > span, .explore:hover svg {
     transform: none;
   }
-}
-.page[data-motion="paused"] .heroArtwork, .page[data-motion="paused"] .exampleImage img {
-  transition: none;
-}
-
-.page[data-motion="paused"] .heroArtwork:hover {
-  transform: rotate(var(--art-angle));
-}
-.page[data-motion="paused"] .example:hover img,
-.page[data-motion="paused"] .toolList article:hover .toolHeading > span,
-.page[data-motion="paused"] .explore:hover svg {
-  transform: none;
 }

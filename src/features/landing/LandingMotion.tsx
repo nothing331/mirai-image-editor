@@ -1,8 +1,6 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import styles from "./ProductLanding.module.css";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 const motionPreference = "(prefers-reduced-motion: reduce)";
 
@@ -12,9 +10,8 @@ function subscribeToMotionPreference(onChange: () => void) {
   return () => preference.removeEventListener("change", onChange);
 }
 
-export function LandingMotionControls() {
-  const button = useRef<HTMLButtonElement>(null);
-  const [paused, setPaused] = useState(false);
+export function LandingMotion() {
+  const marker = useRef<HTMLSpanElement>(null);
   const reduced = useSyncExternalStore(
     subscribeToMotionPreference,
     () => window.matchMedia(motionPreference).matches,
@@ -22,10 +19,10 @@ export function LandingMotionControls() {
   );
 
   useEffect(() => {
-    const surface = button.current?.closest("main");
+    const surface = marker.current?.closest("main");
     if (!surface) return;
-    surface.dataset.motion = reduced ? "static" : paused ? "paused" : "running";
-    if (reduced || paused || !("IntersectionObserver" in window)) return;
+    surface.dataset.motion = reduced ? "static" : "running";
+    if (reduced || !("IntersectionObserver" in window)) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -66,29 +63,6 @@ export function LandingMotionControls() {
       observer.disconnect();
       surface.removeEventListener("focusin", revealFocusedContent);
     };
-  }, [paused, reduced]);
-
-  const label = reduced
-    ? "Animations off: reduced motion"
-    : paused
-      ? "Resume animations"
-      : "Pause animations";
-  return (
-    <button
-      ref={button}
-      type="button"
-      className={styles.motionControl}
-      aria-label={label}
-      title={label}
-      aria-pressed={paused || reduced}
-      disabled={reduced}
-      onClick={() => setPaused(!paused)}
-    >
-      {paused || reduced ? (
-        <Play className="size-3.5" aria-hidden="true" />
-      ) : (
-        <Pause className="size-3.5" aria-hidden="true" />
-      )}
-    </button>
-  );
+  }, [reduced]);
+  return <span ref={marker} hidden aria-hidden="true" />;
 }

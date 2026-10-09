@@ -18,7 +18,7 @@ export function CloudLanding({ account }: { account: AccountSnapshot | null }) {
       }
       access={
         !account
-          ? "Request access or use your invitation"
+          ? "Request access to join the early launch"
           : active
             ? "Account approved"
             : "Your access status is available"

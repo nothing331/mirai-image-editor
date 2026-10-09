@@ -8,9 +8,11 @@ export const creationExamples: Array<{
   src: string;
   alt: string;
   prompt: string;
+  shortPrompt: string;
 }> = [
   {
     id: "portrait",
+    shortPrompt: "An editorial portrait. A black bob, lime glasses, and cinematic light.",
     treatment: "photograph",
     label: "Photograph",
     title: "A different kind of portrait.",
@@ -20,6 +22,7 @@ export const creationExamples: Array<{
   },
   {
     id: "anime",
+    shortPrompt: "A fox explorer in a lime scarf, above a moonlit city.",
     treatment: "anime",
     label: "Anime",
     title: "Build a world of your own.",
@@ -29,6 +32,7 @@ export const creationExamples: Array<{
   },
   {
     id: "watercolor",
+    shortPrompt: "A sunlit lemon tree, painted in watercolor on textured paper.",
     treatment: "watercolor",
     label: "Watercolor",
     title: "Let the texture do the talking.",
@@ -38,6 +42,7 @@ export const creationExamples: Array<{
   },
   {
     id: "astronaut",
+    shortPrompt: "A little ivory astronaut with a lime helmet, floating in the dark.",
     treatment: "three-dimensional",
     label: "3D",
     title: "Give an idea a new dimension.",

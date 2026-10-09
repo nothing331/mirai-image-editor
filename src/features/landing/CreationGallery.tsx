@@ -11,7 +11,7 @@ export function CreationGallery() {
   return (
     <div className={styles.creationGallery}>
       <div className={styles.exampleGrid} role="group" aria-label="Explore creation styles">
-        {creationExamples.map((example, index) => (
+        {creationExamples.map((example) => (
           <button
             key={example.id}
             type="button"
@@ -27,14 +27,14 @@ export function CreationGallery() {
                 {selected.id === example.id ? <Check /> : <ArrowUpRight />}
               </span>
             </span>
-            <span className={styles.exampleLabel}><span>0{index + 1}</span>{example.label}</span>
+            <span className={styles.exampleLabel}>{example.label}</span>
             <span className={styles.exampleTitle}>{example.title}</span>
           </button>
         ))}
       </div>
       <div id="creation-prompt" className={styles.promptPanel}>
-        <div><p className={styles.eyebrow}>THE STARTING PROMPT</p><h3 aria-live="polite">{selected.label} / Instagram Post</h3></div>
-        <p>{selected.prompt}</p>
+        <div><p className={styles.eyebrow}>THE IDEA</p><h3 aria-live="polite">{selected.label} / Instagram Post</h3></div>
+        <p>{selected.shortPrompt}</p>
         <span>Created in Mirai · AI-generated example · 1024 × 1024</span>
       </div>
     </div>
