@@ -10,18 +10,18 @@ export function LandingComparison() {
     <figure className={styles.comparison} data-reveal>
       <div className={styles.comparisonImage}>
         <Image
-          src="/landing/studio-scene.webp"
-          width={1672}
-          height={941}
+          src="/landing/mirai-portrait.webp"
+          width={1024}
+          height={1024}
           sizes="(max-width: 760px) 100vw, 65vw"
-          alt="Original studio with an orange chair"
+          alt="Original portrait created with Mirai"
         />
         <Image
-          src="/landing/studio-ai-edit.webp"
-          width={1672}
-          height={941}
+          src="/landing/mirai-portrait-edit.webp"
+          width={1024}
+          height={1024}
           sizes="(max-width: 760px) 100vw, 65vw"
-          alt="AI-transformed studio with a green chair and cream cushion"
+          alt="Mirai AI Transform proposal with charcoal ink, ivory paper, and lime sunglasses"
           style={{ clipPath: `inset(0 0 0 ${position}%)` }}
         />
         <span className={styles.compareLabel}>Original</span>

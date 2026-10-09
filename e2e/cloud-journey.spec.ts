@@ -34,7 +34,7 @@ test("connects access, welcome, project creation, editing, library and account n
   expect((await client.auth.signInWithPassword({ email, password })).error).toBeNull();
   await context.addCookies(cookies.map((cookie) => ({ ...cookie, url: `http://127.0.0.1:${process.env.E2E_PORT ?? 3000}` })));
   await page.goto("/");
-  await page.getByRole("link", { name: "View access status", exact: true }).click();
+  await page.getByRole("link", { name: "Check access status", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Approval required." })).toBeVisible();
   await reviewAtBothSizes(page, "access");
   await page.getByRole("button", { name: "Request access", exact: true }).click();

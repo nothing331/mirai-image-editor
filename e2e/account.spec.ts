@@ -5,12 +5,16 @@ test.skip(process.env.MIRAI_AUTH_ENABLED !== "true", "The account journey requir
 test("cloud landing sends a signed-out visitor to the Google sign-in journey", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Create and edit images with AI." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/sign-in?next=/projects");
-  await expect(page.getByText("Sign in to continue", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create. Edit. Make it yours." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Request an invite" })).toHaveAttribute("href", "/sign-in?next=/access");
+  await expect(page.getByText("Request access or use your invitation. A Google account is required.", { exact: true })).toBeVisible();
 
-  await page.getByRole("link", { name: "Sign in with Google" }).click();
-  await expect(page).toHaveURL(/\/sign-in\?next=\/projects$/, { timeout: 15_000 });
+  await expect(page.getByRole("link", { name: "I have an invitation", exact: true })).toHaveAttribute("href", "#invitation");
+  await page.getByRole("link", { name: "I have an invitation", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Already have an invitation?", exact: true })).toBeInViewport();
+  await expect(page.locator("#invitation").getByText("Open your emailed invitation link", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Request an invite" }).click();
+  await expect(page).toHaveURL(/\/sign-in\?next=\/access$/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "Continue with Google." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
   await expect(page.getByText("Signing in does not automatically grant product access.", { exact: false })).toBeVisible();

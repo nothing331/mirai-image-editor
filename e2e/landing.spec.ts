@@ -11,14 +11,17 @@ test("motion can be paused and stays static when reduced motion is requested", a
   await page.goto("/");
   const surface = page.locator("main.public-page");
   await expect(surface).toHaveAttribute("data-motion", "running");
-  const image = page.getByAltText(
-    "Mirai’s actual editor with a blue wave poster on the canvas and selection editing controls beside it",
+  const image = page.locator("#landing-content").getByAltText(
+    "AI-created editorial portrait with acid-lime sunglasses against a charcoal background",
   );
   await expect(image).toHaveCSS("animation-name", "none");
   await page
     .getByRole("button", { name: "Pause animations", exact: true })
     .click();
   await expect(surface).toHaveAttribute("data-motion", "paused");
+  const portraitTemplate = page.getByRole("button", { name: "Explore Photograph template", exact: true });
+  await portraitTemplate.hover();
+  await expect(portraitTemplate.locator("img")).toHaveCSS("transform", "none");
   await page
     .getByRole("heading", { name: "Create your starting point", exact: true })
     .scrollIntoViewIfNeeded();
@@ -39,6 +42,8 @@ test("motion can be paused and stays static when reduced motion is requested", a
     page.getByRole("button", { name: "Animations off: reduced motion" }),
   ).toBeDisabled();
   await expect(image).toHaveCSS("animation-name", "none");
+  await portraitTemplate.hover();
+  await expect(portraitTemplate.locator("img")).toHaveCSS("transform", "none");
   await expect(page.locator("[data-reveal]").last()).toHaveCSS("opacity", "1");
   expect(
     await surface.evaluate(
@@ -69,7 +74,7 @@ test("sections reveal on navigation while the workspace stays stationary", async
   await expect(article).toHaveAttribute("data-reveal-state", "visible");
   await expect(article).toHaveCSS("opacity", "1");
   await expect(page.locator("[data-motion-loop]")).toHaveCount(0);
-  await expect(page.locator("#landing-content img")).toHaveCSS("transform", "none");
+  await expect(page.locator("#landing-content img").first()).toHaveCSS("transform", "none");
 });
 
 test("landing content and entry links remain available without JavaScript", async ({
@@ -93,8 +98,8 @@ test("landing content and entry links remain available without JavaScript", asyn
     .filter({ hasText: "What happens to my original image?" })
     .click();
   await expect(page.getByText(/Saved edits are flattened/)).toBeVisible();
-  await page.getByRole("link", { name: "Get started", exact: true }).click();
-  await expect(page).toHaveURL(/\/sign-in\?next=\/projects$/);
+  await page.getByRole("link", { name: "Request early access", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in\?next=\/access$/);
   await context.close();
 });
 
@@ -122,6 +127,13 @@ test("explains the complete toolkit and lets visitors compare an example without
       page.getByRole("heading", { name: title, exact: true }),
     ).toHaveCount(1);
   }
+  await page.getByRole("button", { name: "Explore Watercolor template", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Explore Watercolor template", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#creation-prompt")).toContainText("watercolor painting of a lemon tree");
+  await page.getByRole("button", { name: "Explore Anime template", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#creation-prompt")).toContainText("fox explorer");
+  await expect(page.getByRole("button", { name: "Explore Watercolor template", exact: true })).toHaveAttribute("aria-pressed", "false");
   const slider = page.getByRole("slider", {
     name: "Compare original and AI edit",
   });
@@ -143,7 +155,7 @@ test("explains the complete toolkit and lets visitors compare an example without
     .poll(() =>
       page
         .getByAltText(
-          "AI-transformed studio with a green chair and cream cushion",
+          "Mirai AI Transform proposal with charcoal ink, ivory paper, and lime sunglasses",
         )
         .evaluate(
           (image) =>
@@ -178,13 +190,13 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto("/");
     await expect(
-      page.getByRole("link", { name: "Sign in with Google", exact: true }),
+      page.getByRole("link", { name: "Request an invite", exact: true }),
     ).toBeInViewport();
     await expect(
-      page.getByRole("heading", { name: "Create and edit images with AI." }),
+      page.getByRole("heading", { name: "Create. Edit. Make it yours." }),
     ).toHaveCSS("opacity", "1");
     await page
-      .getByRole("heading", { name: "Create and edit images with AI." })
+      .getByRole("heading", { name: "Create. Edit. Make it yours." })
       .evaluate(async (heading) => {
         await Promise.all(
           heading
@@ -196,8 +208,9 @@ for (const viewport of [
     await expect
       .poll(() =>
         page
+          .locator("#landing-content")
           .getByAltText(
-            "Mirai’s actual editor with a blue wave poster on the canvas and selection editing controls beside it",
+            "AI-created editorial portrait with acid-lime sunglasses against a charcoal background",
           )
           .evaluate(
             (image) =>
@@ -206,13 +219,13 @@ for (const viewport of [
           ),
       )
       .toBe(true);
-    await expect(page.locator("#landing-content img")).toBeInViewport();
-    await expect(page.locator("#landing-content img")).toHaveAttribute(
-      "src", /editor-poster/,
+    if (viewport.width > 760) await expect(page.locator("#landing-content img").first()).toBeInViewport();
+    await expect(page.locator("#landing-content img").first()).toHaveAttribute(
+      "src", /mirai-portrait/,
     );
-    expect(await page.locator("#landing-content img").evaluate(
+    expect(await page.locator("#landing-content img").first().evaluate(
       (image) => image.getBoundingClientRect().top,
-    )).toBeLessThan(viewport.height);
+    )).toBeLessThan(viewport.height + 120);
     await page.screenshot({
       path: `test-results/landing-hero-${viewport.width}.png`,
     });
@@ -246,8 +259,8 @@ for (const viewport of [
     await page.screenshot({
       path: `test-results/landing-workspace-${viewport.width}.png`,
     });
-    await page.getByRole("link", { name: "Get started", exact: true }).click();
-    await expect(page).toHaveURL(/\/sign-in\?next=\/projects$/);
+    await page.getByRole("link", { name: "Request early access", exact: true }).click();
+    await expect(page).toHaveURL(/\/sign-in\?next=\/access$/);
     await expect(
       page.getByRole("button", { name: "Continue with Google" }),
     ).toBeVisible();
