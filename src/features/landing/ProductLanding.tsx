@@ -23,81 +23,6 @@ const bodyFont = localFont({
   display: "swap",
 });
 
-const tools = [
-  {
-    title: "Create your starting point",
-    category: "CREATE WITH AI",
-    description:
-      "Describe a complete image, a transparent logo mark, or an icon. Choose a visual treatment and a format for where it’s going.",
-    capabilities: [
-      "Image generation",
-      "Logo marks & icons",
-      "Style treatments",
-      "Social & thumbnail formats",
-    ],
-  },
-  {
-    title: "Edit just the part you mean",
-    category: "SELECT & EDIT",
-    description:
-      "Draw a selection, refine its area, then recolor locally or ask AI to remove, replace, or restyle. Use protected mode when everything outside must stay exact.",
-    capabilities: [
-      "Recolor",
-      "AI Remove · Replace · Restyle",
-      "Add · subtract · invert",
-      "Protected boundaries",
-    ],
-  },
-  {
-    title: "Try a whole new direction",
-    category: "AI TRANSFORM",
-    description:
-      "Transform the full image with a preset or your own prompt. Choose Faithful, Balanced, or Imaginative preservation; use local Monochrome for a simple tonal change.",
-    capabilities: [
-      "Whole-image styles",
-      "Custom prompts",
-      "Preservation choices",
-      "Local Monochrome",
-    ],
-  },
-  {
-    title: "Give your image more room",
-    category: "AI EXTEND",
-    description:
-      "Preview a new aspect ratio, keep the full image or use a subject-aware frame, then generate the missing surroundings. Compare the complete proposal before saving.",
-    capabilities: [
-      "Aspect-ratio presets",
-      "Smart framing",
-      "Keep full image",
-      "Adjust frame & review",
-    ],
-  },
-  {
-    title: "Finish the details by hand",
-    category: "DIRECT TOOLS",
-    description:
-      "Crop, resize, rotate, and flip. Add text or a text/PNG watermark, paint with Brush, and use Eraser to correct pending paint. See direct changes on the canvas as you work.",
-    capabilities: [
-      "Crop · resize · rotate · flip",
-      "Text & watermarks",
-      "Brush & draft eraser",
-      "Pan · zoom · reset",
-    ],
-  },
-  {
-    title: "Keep every project within reach",
-    category: "PRIVATE WORKSPACE",
-    description:
-      "Save and reopen private projects. Find them by thumbnail, search, or sort; rename them, return to saved history, and recover matching drafts stored on this device.",
-    capabilities: [
-      "Private projects & originals",
-      "Search · sort · rename",
-      "Undo · redo · history",
-      "Device drafts & AI result recovery",
-    ],
-  },
-];
-
 const questions = [
   {
     question: "What happens to my original image?",
@@ -187,7 +112,7 @@ export function ProductLanding({
             </Link>
           </div>
           <p className={styles.heroAccess}>{access}. A Google account is required.</p>
-          <a href="#features" className={styles.explore}>Explore the tools <ArrowDown className="size-4" aria-hidden="true" /></a>
+          <a href="#features" className={styles.explore}>Explore more <ArrowDown className="size-4" aria-hidden="true" /></a>
         </div>
         <div className={styles.heroArt} aria-label="Images created with Mirai">
           {[creationExamples[0], creationExamples[1], creationExamples[3], creationExamples[2]].map((example, index) => (
@@ -211,44 +136,17 @@ export function ProductLanding({
 
       <EditorWalkthrough />
 
-      <section
-        id="features"
-        className={styles.toolkit}
-        aria-labelledby="features-title"
-      >
-        <div className={styles.sectionHeading} data-reveal>
-          <p className={styles.eyebrow}>YOUR EDITING TOOLS</p>
-          <h2 id="features-title">
-            Tools for every
-            <br />
-            part of your edit.
-          </h2>
-          <p>
-            AI when you want a new possibility.
-            <br />
-            Direct controls when you know the change.
-          </p>
+      <section id="features" className={styles.moreSection} aria-labelledby="features-title">
+        <div className={styles.moreIntroduction} data-reveal>
+          <h2 id="features-title">And more to explore.</h2>
+          <p>Take a different direction. Make room for an idea. Add your finishing touch.</p>
         </div>
-        <div className={styles.toolList}>
-          {tools.map((tool, index) => (
-            <article
-              key={tool.category}
-              data-reveal
-              style={{ transitionDelay: `${(index % 2) * 80}ms` }}
-            >
-              <div className={styles.toolHeading}>
-                <p className={styles.eyebrow}>{tool.category}</p>
-              </div>
-              <h3>{tool.title}</h3>
-              <p>{tool.description}</p>
-              <ul>
-                {tool.capabilities.map((capability) => (
-                  <li key={capability}>{capability}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
+        <ul className={styles.moreTools} aria-label="More ways to edit" data-reveal>
+          <li>Remove &amp; recolor</li>
+          <li>Whole-image styles</li>
+          <li>Extend your canvas</li>
+          <li>Crop, text &amp; paint</li>
+        </ul>
       </section>
 
       <section className={styles.reviewSection} aria-labelledby="review-title">
@@ -281,32 +179,6 @@ export function ProductLanding({
           </p>
         </div>
         <LandingComparison />
-      </section>
-
-      <section
-        className={styles.workspaceSection}
-        aria-labelledby="workspace-title"
-      >
-        <div className={styles.workspaceHeading} data-reveal>
-          <p className={styles.eyebrow}>PROJECTS & EXPORT</p>
-          <h2 id="workspace-title">Save your work. Export your image.</h2>
-          <p>
-            Reopen private projects, return to saved versions, and pick up where
-            you left off. Export the accepted image when you’re ready.
-          </p>
-        </div>
-        <div className={styles.exportRow} data-reveal>
-          <div>
-            <p className={styles.eyebrow}>READY TO TAKE IT WITH YOU</p>
-            <h3>Your image. Your files.</h3>
-          </div>
-          <p>
-            Export PNG or JPEG without another AI call. Download your exact
-            original, or prepare an archive of your account’s projects, files,
-            and saved versions.
-          </p>
-          <span>PNG / JPEG / ORIGINAL / DATA ARCHIVE</span>
-        </div>
       </section>
 
       <section

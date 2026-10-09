@@ -10,14 +10,8 @@ test("motion respects the live OS preference without a playback control", async 
   const surface = page.locator("main.public-page");
   await expect(surface).toHaveAttribute("data-motion", "running");
   await expect(page.getByRole("button", { name: /Pause animations|Resume animations/ })).toHaveCount(0);
-  const visual = page.locator("#edit-story [data-parallax-visual]").first();
-  await visual.scrollIntoViewIfNeeded();
-  const initial = await visual.evaluate(element => getComputedStyle(element).transform);
-  await surface.evaluate(element => element.scrollBy({ top: 180, behavior: "instant" }));
-  await expect.poll(() => visual.evaluate(element => getComputedStyle(element).transform)).not.toBe(initial);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(surface).toHaveAttribute("data-motion", "static");
-  await expect(visual).toHaveCSS("transform", "none");
   await expect(page.locator("[data-reveal]").last()).toHaveCSS("opacity", "1");
   const template = page.getByRole("button", { name: "Explore Photograph template", exact: true });
   await template.hover();
@@ -34,15 +28,10 @@ test("sections reveal on navigation while the workspace stays stationary", async
     "data-motion",
     "running",
   );
-  const article = page.getByRole("article").filter({
-    has: page.getByRole("heading", {
-      name: "Create your starting point",
-      exact: true,
-    }),
-  });
+  const article = page.locator("#features [data-reveal]").first();
   await expect(article).toHaveAttribute("data-reveal-state", "pending");
   await page
-    .getByRole("link", { name: "Explore the tools", exact: true })
+    .getByRole("link", { name: "Explore more", exact: true })
     .click();
   await article.scrollIntoViewIfNeeded();
   await expect(article).toHaveAttribute("data-reveal-state", "visible");
@@ -61,11 +50,10 @@ test("landing content and entry links remain available without JavaScript", asyn
     "data-motion",
     "static",
   );
-  await expect(page.locator("#workflow li")).toHaveCount(4);
-  await expect(page.locator("#workspace-tour figure")).toHaveCount(4);
+  await expect(page.locator("#workflow figure")).toHaveCount(4);
   await expect(
     page.getByRole("heading", {
-      name: "Create your starting point",
+      name: "And more to explore.",
       exact: true,
     }),
   ).toBeVisible();
@@ -88,8 +76,11 @@ test("shows a complete real edit and supports keyboard exploration of the horizo
   for (const title of ["Start with an idea.", "Change what matters.", "See what actually changes.", "Make it ready to use."]) {
     await expect(page.locator("#workflow").getByRole("heading", { name: title, exact: true })).toHaveCount(1);
   }
-  await expect(page.locator("#workflow").getByAltText("After: Mirai replaced the lime glasses with polished chrome glasses")).toHaveAttribute("src", /mirai-portrait-chrome/);
-  const tour = page.locator("#workspace-tour");
+  await expect(page.locator("#workflow figure")).toHaveCount(4);
+  await expect(page.getByAltText("Actual Mirai workspace: Original + complete AI proposal")).toHaveAttribute("src", /editor-review/);
+  await expect(page.locator("#edit-story, [data-parallax-visual]")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "One image. A direction of your own." })).toHaveCount(0);
+  const tour = page.locator("#workflow");
   const rail = tour.getByRole("region", { name: "Horizontal editor walkthrough" });
   await rail.focus();
   await rail.press("ArrowRight");
@@ -103,7 +94,7 @@ test("shows a complete real edit and supports keyboard exploration of the horizo
   expect(requests).toEqual([]);
 });
 
-test("explains the complete toolkit and lets visitors compare an example without generating", async ({
+test("keeps extra tools concise and lets visitors compare without generating", async ({
   page,
 }) => {
   const generationRequests: string[] = [];
@@ -115,18 +106,11 @@ test("explains the complete toolkit and lets visitors compare an example without
       generationRequests.push(request.url());
   });
   await page.goto("/");
-  for (const title of [
-    "Create your starting point",
-    "Edit just the part you mean",
-    "Try a whole new direction",
-    "Give your image more room",
-    "Finish the details by hand",
-    "Keep every project within reach",
-  ]) {
-    await expect(
-      page.getByRole("heading", { name: title, exact: true }),
-    ).toHaveCount(1);
-  }
+  await expect(page.getByRole("heading", { name: "And more to explore.", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "More ways to edit" }).getByRole("listitem")).toHaveCount(4);
+  await expect(page.getByText("YOUR EDITING TOOLS", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("PROJECTS & EXPORT", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Save your work. Export your image." })).toHaveCount(0);
   await page.getByRole("button", { name: "Explore Watercolor template", exact: true }).click();
   await expect(page.getByRole("button", { name: "Explore Watercolor template", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#creation-prompt")).toContainText("A sunlit lemon tree");
@@ -231,7 +215,7 @@ for (const viewport of [
       path: `test-results/landing-hero-${viewport.width}.png`,
     });
     await page
-      .getByRole("link", { name: "Explore the tools", exact: true })
+      .getByRole("link", { name: "Explore more", exact: true })
       .click();
     await expect(page).toHaveURL(/#features$/);
     await expect
@@ -244,7 +228,7 @@ for (const viewport of [
       )
       .toBeGreaterThanOrEqual(64);
     await expect(
-      page.getByRole("heading", { name: "Tools for every part of your edit." }),
+      page.getByRole("heading", { name: "And more to explore." }),
     ).toBeInViewport();
     expect(
       await page
@@ -254,9 +238,13 @@ for (const viewport of [
     await page.screenshot({
       path: `test-results/landing-features-${viewport.width}.png`,
     });
-    await page
-      .getByRole("heading", { name: "Save your work. Export your image." })
-      .scrollIntoViewIfNeeded();
+    if (viewport.width > 760) {
+      await page.getByRole("link", { name: "The editor", exact: true }).click();
+      await expect(page).toHaveURL(/#workflow$/);
+    } else {
+      await page.getByRole("heading", { name: "Follow the edit.", exact: true }).scrollIntoViewIfNeeded();
+    }
+    await expect(page.getByRole("heading", { name: "Follow the edit.", exact: true })).toBeInViewport();
     await page.screenshot({
       path: `test-results/landing-workspace-${viewport.width}.png`,
     });

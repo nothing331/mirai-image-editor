@@ -1,24 +1,5 @@
-.workflow { padding: 88px clamp(24px, 5.5vw, 96px); background: var(--acid); }
 .eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .13em; line-height: 1.6; }
-.introduction { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 60px; margin-bottom: 52px; }
-.introduction .eyebrow { grid-column: 1 / -1; }
-.introduction h2, .tourHeading h2, .storyHeading h2 { font-size: clamp(40px, 4.6vw, 70px); line-height: 1.04; letter-spacing: -.055em; font-weight: 600; }
-.introduction > p:last-child { align-self: end; justify-self: end; max-width: 400px; font-size: 14px; line-height: 1.8; }
-.visualSteps { display: grid; grid-template-columns: 1fr 1fr; gap: 48px 32px; }
-.visual { position: relative; height: clamp(280px, 28vw, 440px); display: flex; align-items: center; justify-content: center; background: var(--ink); overflow: hidden; border: 1px solid #17171450; }
-.portrait { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
-.editorImage { width: 100%; height: auto; object-fit: contain; }
-.imageNote { position: absolute; bottom: 16px; left: 16px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--paper); color: var(--ink); font-size: 10px; font-weight: 600; }
-.imageNote svg { width: 14px; height: 14px; }
-.resultPair { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px; }
-.resultPair figure { min-width: 0; }
-.resultPair img { display: block; width: 100%; height: auto; }
-.resultPair figcaption { padding-top: 12px; font-size: 10px; color: var(--paper); }
-.stepCopy { margin-top: 22px; padding-top: 18px; border-top: 1px solid #17171450; }
-.stepCopy > span, .storyCopy > span { display: block; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
-.stepCopy h3 { font-size: 28px; line-height: 1.15; margin-top: 10px; letter-spacing: -.04em; }
-.stepCopy p { margin-top: 12px; max-width: 460px; font-size: 13px; line-height: 1.8; }
-.boundaryNote { max-width: 700px; margin-top: 44px; font-size: 11px; line-height: 1.8; }
+.tourHeading h2 { font-size: clamp(40px, 4.6vw, 70px); line-height: 1.04; letter-spacing: -.055em; font-weight: 600; }
 .horizontal { padding: 88px clamp(24px, 5.5vw, 96px); background: var(--ink); color: var(--paper); overflow: hidden; }
 .tourHeading { display: flex; justify-content: space-between; gap: 40px; align-items: end; margin-bottom: 40px; }
 .tourHeading .eyebrow { color: var(--acid); margin-bottom: 22px; }
@@ -42,36 +23,13 @@
 .screen h3 { font-size: 24px; letter-spacing: -.04em; }
 .screen figcaption > span, .tourStatus { font-size: 10px; color: #faf9f6a8; }
 .tourStatus { margin-top: 20px; }
-.vertical { padding: 88px clamp(24px, 5.5vw, 96px) 40px; background: var(--paper); overflow: clip; }
-.storyHeading { margin-bottom: 60px; }
-.storyHeading .eyebrow { margin-bottom: 22px; }
-.storyHeading > p:last-child { margin-top: 24px; font-size: 14px; color: var(--muted); }
-.parallaxStep { position: relative; display: grid; grid-template-columns: .65fr 1.35fr; align-items: center; gap: 70px; min-height: 72svh; padding: 70px 0; border-top: 1px solid var(--line); }
-.storyCopy { position: sticky; top: 140px; align-self: start; padding-top: 32px; }
-.storyCopy > span { color: var(--muted); }
-.storyCopy h3 { margin-top: 20px; font-size: clamp(32px, 3vw, 48px); line-height: 1.1; letter-spacing: -.05em; }
-.storyCopy p { max-width: 310px; margin-top: 22px; font-size: 14px; line-height: 1.8; color: var(--muted); }
-.parallaxVisual { position: relative; background: var(--ink); display: flex; align-items: center; justify-content: center; height: min(42vw, 580px); overflow: hidden; transform: translate3d(0, var(--scroll-drift, 0px), 0); }
-.parallaxStep:nth-of-type(even) .parallaxVisual { outline: 14px solid var(--acid); }
 @media (max-width: 900px) {
-  .introduction { gap: 24px; }
-  .introduction > p:last-child { justify-self: start; }
   .tourHeading { display: block; }
   .tourHeading > p { margin-top: 20px; }
-  .parallaxStep { grid-template-columns: 1fr; gap: 30px; padding: 48px 0; min-height: 0; }
-  .storyCopy { position: static; padding-top: 0; }
-  .storyCopy p { max-width: 500px; }
-  .parallaxVisual { height: 480px; transform: none; }
 }
 @media (max-width: 760px) {
-  .workflow, .horizontal, .vertical { padding: 52px 24px; }
-  .introduction { grid-template-columns: 1fr; margin-bottom: 32px; }
-  .introduction .eyebrow { grid-column: 1; }
-  .introduction h2, .tourHeading h2, .storyHeading h2 { font-size: 44px; }
-  .introduction > p:last-child { font-size: 13px; }
-  .visualSteps { grid-template-columns: 1fr; gap: 36px; }
-  .visual { height: 330px; }
-  .stepCopy h3 { font-size: 25px; }
+  .horizontal { padding: 52px 24px; }
+  .tourHeading h2 { font-size: 44px; }
   .tourHeading { margin-bottom: 28px; }
   .tourControls { display: block; }
   .stepLinks { gap: 6px; }
@@ -81,17 +39,10 @@
   .screen { flex-basis: 94%; }
   .screen h3 { font-size: 21px; }
   .screen figcaption > span { font-size: 9px; }
-  .storyHeading { margin-bottom: 40px; }
-  .parallaxVisual { height: 330px; }
-  .parallaxStep:nth-of-type(even) .parallaxVisual { outline-width: 6px; }
-  .storyCopy h3 { font-size: 32px; margin-top: 12px; }
-  .storyCopy p { margin-top: 14px; font-size: 13px; }
 }
 @media (max-width: 360px) {
-  .visual, .parallaxVisual { height: 280px; }
-  .introduction h2, .tourHeading h2, .storyHeading h2 { font-size: 38px; }
+  .tourHeading h2 { font-size: 38px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rail { scroll-behavior: auto; }
-  .parallaxVisual { transform: none !important; }
 }
