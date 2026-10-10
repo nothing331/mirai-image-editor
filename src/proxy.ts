@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { refreshSupabaseSession } from "@/server/supabase/session-proxy";
+import { invitationModeEnabled } from "@/server/config/invitation-mode";
 
 const cloudSpikePath = "/api/internal/cloud-spike";
 const cloudHealthPaths = new Set(["/api/health/live", "/api/health/ready"]);
@@ -10,9 +11,20 @@ const cloudAiPath = /^\/api\/ai(?:\/|$)/;
 const cloudGenerationPaths = new Set(["/api/image-edits", "/api/image-extends/plan", "/api/image-extends/generate", "/api/asset-generations"]);
 const cloudAccountPath = /^\/api\/account(?:\/|$)/;
 const cloudAssetCleanupPath = "/api/internal/assets-cleanup";
+const invitationPages = new Set(["/", "/sign-in", "/access", "/auth/callback", "/admin/access"]);
 
 export async function proxy(request: NextRequest) {
   const isApiPath = request.nextUrl.pathname.startsWith("/api/");
+  if (invitationModeEnabled() && !cloudHealthPaths.has(request.nextUrl.pathname)) {
+    if (isApiPath || (!invitationPages.has(request.nextUrl.pathname) && !["GET", "HEAD"].includes(request.method))) {
+      return Response.json({ error: "Not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } });
+    }
+    if (!invitationPages.has(request.nextUrl.pathname)) {
+      const response = NextResponse.redirect(new URL("/access", process.env.MIRAI_CANONICAL_URL ?? request.url));
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
+    }
+  }
   if (
     isApiPath &&
     process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT === "true" &&
@@ -49,5 +61,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/api/:path*", "/((?!_next/static|_next/image|icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { z } from "zod";
 import { readRuntimeEnvironment } from "@/server/config/runtime-environment";
+import { invitationModeEnabled } from "@/server/config/invitation-mode";
 import { createAdminSupabaseClient } from "@/server/supabase/admin-client";
 import { createServerSupabaseClient } from "@/server/supabase/server-client";
 
@@ -32,7 +33,7 @@ export interface AccountSnapshot {
 export type AccountRequirement = "authenticated" | "eligible" | "owner";
 
 export class AccountAccessError extends Error {
-  constructor(readonly reason: "unauthenticated" | "ineligible" | "revoked" | "owner-required" | "unavailable") {
+  constructor(readonly reason: "unauthenticated" | "ineligible" | "revoked" | "owner-required" | "unavailable" | "invitation-only") {
     super(`Account access denied: ${reason}`);
     this.name = "AccountAccessError";
   }
@@ -67,6 +68,9 @@ export async function requireAccount(
   requirement: AccountRequirement,
   client?: SupabaseClient,
 ): Promise<AccountSnapshot> {
+  if (requirement === "eligible" && invitationModeEnabled()) {
+    throw new AccountAccessError("invitation-only");
+  }
   const account = await resolveCurrentAccount(client);
   if (!account) throw new AccountAccessError("unauthenticated");
   if (account.profile.status === "revoked") throw new AccountAccessError("revoked");
