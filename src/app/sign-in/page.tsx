@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { AuthShell } from "@/features/account/AuthShell";
 import { SubmitButton } from "@/features/account/SubmitButton";
 import { resolveCurrentAccount } from "@/server/auth/account";
-import { safeReturnPath } from "@/server/auth/return-path";
+import { authorizedAccountReturnPath, safeReturnPath } from "@/server/auth/return-path";
+import { invitationModeEnabled } from "@/server/config/invitation-mode";
 import { startGoogleSignIn } from "@/app/auth/actions";
 
 export const dynamic = "force-dynamic";
@@ -13,14 +14,16 @@ interface SignInPageProps {
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const parameters = await searchParams;
+  const invitationMode = invitationModeEnabled();
   const account = await resolveCurrentAccount();
+  if (account && invitationMode) redirect(authorizedAccountReturnPath(account, safeReturnPath(parameters.next)));
   if (account) redirect(account.profile.status === "active" ? safeReturnPath(parameters.next, "/projects") : "/access");
   const error = errorMessage(parameters.error);
   return (
-    <AuthShell eyebrow="SECURE ACCOUNT" title="Continue with Google." description="Your images, ideas, and every version. Sign in to pick up where you left off.">
+    <AuthShell eyebrow="SECURE ACCOUNT" title="Continue with Google." description={invitationMode ? "Sign in to request an invitation or check your access status." : "Your images, ideas, and every version. Sign in to pick up where you left off."}>
       <div className="max-w-md">
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Sign in</p>
-        <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em]">One account, private projects</h2>
+        <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em]">{invitationMode ? "Join the invitation list" : "One account, private projects"}</h2>
         <p className="mt-3 text-sm leading-6 text-muted">Signing in does not automatically grant product access. New accounts can request approval from the Mirai owner.</p>
         {error && <p role="alert" className="mt-4 border-l-2 border-accent bg-[#ffd5cc] p-3 text-sm">{error}</p>}
         {parameters.signedOut === "1" && <p role="status" className="mt-4 border-l-2 border-acid bg-[#edf5c4] p-3 text-sm">You are signed out.</p>}
