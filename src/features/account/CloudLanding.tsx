@@ -5,22 +5,23 @@ export function CloudLanding({ account }: { account: AccountSnapshot | null }) {
   const active = account?.profile.status === "active";
   return (
     <ProductLanding
+      signedOut={!account}
       destination={
-        !account ? "/sign-in?next=/projects" : active ? "/projects" : "/access"
+        !account ? "/sign-in?next=/access" : active ? "/projects" : "/access"
       }
       action={
         !account
-          ? "Sign in with Google"
+          ? "Request an invite"
           : active
             ? "Open my projects"
-            : "View access status"
+            : "Check access status"
       }
       access={
         !account
-          ? "Sign in to continue"
+          ? "Request access to join the early launch"
           : active
             ? "Account approved"
-            : "Approval required"
+            : "Your access status is available"
       }
     />
   );

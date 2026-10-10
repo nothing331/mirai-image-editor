@@ -1,0 +1,48 @@
+.eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .13em; line-height: 1.6; }
+.tourHeading h2 { font-size: clamp(40px, 4.6vw, 70px); line-height: 1.04; letter-spacing: -.055em; font-weight: 600; }
+.horizontal { padding: 88px clamp(24px, 5.5vw, 96px); background: var(--ink); color: var(--paper); overflow: hidden; }
+.tourHeading { display: flex; justify-content: space-between; gap: 40px; align-items: end; margin-bottom: 40px; }
+.tourHeading .eyebrow { color: var(--acid); margin-bottom: 22px; }
+.tourHeading > p { font-size: 13px; line-height: 1.8; color: #faf9f6ae; }
+.tourControls { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.stepLinks { display: flex; gap: 10px; flex-wrap: wrap; }
+.stepLinks button { min-height: 44px; padding: 0 20px; border: 1px solid #faf9f640; font-size: 12px; cursor: pointer; }
+.stepLinks button[aria-current="step"] { background: var(--acid); border-color: var(--acid); color: var(--ink); }
+.stepLinks button:hover { border-color: var(--acid); }
+.arrows { display: flex; gap: 8px; }
+.arrows button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid #faf9f640; cursor: pointer; }
+.arrows button:hover:not(:disabled) { background: var(--paper); color: var(--ink); }
+.arrows button:disabled { opacity: .3; cursor: default; }
+.arrows svg { width: 16px; height: 16px; }
+.rail { display: flex; gap: 32px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-color: var(--acid) var(--ink); padding-bottom: 20px; }
+.rail:focus-visible { outline: 2px solid var(--acid); outline-offset: 5px; }
+.screen { flex: 0 0 88%; min-width: 0; scroll-snap-align: start; }
+.screen:last-child { flex-basis: 100%; }
+.screen img { display: block; width: 100%; height: auto; border: 1px solid #faf9f630; }
+.screen figcaption { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 22px 0 4px; }
+.screen h3 { font-size: 24px; letter-spacing: -.04em; }
+.screen figcaption > span, .tourStatus { font-size: 10px; color: #faf9f6a8; }
+.tourStatus { margin-top: 20px; }
+@media (max-width: 900px) {
+  .tourHeading { display: block; }
+  .tourHeading > p { margin-top: 20px; }
+}
+@media (max-width: 760px) {
+  .horizontal { padding: 52px 24px; }
+  .tourHeading h2 { font-size: 44px; }
+  .tourHeading { margin-bottom: 28px; }
+  .tourControls { display: block; }
+  .stepLinks { gap: 6px; }
+  .stepLinks button { flex: 1; padding: 0 10px; font-size: 11px; }
+  .arrows { margin-top: 16px; justify-content: end; }
+  .rail { gap: 16px; }
+  .screen { flex-basis: 94%; }
+  .screen h3 { font-size: 21px; }
+  .screen figcaption > span { font-size: 9px; }
+}
+@media (max-width: 360px) {
+  .tourHeading h2 { font-size: 38px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail { scroll-behavior: auto; }
+}

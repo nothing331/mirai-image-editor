@@ -1,84 +1,27 @@
 import Image from "next/image";
+import localFont from "next/font/local";
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight, Check, ShieldCheck } from "lucide-react";
 import { MiraiBrand } from "@/shared/ui/MiraiBrand";
+import { CreationGallery } from "./CreationGallery";
+import { creationExamples } from "./creation-examples";
 import { LandingComparison } from "./LandingComparison";
+import { LandingMotion } from "./LandingMotion";
+import { EditorWalkthrough } from "./EditorWalkthrough";
 import styles from "./ProductLanding.module.css";
 
-const tools = [
-  {
-    title: "Create your starting point",
-    category: "CREATE WITH AI",
-    description:
-      "Describe a complete image, a transparent logo mark, or an icon. Choose a visual treatment and a format for where it’s going.",
-    capabilities: [
-      "Image generation",
-      "Logo marks & icons",
-      "Style treatments",
-      "Social & thumbnail formats",
-    ],
-  },
-  {
-    title: "Edit just the part you mean",
-    category: "SELECT & EDIT",
-    description:
-      "Draw a selection, refine its area, then recolor locally or ask AI to remove, replace, or restyle. Use protected mode when everything outside must stay exact.",
-    capabilities: [
-      "Recolor",
-      "AI Remove · Replace · Restyle",
-      "Add · subtract · invert",
-      "Protected boundaries",
-    ],
-  },
-  {
-    title: "Try a whole new direction",
-    category: "AI TRANSFORM",
-    description:
-      "Transform the full image with a preset or your own prompt. Choose Faithful, Balanced, or Imaginative preservation; use local Monochrome for a simple tonal change.",
-    capabilities: [
-      "Whole-image styles",
-      "Custom prompts",
-      "Preservation choices",
-      "Local Monochrome",
-    ],
-  },
-  {
-    title: "Give your image more room",
-    category: "AI EXTEND",
-    description:
-      "Preview a new aspect ratio, keep the full image or use a subject-aware frame, then generate the missing surroundings. Compare the complete proposal before saving.",
-    capabilities: [
-      "Aspect-ratio presets",
-      "Smart framing",
-      "Keep full image",
-      "Adjust frame & review",
-    ],
-  },
-  {
-    title: "Finish the details by hand",
-    category: "DIRECT TOOLS",
-    description:
-      "Crop, resize, rotate, and flip. Add text or a text/PNG watermark, paint with Brush, and use Eraser to correct pending paint. See direct changes on the canvas as you work.",
-    capabilities: [
-      "Crop · resize · rotate · flip",
-      "Text & watermarks",
-      "Brush & draft eraser",
-      "Pan · zoom · reset",
-    ],
-  },
-  {
-    title: "Keep every project within reach",
-    category: "PRIVATE WORKSPACE",
-    description:
-      "Save and reopen private projects. Find them by thumbnail, search, or sort; rename them, return to saved history, and recover matching drafts stored on this device.",
-    capabilities: [
-      "Private projects & originals",
-      "Search · sort · rename",
-      "Undo · redo · history",
-      "Device drafts & AI result recovery",
-    ],
-  },
-];
+const displayFont = localFont({
+  src: "./fonts/bricolage-grotesque.woff2",
+  variable: "--font-landing-display",
+  weight: "400 800",
+  display: "swap",
+});
+const bodyFont = localFont({
+  src: "./fonts/dm-sans.woff2",
+  variable: "--font-landing-body",
+  weight: "400 700",
+  display: "swap",
+});
 
 const questions = [
   {
@@ -99,7 +42,7 @@ const questions = [
   {
     question: "How do private-beta access and AI credits work?",
     answer:
-      "Sign in with Google, then use an invitation or request owner approval. Approved members receive 25 one-time welcome AI credits shared across up to 5 active projects. Each generated preview uses 1 credit; accepting or discarding it does not refund that credit. Local edits and export use no credits. Credits do not reset monthly. Admin accounts have unlimited account allowances; service availability still applies.",
+      "Sign in with Google and request access. The owner reviews your request before you can enter your workspace. Approved members receive 25 one-time welcome AI credits shared across up to 5 active projects. Each generated preview uses 1 credit; accepting or discarding it does not refund that credit. Local edits and export use no credits. Credits do not reset monthly. Admin accounts have unlimited account allowances; service availability still applies.",
   },
   {
     question: "What if an upload, generation, or save is interrupted?",
@@ -119,122 +62,99 @@ const questions = [
 ];
 
 interface ProductLandingProps {
+  signedOut: boolean;
   destination: string;
   action: string;
   access: string;
 }
 
 export function ProductLanding({
+  signedOut,
   destination,
   action,
   access,
 }: ProductLandingProps) {
   return (
-    <main className={`public-page account-surface ${styles.page}`}>
+    <main
+      className={`public-page account-surface ${displayFont.variable} ${bodyFont.variable} ${styles.page}`}
+      data-motion="static"
+    >
       <a href="#landing-content" className={styles.skipLink}>
         Skip to content
       </a>
       <header className={styles.header}>
         <MiraiBrand />
         <nav aria-label="Landing navigation" className={styles.navigation}>
-          <a href="#features">The tools</a>
-          <a href="#workflow">How it works</a>
-          <a href="#questions">Questions</a>
+          <a href="#templates">Creation styles</a>
+          <a href="#workflow">The editor</a>
+          <a href="#invitation">Early access</a>
         </nav>
-        <Link href={destination} className={styles.headerAction}>
-          Open Mirai
-          <ArrowUpRight className="size-3.5" aria-hidden="true" />
-        </Link>
+        <div className={styles.headerActions}>
+          <LandingMotion />
+          <Link href={signedOut ? "/sign-in?next=/projects" : destination} className={styles.headerAction}>
+            {signedOut ? "Sign in" : "Open Mirai"}
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        </div>
       </header>
 
-      <section
-        id="landing-content"
-        className={styles.hero}
-        aria-labelledby="landing-title"
-      >
-        <Image
-          src="/landing/studio-scene.webp"
-          alt="A sculptural orange chair beside a sunlit arch overlooking olive hills"
-          fill
-          sizes="100vw"
-          preload
-          className={styles.heroImage}
-        />
+      <section id="landing-content" className={styles.hero} aria-labelledby="landing-title">
         <div className={styles.heroContent}>
-          <p className={styles.eyebrow}>A REVERSIBLE AI IMAGE STUDIO</p>
-          <p className={styles.heroWordmark} aria-hidden="true">
-            MIRAI
-          </p>
-          <h1 id="landing-title">
-            Edit boldly.
-            <br />
-            Keep the original.
-          </h1>
+          <p className={styles.eyebrow}><span className={styles.statusDot} /> AI IMAGE STUDIO / INVITATION LAUNCH</p>
+          <h1 id="landing-title" aria-label="The first image is just the beginning."><span>The first image</span><span>is just the<br /><em>beginning.</em></span></h1>
           <p className={styles.heroDescription}>
-            From a small refinement to a whole new direction. Create, edit, and
-            keep every version yours.
+            Generate the starting point. Then change the details, explore a style,
+            and shape it for what you actually need. Your idea gets the final say.
           </p>
           <div className={styles.heroActions}>
-            <Link href={destination} className="workspace-action">
-              {action}
-              <ArrowUpRight className="size-4" aria-hidden="true" />
+            <Link href={destination} className={styles.primaryAction}>
+              {action}<ArrowUpRight className="size-4" aria-hidden="true" />
             </Link>
-            <a href="#features" className={styles.explore}>
-              Explore the tools
-              <ArrowDown className="size-4" aria-hidden="true" />
-            </a>
           </div>
-          <p className={styles.heroAccess}>
-            <span aria-hidden="true" />
-            Private beta · <span>{access}</span>
-          </p>
+          <p className={styles.heroAccess}>{access}. A Google account is required.</p>
+          <a href="#features" className={styles.explore}>Explore more <ArrowDown className="size-4" aria-hidden="true" /></a>
         </div>
-        <p className={styles.heroCaption}>ONE IMAGE. ROOM TO EXPLORE.</p>
+        <div className={styles.heroArt} aria-label="Images created with Mirai">
+          {[creationExamples[0], creationExamples[1], creationExamples[3], creationExamples[2]].map((example, index) => (
+            <a key={example.id} href="#templates" className={styles.heroArtwork} data-art={index} aria-label={`See ${example.label} creation example`}>
+              <Image src={example.src} alt={example.alt} width={1024} height={1024} sizes="(max-width: 760px) 45vw, 30vw" preload={index === 0} />
+              <span>{example.label}<ArrowUpRight className="size-3" aria-hidden="true" /></span>
+            </a>
+          ))}
+          <p className={styles.heroArtCaption}>A FEW IDEAS. ALL MADE IN MIRAI.</p>
+        </div>
       </section>
 
-      <section
-        id="workflow"
-        className={styles.workflow}
-        aria-labelledby="workflow-title"
-      >
-        <div className={styles.sectionLabel}>
-          <span>01 / THE FLOW</span>
-          <h2 id="workflow-title">An idea in. Your image out.</h2>
+      <section id="templates" className={styles.templates} aria-labelledby="templates-title">
+        <div className={styles.sectionHeading} data-reveal>
+          <p className={styles.eyebrow}>CREATE WITH AI</p>
+          <h2 id="templates-title">One idea.<br />So many directions.</h2>
+          <p>Explore a style. Find a starting idea.<br />These are real images created with Mirai.</p>
         </div>
-        <ol>
-          {[
-            [
-              "Start",
-              "Upload a PNG or JPEG, or create an image, icon, or logo mark with AI.",
-            ],
-            [
-              "Edit",
-              "Select a detail, change the whole image, or finish it with direct tools.",
-            ],
-            [
-              "Review",
-              "Compare AI proposals. Keep what works and discard what doesn’t.",
-            ],
-            [
-              "Keep",
-              "Save a new version, revisit your history, and export when you’re ready.",
-            ],
-          ].map(([title, description], index) => (
-            <li key={title}>
-              <span className={styles.stepNumber}>0{index + 1}</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </li>
-          ))}
-        </ol>
+        <CreationGallery />
+      </section>
+
+      <EditorWalkthrough />
+
+      <section id="features" className={styles.moreSection} aria-labelledby="features-title">
+        <div className={styles.moreIntroduction} data-reveal>
+          <h2 id="features-title">And more to explore.</h2>
+          <p>Take a different direction. Make room for an idea. Add your finishing touch.</p>
+        </div>
+        <ul className={styles.moreTools} aria-label="More ways to edit" data-reveal>
+          <li>Remove &amp; recolor</li>
+          <li>Whole-image styles</li>
+          <li>Extend your canvas</li>
+          <li>Crop, text &amp; paint</li>
+        </ul>
       </section>
 
       <section className={styles.reviewSection} aria-labelledby="review-title">
-        <div className={styles.reviewIntroduction}>
-          <p className={styles.eyebrow}>02 / BUILT TO BE REVERSIBLE</p>
+        <div className={styles.reviewIntroduction} data-reveal>
+          <p className={styles.eyebrow}>REVIEW & HISTORY</p>
           <h2 id="review-title">
-            Every edit.
-            <br />A way back.
+            Compare before
+            <br />you accept.
           </h2>
           <p>
             Explore a result before it becomes part of your image. Your original
@@ -262,91 +182,18 @@ export function ProductLanding({
       </section>
 
       <section
-        id="features"
-        className={styles.toolkit}
-        aria-labelledby="features-title"
-      >
-        <div className={styles.sectionHeading}>
-          <p className={styles.eyebrow}>03 / THE COMPLETE TOOLSET</p>
-          <h2 id="features-title">
-            From first idea
-            <br />
-            to final image.
-          </h2>
-          <p>
-            AI when you want a new possibility.
-            <br />
-            Direct controls when you know the change.
-          </p>
-        </div>
-        <div className={styles.toolList}>
-          {tools.map((tool, index) => (
-            <article key={tool.category}>
-              <div className={styles.toolHeading}>
-                <span>0{index + 1}</span>
-                <p className={styles.eyebrow}>{tool.category}</p>
-              </div>
-              <h3>{tool.title}</h3>
-              <p>{tool.description}</p>
-              <ul>
-                {tool.capabilities.map((capability) => (
-                  <li key={capability}>{capability}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className={styles.workspaceSection}
-        aria-labelledby="workspace-title"
-      >
-        <div className={styles.workspaceHeading}>
-          <p className={styles.eyebrow}>04 / A FOCUSED WORKSPACE</p>
-          <h2 id="workspace-title">The image takes center stage.</h2>
-          <p>
-            A canvas, a tool rail, and the options you need. Move between
-            creation, precise edits, comparison, and saved history in one place.
-          </p>
-        </div>
-        <figure className={styles.workspacePreview}>
-          <Image
-            src="/landing/editor-workspace.webp"
-            width={1440}
-            height={900}
-            sizes="(max-width: 760px) 100vw, 90vw"
-            alt="Mirai’s editor with the studio image on its canvas and selection tools beside it"
-          />
-          <figcaption>Mirai workspace · example project</figcaption>
-        </figure>
-        <div className={styles.exportRow}>
-          <div>
-            <p className={styles.eyebrow}>READY TO TAKE IT WITH YOU</p>
-            <h3>Your image. Your files.</h3>
-          </div>
-          <p>
-            Export PNG or JPEG without another AI call. Download your exact
-            original, or prepare an archive of your account’s projects, files,
-            and saved versions.
-          </p>
-          <span>PNG / JPEG / ORIGINAL / DATA ARCHIVE</span>
-        </div>
-      </section>
-
-      <section
         id="questions"
         className={styles.faq}
         aria-labelledby="questions-title"
       >
-        <div>
-          <p className={styles.eyebrow}>05 / BEFORE YOU START</p>
-          <h2 id="questions-title">A few good questions.</h2>
+        <div data-reveal>
+          <p className={styles.eyebrow}>BEFORE YOU START</p>
+          <h2 id="questions-title">Before you start.</h2>
           <p>Clear boundaries make it easier to explore.</p>
         </div>
         <div className={styles.questions}>
           {questions.map(({ question, answer }) => (
-            <details key={question}>
+            <details key={question} data-reveal>
               <summary>
                 {question}
                 <span aria-hidden="true">+</span>
@@ -357,25 +204,19 @@ export function ProductLanding({
         </div>
       </section>
 
-      <section className={styles.finalCta} aria-labelledby="get-started-title">
-        <div>
-          <p className={styles.eyebrow}>MAKE ROOM FOR YOUR NEXT IDEA</p>
-          <h2 id="get-started-title">
-            Start with an image.
-            <br />
-            See where it goes.
-          </h2>
+      <section id="invitation" className={styles.finalCta} aria-labelledby="get-started-title">
+        <div data-reveal>
+          <p className={styles.eyebrow}>INVITATION LAUNCH / EARLY ACCESS</p>
+          <h2 id="get-started-title">Your next idea<br />starts here.</h2>
+          <p>Mirai is opening to a small group of early creators. Request access and help shape what comes next.</p>
         </div>
-        <div>
-          <Link href={destination} className={styles.finalAction}>
-            Get started
-            <ArrowUpRight className="size-5" aria-hidden="true" />
-          </Link>
-          <p>Private beta. New accounts need an invitation or approval.</p>
-          <span>
-            <ShieldCheck className="size-4" aria-hidden="true" />
-            Your original stays untouched.
-          </span>
+        <div className={styles.invitationOptions}>
+          <div>
+            <h3>New to Mirai?</h3>
+            <p>Sign in with Google, then send an access request. You can check its status while you wait for approval.</p>
+            <Link href={destination} className={styles.finalAction}>{signedOut ? "Request early access" : "Continue to Mirai"}<ArrowUpRight className="size-5" aria-hidden="true" /></Link>
+          </div>
+          <span><ShieldCheck className="size-4" aria-hidden="true" />Your original stays untouched.</span>
         </div>
       </section>
       <footer className={styles.footer}>
