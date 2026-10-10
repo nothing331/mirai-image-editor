@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#c5e4ef"/>
+  <circle cx="866" cy="260" r="150" fill="#f47c45"/>
+  <path d="M0 540C250 410 370 720 660 535S1000 400 1200 530V900H0Z" fill="#236aa5"/>
+  <path d="M0 650C250 520 370 830 660 645S1000 510 1200 640V900H0Z" fill="#174c7c"/>
+  <path d="M0 760C250 630 370 940 660 755S1000 620 1200 750V900H0Z" fill="#102f54"/>
+  <g fill="none" stroke="#e7f5f7" stroke-width="3" opacity=".65">
+    <path d="M0 572C250 442 370 752 660 567S1000 432 1200 562"/>
+    <path d="M0 682C250 552 370 862 660 677S1000 542 1200 672"/>
+    <path d="M0 792C250 662 370 972 660 787S1000 652 1200 782"/>
+  </g>
+  <g fill="#102f54" font-family="sans-serif" font-weight="900" font-size="148" letter-spacing="-8">
+    <text x="72" y="225">DAY</text>
+    <text x="72" y="365">DREAM</text>
+  </g>
+  <g fill="#102f54" font-family="monospace" font-size="20" letter-spacing="4">
+    <text x="80" y="68">A STUDY IN COLOR &amp; SHAPE</text>
+    <text x="80" y="430">LET YOUR IDEAS TAKE SHAPE.</text>
+  </g>
+  <g fill="#e7f5f7" font-family="monospace" font-size="18" letter-spacing="3">
+    <text x="80" y="840">CREATIVE EXPLORATION / 001</text>
+  </g>
+</svg>

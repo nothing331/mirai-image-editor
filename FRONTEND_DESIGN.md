@@ -195,9 +195,18 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Never advance history on failure or discard.
 - A leave decision must say whether work is saved to the cloud or only kept as a device draft. A failed save keeps the user in the editor with a retry path.
 
+### Product landing
+
+- The approved landing direction is a bold creative studio: charcoal opening, warm paper detail sections, and substantial acid-lime editor/invitation surfaces. Use these existing brand colors for composition; reserve coral for errors. AI-created art supplies the imagery rather than code-drawn demo posters or lifestyle furniture photography.
+- Use locally bundled Bricolage Grotesque for landing display headings and DM Sans for landing body, labels, and actions. Load them with `next/font/local`, retain their SIL licenses, and scope the variables to the public landing. The editor/account typography remains governed by the shared interface rules above.
+- Lead with the value of shaping an AI starting point into a useful, personal image, early-access context, account-aware entry, and real Mirai art. Use unnumbered section labels. Creation examples show short idea summaries; retain full generation prompts in the provenance source. Show the actual outcome of an edit, not just its selection. Use one native horizontal workspace tour with four actual editor captures. Follow it with a compact “And more to explore” overview, comparison, questions, and access requests. Do not repeat the walkthrough in grid or vertical variants or add a standalone projects/export section.
+- Label creation images, actual workspace captures, and AI proposals accurately. Creation-style buttons select a bundled example and starting prompt; they never generate or pre-apply an edit. Keep customer images, private account data, credentials, and provider payloads out of public assets.
+- Signed-out entry uses Request an invite → Google sign-in → access request. The public page presents the request-and-owner-approval launch flow without an I have an invitation link or invitation-claim instructions. Existing/approved accounts retain their account-aware projects/access destinations. Do not imply automatic admission or invent queue counts. Token-based invitation handling remains in its existing account route; this presentation change does not alter eligibility.
+- Use native range, details/summary, and overflow scrolling for exploration. Horizontal tours support touch, keyboard arrows/Home/End, and named navigation controls. Section links scroll within the public page. Motion is tied to entrances, focus, hover, or user scrolling; there are no continuous loops or playback controls in the header. Live reduced-motion preferences disable entrances and smooth tour scrolling. Preserve all content and native scrolling without JavaScript.
+
 ### Account and project journey
 
-- Landing, sign-in, access status, welcome, administration, upload, and deletion receipt share the editor’s warm paper, Manrope/DM Mono typography, charcoal actions, acid emphasis, and softly rounded controls. Use `MiraiBrand` for the public/account identity and the shared `StudioIllustration` for the landscape motif. Illustration is decorative; it never becomes a project asset.
+- Sign-in, access status, welcome, administration, upload, and deletion receipt share the editor’s warm paper, Manrope/DM Mono typography, charcoal actions, acid emphasis, and softly rounded controls. The public landing uses the approved display typography above with the same brand colors. Use `MiraiBrand` for the public/account identity and the shared `StudioIllustration` for the landscape motif. Illustration is decorative; it never becomes a project asset.
 - Account screens use a light editorial introduction beside the form on desktop. Hide the illustration on phones, stack the content, and allow vertical scrolling. Long names and emails must wrap without hiding actions. Authentication, eligibility, allowances, and recovery stay authoritative on the server.
 - The project shell has a 64px header and persistent Projects, Trash, and Settings navigation. Show active destinations; compact to accessible, named icons on narrow screens. Sign-out retains its device-draft cleanup.
 - Library pages use a padded, centered content region. Image previews own the visual hierarchy, with one, two, or three columns by available width. A project is an interaction surface with an 8px corner and subtle border; do not add decorative dashboard cards. Keep search, sort, rename, pagination, load failure, thumbnail fallback, and empty states visible.
@@ -223,7 +232,7 @@ Review is a distinct dark stage owned by the canvas for generated proposals and 
 
 ## Motion
 
-Motion communicates a state transition; it is not ambient decoration.
+In the editor and account flows, motion communicates a state transition. The public landing may use the controlled visual storytelling described above.
 
 - Inspector entry: short fade with a 6px horizontal shift, approximately 160ms.
 - Preview entry: subtle fade/scale, approximately 180ms.
