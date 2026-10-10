@@ -10,7 +10,7 @@ export const createProjectSchema = z.object({
 
 export async function authorizedProjectOwner(request: Request, mutation: boolean): Promise<string> {
   const environment = readRuntimeEnvironment();
-  if (!environment.auth.enabled || environment.mode === "ci") {
+  if (environment.invitationMode || !environment.auth.enabled || environment.mode === "ci") {
     throw new CloudProjectError("not-found", "Not found.");
   }
   if (mutation) {
