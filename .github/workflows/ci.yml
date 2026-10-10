@@ -120,6 +120,12 @@ jobs:
       - name: Test accepted edit Storage integration
         run: MIRAI_EDIT_INTEGRATION=1 npx vitest run src/server/cloud-projects/cloud-edit-history.integration.test.ts
 
+      - name: Install Chromium for invitation launch checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Test invitation-only launch in the browser
+        run: npm run test:e2e:invitation
+
       - name: Stop local Supabase
         if: always()
         run: npx --yes supabase@2.116.0 stop --no-backup

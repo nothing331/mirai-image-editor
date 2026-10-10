@@ -668,7 +668,7 @@ P15a, P15b, P16 and P17 retain distinct feature contracts. The user approved imp
 |---|---|---|
 | P18 | Implemented locally alongside Wave C: protected scheduled/manual runner, leased tasks, retry, expired-upload and uncommitted-edit cleanup | Local task/fence tests pass; protected staging secrets and hosted run pending; detached accepted redo pruning remains deferred |
 | P19 | Backup/restore and deletion reconciliation; after P06/P18, extended after lifecycle features | Restored multi-project fixture with assets/ownership and deletion tombstones |
-| P20 | Public pages, help/policy content and consistent account shell; after scope decisions | Scroll/accessibility/responsive/metadata checks; promises match implemented product |
+| P20 | Public landing and invitation-only launch gate implemented locally; help/policy content remains before publication | Scroll/accessibility/responsive/metadata checks; invitation-only request/approval/claim boundaries; promises match implemented product; hosted launch check pending |
 | P21 | Operational visibility, runbooks, spend alerts and release rollback; after P02/P14/P18 | Alert exercise, AI off switch, bad-release rollback and credential rotation exercise |
 | P22 | Integrated release qualification; after all applicable units | Section 11 evidence complete; invited rollout first; real AI gate evaluated separately |
 

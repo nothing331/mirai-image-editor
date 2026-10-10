@@ -14,6 +14,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:invitation": "node scripts/invitation-mode/test-browser.mjs",
     "test:cloud-ai": "MIRAI_AI_INTEGRATION=1 vitest run src/server/cloud-ai",
     "test:e2e:cloud-ai": "node scripts/cloud-ai/test-browser.mjs"
   },
