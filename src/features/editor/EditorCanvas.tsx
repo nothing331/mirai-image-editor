@@ -232,7 +232,7 @@ export function EditorCanvas({ version, mask, color, viewResetKey }: { version: 
     >
       <Stage width={size.width} height={size.height} onMouseDown={beginDraw} onMouseMove={continueDraw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={beginDraw} onTouchMove={continueDraw} onTouchEnd={endDraw} onWheel={handleWheel}>
         <Layer>
-          <Rect width={size.width} height={size.height} fill="#151513" />
+          <Rect width={size.width} height={size.height} fill="rgba(0,0,0,0.001)" />
           <Group x={viewport.x} y={viewport.y} scaleX={viewport.scale} scaleY={viewport.scale}>
             <Rect width={displayed.width} height={displayed.height} fill="rgba(0,0,0,0.001)" />
             {image && <KonvaImage image={image} {...imageProps} listening={false} />}

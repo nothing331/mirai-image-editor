@@ -37,21 +37,21 @@ export function ToolRail({ collapsed, disabled, generationDisabled, workflow, on
   const hasPendingLocalDraft = useEditorStore((state) => Boolean(state.localDraft));
 
   return (
-    <nav className="relative z-30 flex h-12 items-center overflow-x-auto overflow-y-hidden border-t border-line bg-[#e9e7df] md:h-auto md:flex-col md:overflow-visible md:border-r md:border-t-0" aria-label="Editor tools">
+    <nav className="relative z-30 flex h-14 items-center gap-1 px-1.5 overflow-x-auto overflow-y-hidden border-t border-line bg-paper md:h-auto md:flex-col md:py-3 md:overflow-visible md:border-r md:border-t-0" aria-label="Editor tools">
       {!localOnly && <button
         data-testid="rail-asset-generator"
         type="button"
-        className="group relative grid size-11 shrink-0 place-items-center bg-acid text-ink outline-none transition-colors hover:bg-accent hover:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-35 md:mt-2"
+        className="group relative grid size-11 shrink-0 place-items-center rounded-lg bg-acid text-ink outline-none transition-colors hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink disabled:pointer-events-none disabled:opacity-35 md:mb-1"
         aria-label="Create with AI"
         title="Create with AI"
         disabled={generationDisabled}
         onClick={onGenerateAsset}
       >
         <Sparkles className="size-[17px]" />
-        <span className="absolute bottom-1 right-1 font-mono text-[7px] font-bold uppercase leading-none group-hover:text-white">AI</span>
+        <span className="absolute bottom-1 right-1 font-mono text-[7px] font-bold uppercase leading-none group-hover:text-acid">AI</span>
         <ToolLabel label="Create with AI" />
       </button>}
-      <div className="flex items-center justify-center md:w-full md:flex-col" role="radiogroup" aria-label="Editor workflows">
+      <div className="flex items-center justify-center gap-1 md:w-full md:flex-col" role="radiogroup" aria-label="Editor workflows">
         <RailButton testId="open-lasso-edit" label="Select & edit" shortcut="L" selected={workflow.kind === "canvas" && workflow.tool === "lasso"} disabled={disabled} onClick={() => onSelectWorkflow({ kind: "canvas", tool: "lasso" })}>
           <LassoSelect className="size-[17px]" />
         </RailButton>
@@ -78,7 +78,7 @@ export function ToolRail({ collapsed, disabled, generationDisabled, workflow, on
       </div>
       {workflow.kind !== "canvas" || workflow.tool !== "pan" ? <button
         type="button"
-        className="group relative ml-auto grid size-11 shrink-0 place-items-center text-muted hover:bg-white/70 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent md:mb-1 md:ml-0 md:mt-1"
+        className="group relative ml-auto grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:bg-white/70 hover:text-ink focus-visible:outline-2 focus-visible:outline-ink md:mb-1 md:ml-0 md:mt-auto"
         aria-label={collapsed ? "Open inspector" : "Collapse inspector"}
         title={collapsed ? "Open inspector" : "Collapse inspector"}
         onClick={onToggleInspector}
@@ -101,8 +101,8 @@ function RailButton({ label, shortcut, selected, disabled, testId, variant = "st
       data-testid={testId}
       disabled={disabled}
       className={cn(
-        "group relative grid size-11 shrink-0 place-items-center text-muted outline-none transition-[background-color,color] hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent disabled:opacity-30 md:mx-auto",
-        variant === "ai" && "bg-acid text-ink hover:bg-accent hover:text-white",
+        "group relative grid size-11 shrink-0 place-items-center rounded-lg text-muted outline-none transition-[background-color,color] hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink disabled:opacity-30 md:mx-auto",
+        variant === "ai" && "bg-acid/20 text-ink hover:bg-acid hover:text-ink",
         selected && "bg-ink text-acid hover:bg-ink hover:text-acid",
       )}
       onClick={onClick}
@@ -119,12 +119,12 @@ function PendingDot({ label }: { label: string }) {
 }
 
 function AiMarker({ selected }: { selected: boolean }) {
-  return <span className={cn("absolute bottom-1 right-1 font-mono text-[7px] font-bold uppercase leading-none", selected ? "text-acid group-hover:text-acid" : "group-hover:text-white")}>AI</span>;
+  return <span className={cn("absolute bottom-1 right-1 font-mono text-[7px] font-bold uppercase leading-none", selected ? "text-acid group-hover:text-acid" : "group-hover:text-ink")}>AI</span>;
 }
 
 function ToolLabel({ label, shortcut }: { label: string; shortcut?: string }) {
   return (
-    <span data-tooltip={label} className="pointer-events-none absolute z-50 whitespace-nowrap bg-ink px-2 py-1.5 font-mono text-[8px] uppercase tracking-[.08em] text-paper opacity-0 shadow-[3px_3px_0_rgba(216,244,65,.45)] transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 max-md:bottom-[calc(100%+6px)] max-md:left-1/2 max-md:-translate-x-1/2 md:left-[calc(100%+7px)] md:top-1/2 md:-translate-y-1/2">
+    <span data-tooltip={label} className="pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-ink px-3 py-2 font-mono text-[10px] uppercase tracking-[.08em] text-paper opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 max-md:bottom-[calc(100%+6px)] max-md:left-1/2 max-md:-translate-x-1/2 md:left-[calc(100%+7px)] md:top-1/2 md:-translate-y-1/2">
       {label}{shortcut ? <span className="ml-1.5 text-acid">{shortcut}</span> : null}
     </span>
   );

@@ -28,5 +28,5 @@ export function ProjectLifecycleAction({ projectId, action, name }: {
     } catch (cause) { setError(cause instanceof Error ? cause.message : "The project action failed."); }
     finally { setBusy(false); }
   }
-  return <span className="inline-flex flex-col"><button type="button" disabled={busy} onClick={() => void run()} className="min-h-10 text-left text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-acid disabled:opacity-40">{busy ? "Working…" : labels[action]}</button>{error && <span role="alert" className="pb-2 text-xs text-accent">{error}</span>}</span>;
+  return <span className="inline-flex flex-col"><button type="button" disabled={busy} onClick={() => void run()} className={`min-h-10 px-2 text-left text-xs hover:bg-surface focus-visible:outline-2 focus-visible:outline-ink disabled:opacity-40 ${action === "purge" ? "text-accent" : "text-muted hover:text-ink"}`}>{busy ? "Working…" : labels[action]}</button>{error && <span role="alert" className="pb-2 text-xs text-accent">{error}</span>}</span>;
 }

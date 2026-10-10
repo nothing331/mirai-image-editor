@@ -15,7 +15,7 @@ export function InvitationForm() {
       <form action={action} className="mt-4 flex flex-col gap-3 sm:flex-row">
         <label className="flex flex-1 flex-col gap-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
           Google email
-          <input name="email" type="email" required autoComplete="email" className="h-10 border border-line bg-[#e8e5dc] px-3 font-sans text-sm normal-case tracking-normal text-ink outline-none focus:border-ink focus:ring-2 focus:ring-acid" />
+          <input name="email" type="email" required autoComplete="email" className="h-11 border border-line bg-paper px-3 font-sans text-sm normal-case tracking-normal text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink" />
         </label>
         <div className="self-end"><SubmitButton idle="Create link" pending="Creating…" /></div>
       </form>

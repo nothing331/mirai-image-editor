@@ -15,8 +15,8 @@ export default async function WelcomePage() {
     <AuthShell
       eyebrow="ACCOUNT READY"
       title={`Welcome, ${account.profile.display_name}.`}
-      description="Your identity and eligibility are verified. Your private projects are ready to open."
-      secondary={<form action={signOutAction}><button className="font-mono text-[9px] uppercase tracking-[0.12em] underline underline-offset-4">Sign out</button></form>}
+      description="Make room for your next idea. Your private workspace is ready."
+      secondary={<form action={signOutAction}><button className="workspace-quiet-action">Sign out</button></form>}
     >
       <div className="max-w-md">
         <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Access confirmed</p>
@@ -27,7 +27,7 @@ export default async function WelcomePage() {
           <div className="flex justify-between gap-4 py-3"><dt className="text-muted">Cloud projects</dt><dd><Link href="/projects" className="font-mono uppercase underline underline-offset-4">Open my projects</Link></dd></div>
         </dl>
         <p className="mt-4 text-xs leading-5 text-muted">{account.profile.account_role === "owner" ? "Your admin account has unlimited projects, AI previews, and account storage. Service availability still applies." : "Your beta includes 5 active projects and 25 welcome AI credits shared across all projects. Each generated preview uses 1 credit. Local edits and exports use no credits. Welcome credits do not reset monthly."}</p>
-        {account.profile.account_role === "owner" && <Link href="/admin/access" className="mt-5 inline-flex min-h-10 items-center border border-line px-4 text-sm font-bold hover:border-ink hover:bg-[#e8e5dc]">Manage beta access</Link>}
+        {account.profile.account_role === "owner" && <Link href="/admin/access" className="mt-5 workspace-quiet-action">Manage beta access</Link>}
         {!account.profile.onboarding_completed_at && <form action={completeOnboardingAction} className="mt-6"><SubmitButton idle="Acknowledge and continue" pending="Saving…" /></form>}
       </div>
     </AuthShell>

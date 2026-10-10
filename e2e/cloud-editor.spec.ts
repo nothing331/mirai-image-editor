@@ -83,6 +83,11 @@ test("accepts an edit, reopens it, and persists undo/redo and redo replacement",
   await page.getByTestId("accept-preview").click();
   await expect(page.getByRole("region", { name: "Cloud editor" }).locator("header").getByText("Save needs attention")).toBeVisible();
   await expect(page.getByTestId("cloud-pending-comparison")).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 667 });
+  await expect(page.getByRole("button", { name: "Retry save", exact: true })).toBeInViewport();
+  expect(await page.locator(".public-page").evaluate((surface) => surface.scrollWidth <= surface.clientWidth)).toBe(true);
+  await page.screenshot({ path: "test-results/cloud-save-failure-mobile.png", fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole("button", { name: "Retry save" }).click();
   await expect(page.getByText("Saved to cloud")).toBeVisible();
   const first = await page.evaluate(async (id) => fetch(`/api/cloud-projects/${id}`).then((response) => response.json()), projectId);

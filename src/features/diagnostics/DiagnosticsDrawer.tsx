@@ -146,10 +146,10 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="Request diagnostics">
       <button className="absolute inset-0 cursor-default" aria-label="Close diagnostics" onClick={onClose} />
-      <section className="relative grid h-full w-full max-w-[1180px] grid-rows-[auto_1fr] border-l border-ink bg-[#e5e2d8] shadow-[-14px_0_0_rgba(23,23,20,.22)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink bg-paper px-4 py-3">
+      <section className="editor-dialog relative grid h-full w-full max-w-[1180px] grid-rows-[auto_1fr] border-l border-line bg-workspace shadow-2xl">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-paper px-4 py-3">
           <div>
-            <p className="font-mono text-[9px] uppercase tracking-[.18em] text-accent">Local evidence room</p>
+            <p className="font-mono text-[9px] uppercase tracking-[.18em] text-muted">Local evidence room</p>
             <h2 className="text-xl font-bold tracking-[-.035em]">Request diagnostics</h2>
           </div>
           <div className="flex items-center gap-2">
@@ -159,10 +159,10 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
         </header>
 
         <div className="grid min-h-0 md:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="min-h-0 overflow-y-auto border-b border-ink bg-[#d5d2c8] md:border-b-0 md:border-r" aria-label="Diagnostic requests">
-            <div className="sticky top-0 z-10 grid grid-cols-4 border-b border-ink bg-[#d5d2c8] p-2">
+          <aside className="min-h-0 overflow-y-auto border-b border-line bg-surface md:border-b-0 md:border-r" aria-label="Diagnostic requests">
+            <div className="sticky top-0 z-10 grid grid-cols-4 border-b border-line bg-surface p-2">
               {filters.map((item) => (
-                <button key={item.value} className={cn("border border-transparent px-1 py-2 font-mono text-[9px] uppercase tracking-wider", filter === item.value && "border-ink bg-acid font-medium")} onClick={() => setFilter(item.value)}>{item.label}</button>
+                <button key={item.value} className={cn("border border-transparent px-1 py-2 font-mono text-[9px] uppercase tracking-wider", filter === item.value && "border-line bg-acid font-medium")} onClick={() => setFilter(item.value)}>{item.label}</button>
               ))}
             </div>
             {requests.length === 0 ? (
@@ -170,7 +170,7 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
             ) : requests.map((request, index) => (
               <button
                 key={request.requestId}
-                className={cn("grid w-full gap-2 border-b border-ink/25 p-3 text-left transition hover:bg-paper", selectedId === request.requestId && "bg-paper shadow-[inset_4px_0_0_#ef4b32]")}
+                className={cn("grid w-full gap-2 border-b border-line/25 p-3 text-left transition hover:bg-paper", selectedId === request.requestId && "bg-paper shadow-[inset_3px_0_0_#171714]")}
                 onClick={() => void selectRequest(request.requestId)}
               >
                 <span className="flex items-center justify-between gap-2">
@@ -192,7 +192,7 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
               <div className="grid h-full place-items-center p-10 text-center"><p className="max-w-sm text-sm text-muted">Select a request to inspect its processing trail and image artifacts.</p></div>
             ) : (
               <div className="grid gap-6 p-4 md:p-6">
-                <section className="grid gap-4 border border-ink bg-[#171714] p-4 text-white">
+                <section className="grid gap-4 border border-line bg-[#171714] p-4 text-white">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <div className="mb-2 flex items-center gap-2"><StatusBadge status={manifest.status} /><span className="font-mono text-[9px] uppercase tracking-widest text-[#aaa79e]">{manifest.provider} · {manifest.operation} · {manifest.boundaryPolicy}</span></div>
@@ -222,12 +222,12 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
                     {visualArtifacts.map((artifact) => {
                       const exists = Boolean(manifest.artifacts[artifact.name]);
                       return (
-                        <figure key={artifact.name} className={cn("grid grid-rows-[auto_180px_auto] border border-ink bg-[#d9d6cc]", !exists && "opacity-45")}>
-                          <figcaption className="border-b border-ink bg-paper px-3 py-2 font-mono text-[9px] uppercase tracking-wider">{artifact.label}</figcaption>
+                        <figure key={artifact.name} className={cn("grid grid-rows-[auto_180px_auto] border border-line bg-[#d9d6cc]", !exists && "opacity-45")}>
+                          <figcaption className="border-b border-line bg-paper px-3 py-2 font-mono text-[9px] uppercase tracking-wider">{artifact.label}</figcaption>
                           <div className="relative m-2 overflow-hidden bg-[linear-gradient(45deg,#c9c6bc_25%,transparent_25%),linear-gradient(-45deg,#c9c6bc_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#c9c6bc_75%),linear-gradient(-45deg,transparent_75%,#c9c6bc_75%)] bg-[length:16px_16px] bg-[position:0_0,0_8px,8px_-8px,-8px_0px]">
                             {exists ? <Image src={diagnosticArtifactUrl(manifest.requestId, artifact.name)} alt={artifact.label} fill unoptimized className="object-contain" /> : <span className="absolute inset-0 grid place-items-center font-mono text-[9px] uppercase tracking-wider text-muted">Not produced</span>}
                           </div>
-                          <p className="border-t border-ink/20 px-3 py-2 text-[10px] leading-relaxed text-muted">{artifact.note}</p>
+                          <p className="border-t border-line/20 px-3 py-2 text-[10px] leading-relaxed text-muted">{artifact.note}</p>
                         </figure>
                       );
                     })}
@@ -238,30 +238,30 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
                   <SectionHeading index="B" title="Provider calls" subtitle={`${manifest.providerCalls.length} recorded call${manifest.providerCalls.length === 1 ? "" : "s"} in this logical request.`} />
                   <div className="mt-3 grid gap-3 lg:grid-cols-2">
                     {manifest.providerCalls.map((call) => (
-                      <article key={call.stage} className="border border-ink bg-[#e6e3da] p-3">
+                      <article key={call.stage} className="border border-line bg-[#e6e3da] p-3">
                         <div className="flex items-center justify-between gap-3">
                           <strong className="font-mono text-[10px] uppercase tracking-wider">{call.stage.replace("-", " ")}</strong>
                           <StatusBadge status={call.status === "processing" ? "processing" : call.status === "succeeded" ? "succeeded" : "failed"} />
                         </div>
-                        <dl className="mt-3 grid grid-cols-2 border border-ink/40">
+                        <dl className="mt-3 grid grid-cols-2 border border-line/40">
                           <Fact label="Provider" value={call.provider} />
                           <Fact label="Model" value={call.model} />
                           <Fact label="Duration" value={call.durationMs === null ? "Live" : `${call.durationMs}ms`} />
                           <Fact label="Retryable" value={call.retryable === null ? "—" : String(call.retryable)} />
                         </dl>
-                        {call.providerRequestId && <div className="mt-2 border border-ink bg-[#171714] text-white"><Identifier label="Provider request" value={call.providerRequestId} copied={copied} onCopy={copy} /></div>}
+                        {call.providerRequestId && <div className="mt-2 border border-line bg-[#171714] text-white"><Identifier label="Provider request" value={call.providerRequestId} copied={copied} onCopy={copy} /></div>}
                         {Object.keys(call.usage).length > 0 && <p className="mt-2 break-words font-mono text-[9px] text-muted">Usage · {Object.entries(call.usage).map(([key, value]) => `${key}=${value}`).join(" · ")}</p>}
                         {call.error && <p className="mt-2 border-l-4 border-accent bg-[#fff0eb] p-2 text-[10px] text-[#8f1d10]">{call.error.message}</p>}
                       </article>
                     ))}
-                    {manifest.providerCalls.length === 0 && <p className="border border-ink/30 bg-[#e6e3da] p-3 text-xs text-muted">This legacy bundle predates per-provider call tracking.</p>}
+                    {manifest.providerCalls.length === 0 && <p className="border border-line/30 bg-[#e6e3da] p-3 text-xs text-muted">This legacy bundle predates per-provider call tracking.</p>}
                   </div>
                 </section>
 
                 {manifest.candidateAnalysis && (
                   <section>
                     <SectionHeading index="B2" title="Candidate scope diagnosis" subtitle="Measured evidence only; this analysis never changes preview pixels." />
-                    <dl className="mt-3 grid grid-cols-2 border border-ink md:grid-cols-4">
+                    <dl className="mt-3 grid grid-cols-2 border border-line md:grid-cols-4">
                       <Fact label="Classification" value={manifest.candidateAnalysis.classification} />
                       <Fact label="Changed pixels" value={String(manifest.candidateAnalysis.changedPixels)} />
                       <Fact label="Inside selection" value={`${Math.round(manifest.candidateAnalysis.changedInsideSelectionRatio * 1000) / 10}%`} />
@@ -274,7 +274,7 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
                 {manifest.transformFidelityAssessment && (
                   <section>
                     <SectionHeading index="B3" title="Transform fidelity" subtitle="Semantic source-versus-candidate validation; the complete provider proposal remains unchanged." />
-                    <dl className="mt-3 grid grid-cols-2 border border-ink md:grid-cols-4">
+                    <dl className="mt-3 grid grid-cols-2 border border-line md:grid-cols-4">
                       <Fact label="Verdict" value={manifest.transformFidelityAssessment.verdict} />
                       <Fact label="Confidence" value={manifest.transformFidelityAssessment.confidence} />
                       <Fact label="Subject preservation" value={`${Math.round(manifest.transformFidelityAssessment.subjectPreservation * 100)}%`} />
@@ -286,10 +286,10 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
 
                 <section>
                   <SectionHeading index="C" title="Processing timeline" subtitle={`${manifest.durationMs ?? "Live"}${typeof manifest.durationMs === "number" ? "ms total" : ""}`} />
-                  <ol className="mt-3 border border-ink">
+                  <ol className="mt-3 border border-line">
                     {manifest.events.map((event, index) => (
-                      <li key={event.id} className="grid grid-cols-[28px_1fr_auto] gap-3 border-b border-ink/20 bg-[#e6e3da] p-3 last:border-b-0">
-                        <span className={cn("grid size-6 place-items-center border border-ink font-mono text-[9px]", event.level === "error" ? "bg-accent text-white" : "bg-acid")}>{String(index + 1).padStart(2, "0")}</span>
+                      <li key={event.id} className="grid grid-cols-[28px_1fr_auto] gap-3 border-b border-line/20 bg-[#e6e3da] p-3 last:border-b-0">
+                        <span className={cn("grid size-6 place-items-center border border-line font-mono text-[9px]", event.level === "error" ? "bg-accent text-white" : "bg-acid")}>{String(index + 1).padStart(2, "0")}</span>
                         <div><strong className="text-xs">{event.message}</strong><p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-muted">{event.stage}{event.details ? ` · ${Object.entries(event.details).map(([key, value]) => `${key}=${value}`).join(" · ")}` : ""}</p></div>
                         <time className="font-mono text-[9px] text-muted">{new Date(event.timestamp).toLocaleTimeString()}</time>
                       </li>
@@ -310,7 +310,7 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
                   </div>
                   <div>
                     <SectionHeading index="E" title="Request facts" subtitle="Configuration and dimensions used for this attempt." />
-                    <dl className="mt-3 grid grid-cols-2 border border-ink">
+                    <dl className="mt-3 grid grid-cols-2 border border-line">
                       <Fact label="Source" value={manifest.sourceDimensions ? `${manifest.sourceDimensions.width} × ${manifest.sourceDimensions.height}` : "Unknown"} />
                       <Fact label="Provider" value={manifest.providerDimensions ? `${manifest.providerDimensions.width} × ${manifest.providerDimensions.height}` : "Unknown"} />
                       <Fact label="Boundary policy" value={manifest.boundaryPolicy} />
@@ -318,15 +318,15 @@ export function DiagnosticsDrawer({ projectId, focusRequestId, open, onClose }: 
                       {Object.entries(manifest.configuration).map(([key, value]) => <Fact key={key} label={key} value={String(value)} />)}
                     </dl>
                     <div className="mt-3 flex flex-wrap gap-3">
-                      {manifest.artifacts["planner-response.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "planner-response.json")} target="_blank" rel="noreferrer">Open planner response ↗</a>}
-                      {manifest.artifacts["edit-plan.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "edit-plan.json")} target="_blank" rel="noreferrer">Open edit plan ↗</a>}
-                      {manifest.artifacts["transform-plan.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "transform-plan.json")} target="_blank" rel="noreferrer">Open Transform plan ↗</a>}
-                      {manifest.artifacts["transform-assessment.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "transform-assessment.json")} target="_blank" rel="noreferrer">Open fidelity assessment ↗</a>}
-                      {manifest.artifacts["transform-validator-response.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "transform-validator-response.json")} target="_blank" rel="noreferrer">Open validator response ↗</a>}
-                      {manifest.artifacts["extend-scene-analysis.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "extend-scene-analysis.json")} target="_blank" rel="noreferrer">Open Extend analysis ↗</a>}
-                      {manifest.artifacts["extend-plan.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "extend-plan.json")} target="_blank" rel="noreferrer">Open Extend plan ↗</a>}
-                      {manifest.artifacts["provider-response.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "provider-response.json")} target="_blank" rel="noreferrer">Open image response ↗</a>}
-                      {manifest.artifacts["candidate-analysis.json"] && <a className="inline-flex border-b border-ink font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "candidate-analysis.json")} target="_blank" rel="noreferrer">Open candidate analysis ↗</a>}
+                      {manifest.artifacts["planner-response.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "planner-response.json")} target="_blank" rel="noreferrer">Open planner response ↗</a>}
+                      {manifest.artifacts["edit-plan.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "edit-plan.json")} target="_blank" rel="noreferrer">Open edit plan ↗</a>}
+                      {manifest.artifacts["transform-plan.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "transform-plan.json")} target="_blank" rel="noreferrer">Open Transform plan ↗</a>}
+                      {manifest.artifacts["transform-assessment.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "transform-assessment.json")} target="_blank" rel="noreferrer">Open fidelity assessment ↗</a>}
+                      {manifest.artifacts["transform-validator-response.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "transform-validator-response.json")} target="_blank" rel="noreferrer">Open validator response ↗</a>}
+                      {manifest.artifacts["extend-scene-analysis.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "extend-scene-analysis.json")} target="_blank" rel="noreferrer">Open Extend analysis ↗</a>}
+                      {manifest.artifacts["extend-plan.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "extend-plan.json")} target="_blank" rel="noreferrer">Open Extend plan ↗</a>}
+                      {manifest.artifacts["provider-response.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "provider-response.json")} target="_blank" rel="noreferrer">Open image response ↗</a>}
+                      {manifest.artifacts["candidate-analysis.json"] && <a className="inline-flex border-b border-line font-mono text-[10px] uppercase tracking-wider hover:bg-acid" href={diagnosticArtifactUrl(manifest.requestId, "candidate-analysis.json")} target="_blank" rel="noreferrer">Open candidate analysis ↗</a>}
                     </div>
                     {manifest.error?.stack && <details className="mt-4 border border-accent bg-[#fff0eb] p-3"><summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-[#8f1d10]">Server error stack</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed">{manifest.error.stack}</pre></details>}
                   </div>
@@ -349,15 +349,15 @@ function Identifier({ label, value, copied, onCopy }: { label: string; value: st
 }
 
 function SectionHeading({ index, title, subtitle }: { index: string; title: string; subtitle: string }) {
-  return <div className="grid grid-cols-[24px_1fr] gap-2 border-b border-ink pb-2"><span className="font-mono text-[9px] text-accent">{index}</span><div><h3 className="text-base font-bold tracking-tight">{title}</h3><p className="text-[10px] text-muted">{subtitle}</p></div></div>;
+  return <div className="grid grid-cols-[24px_1fr] gap-2 border-b border-line pb-2"><span className="font-mono text-[9px] text-accent">{index}</span><div><h3 className="text-base font-bold tracking-tight">{title}</h3><p className="text-[10px] text-muted">{subtitle}</p></div></div>;
 }
 
 function EvidenceText({ label, value }: { label: string; value: string }) {
-  return <div className="border border-ink"><dt className="border-b border-ink bg-[#d5d2c8] px-3 py-2 font-mono text-[9px] uppercase tracking-wider">{label}</dt><dd className="m-0 max-h-52 overflow-y-auto whitespace-pre-wrap p-3 text-xs leading-relaxed">{value}</dd></div>;
+  return <div className="border border-line"><dt className="border-b border-line bg-surface px-3 py-2 font-mono text-[9px] uppercase tracking-wider">{label}</dt><dd className="m-0 max-h-52 overflow-y-auto whitespace-pre-wrap p-3 text-xs leading-relaxed">{value}</dd></div>;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
-  return <div className="border-b border-r border-ink/20 p-3"><dt className="font-mono text-[8px] uppercase tracking-wider text-muted">{label}</dt><dd className="m-0 mt-1 break-words text-xs font-semibold">{value}</dd></div>;
+  return <div className="border-b border-r border-line/20 p-3"><dt className="font-mono text-[8px] uppercase tracking-wider text-muted">{label}</dt><dd className="m-0 mt-1 break-words text-xs font-semibold">{value}</dd></div>;
 }
 
 async function copyText(value: string): Promise<void> {

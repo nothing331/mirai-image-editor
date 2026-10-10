@@ -1,3 +1,5 @@
+import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
+import { StudioIllustration } from "@/shared/ui/StudioIllustration";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProjectShell } from "@/features/cloud-projects/ProjectShell";
@@ -22,18 +24,18 @@ export default async function ProjectsPage() {
     error = true;
   }
   return <ProjectShell email={account.profile.email} ownerId={account.profile.id}>
-    <div className="mx-auto max-w-6xl border-x border-line">
-      <div className="flex flex-wrap items-end justify-between gap-6 border-b border-line px-6 py-10 sm:px-10">
+    <div className="workspace-content">
+      <div className="mb-9 flex flex-wrap items-end justify-between gap-6">
         <div><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Private workspace / {projects.length}{unlimited ? " projects · unlimited admin account" : " of 5 projects"}</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-[-0.055em] sm:text-5xl">My projects</h1>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.055em] sm:text-5xl">My projects</h1>
           <p className="mt-3 text-sm text-muted">Your saved images, ready to reopen.</p></div>
-        {!error && projects.length > 0 && (unlimited || projects.length < 5) && <Link href="/projects/new" className="inline-flex min-h-11 items-center border border-ink bg-acid px-5 text-sm font-bold hover:bg-ink hover:text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acid">New project <span aria-hidden="true" className="ml-3">↗</span></Link>}
+        {!error && projects.length > 0 && (unlimited || projects.length < 5) && <Link href="/projects/new" className="workspace-action"><Plus className="size-4" aria-hidden="true" />New project</Link>}
       </div>
-      {error ? <div role="alert" className="border-b border-line px-6 py-12 sm:px-10"><h2 className="text-xl font-bold">Projects could not load.</h2><p className="mt-2 text-sm text-muted">Refresh to try again.</p></div>
-        : projects.length === 0 ? <div className="grid min-h-80 place-content-center border-b border-line px-6 py-16 text-center"><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">No saved originals yet</p><h2 className="mt-4 text-2xl font-bold tracking-tight">Start with one image.</h2><p className="mt-3 text-sm text-muted">Upload an image to edit, or create one with AI.</p><Link href="/projects/new" className="mx-auto mt-6 inline-flex min-h-11 items-center border border-ink bg-acid px-5 text-sm font-bold">Start a new project</Link></div>
+      {error ? <div role="alert" className="rounded-lg border border-line bg-surface p-8"><h2 className="text-xl font-bold">Projects could not load.</h2><p className="mt-2 text-sm text-muted">Refresh to try again.</p></div>
+        : projects.length === 0 ? <div className="grid overflow-hidden rounded-xl border border-line bg-surface/40 md:grid-cols-2"><div className="flex flex-col justify-center px-7 py-12 sm:px-10"><p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">No saved originals yet</p><h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em]">Start with one image.</h2><p className="mt-4 max-w-xs text-sm leading-6 text-muted">Upload an image to edit, or create one with AI. Every idea starts somewhere.</p><Link href="/projects/new" className="workspace-action mt-7 self-start">Start a new project<ArrowUpRight className="size-4" aria-hidden="true" /></Link></div><div className="hidden border-l border-line p-6 md:block"><StudioIllustration className="h-80 w-full rounded-lg" /></div></div>
         : <ProjectLibrary key={projects.map((project) => `${project.id}:${project.updatedAt}`).join("|")} initialProjects={projects} />}
-      {!unlimited && projects.length >= 5 && <p className="px-6 py-6 text-sm text-muted sm:px-10">The current beta limit is five active projects per account.</p>}
-      <div className="border-b border-line px-6 py-6 sm:px-10"><Link href="/projects/trash" className="text-xs underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-acid">View trash</Link></div>
+      {!unlimited && projects.length >= 5 && <p className="mt-6 text-sm text-muted">The current beta limit is five active projects per account.</p>}
+      <div className="mt-8 flex items-center justify-between border-t border-line pt-5"><Link href="/projects/trash" className="flex min-h-10 items-center gap-2 text-xs text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"><Trash2 className="size-3.5" aria-hidden="true" />View trash</Link><p className="text-xs text-muted">Your originals stay safe.</p></div>
     </div>
   </ProjectShell>;
 }

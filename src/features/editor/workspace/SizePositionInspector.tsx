@@ -27,16 +27,16 @@ export function SizePositionInspector({ onSelectEdit }: { onSelectEdit: (editTyp
   return (
     <div className="inspector-enter flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-        <div className="sticky top-0 z-10 bg-paper py-3">
-          <span className="font-mono text-[8px] uppercase tracking-[.14em] text-muted">Direct edit</span>
+        <div className="sticky top-0 z-10 bg-paper py-5">
+          <span className="font-mono text-[10px] uppercase tracking-[.14em] text-muted">Direct edit</span>
           <h2 className="mt-0.5 text-sm font-bold tracking-[-.02em]">Size & position</h2>
         </div>
 
         <section className="grid gap-3 border-t border-line py-3">
-          <span className="font-mono text-[8px] uppercase tracking-[.12em] text-muted">Operation</span>
-          <div className="grid grid-cols-4 bg-[#e8e5dc] p-0.5" role="radiogroup" aria-label="Size and position operation">
+          <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Operation</span>
+          <div className="grid grid-cols-4 bg-surface p-0.5" role="radiogroup" aria-label="Size and position operation">
             {geometryTools.map(({ value, label, icon: Icon }) => (
-              <button key={value} type="button" role="radio" aria-checked={activeType === value} aria-label={label} className={cn("grid h-12 place-items-center gap-1 font-mono text-[7px] uppercase text-muted outline-none hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent", activeType === value && "bg-ink text-paper hover:bg-ink hover:text-acid")} onClick={() => onSelectEdit(value)}>
+              <button key={value} type="button" role="radio" aria-checked={activeType === value} aria-label={label} className={cn("grid h-12 place-items-center gap-1 font-mono text-[9px] uppercase text-muted outline-none hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30", activeType === value && "bg-ink text-paper hover:bg-ink hover:text-acid")} onClick={() => onSelectEdit(value)}>
                 <Icon className="size-3.5" />{label}
               </button>
             ))}
@@ -59,16 +59,16 @@ function CropControls({ version, draft, onChange }: { version: ImageVersion; dra
   const updateRect = (next: typeof rect) => onChange({ ...draft, parameters: { ...draft.parameters, sourceRect: clampCrop(next, version) } });
   return (
     <section className="grid gap-4 border-t border-line py-4" aria-label="Crop controls">
-      <label className="grid gap-1.5 text-[10px] text-muted">Aspect ratio
-        <select aria-label="Crop aspect ratio" className="h-9 bg-[#e8e5dc] px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-accent" value={draft.parameters.ratio} onChange={(event) => { const ratio = event.target.value as CropRatio; onChange({ ...draft, parameters: { ratio, sourceRect: fittedCrop(version, ratio) } }); }}>
+      <label className="grid gap-1.5 text-[12px] text-muted">Aspect ratio
+        <select aria-label="Crop aspect ratio" className="h-9 bg-surface px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-ink/30" value={draft.parameters.ratio} onChange={(event) => { const ratio = event.target.value as CropRatio; onChange({ ...draft, parameters: { ratio, sourceRect: fittedCrop(version, ratio) } }); }}>
           {cropRatios.map((ratio) => <option key={ratio} value={ratio}>{ratio === "free" ? "Freeform" : ratio === "original" ? "Original" : ratio}</option>)}
         </select>
       </label>
       <div className="grid grid-cols-2 gap-2">
         {(["x", "y", "width", "height"] as const).map((field) => <NumberField key={field} label={field} value={Math.round(rect[field])} min={field === "width" || field === "height" ? 1 : 0} onChange={(value) => updateRect({ ...rect, [field]: value })} />)}
       </div>
-      <p className="border-l-2 border-acid bg-[#edf5c4] p-3 text-[10px] leading-relaxed text-ink">Drag the crop frame or its handles directly on the image. The shaded area is removed only when you apply.</p>
-      <button type="button" className="h-9 border border-line font-mono text-[9px] uppercase text-muted hover:bg-white/70 hover:text-ink" onClick={() => onChange({ ...draft, parameters: { ratio: "free", sourceRect: fittedCrop(version, "free") } })}>Reset crop</button>
+      <p className="border-l-2 border-acid bg-[#edf5c4] p-3 text-[12px] leading-relaxed text-ink">Drag the crop frame or its handles directly on the image. The shaded area is removed only when you apply.</p>
+      <button type="button" className="h-9 border border-line font-mono text-[11px] uppercase text-muted hover:bg-white/70 hover:text-ink" onClick={() => onChange({ ...draft, parameters: { ratio: "free", sourceRect: fittedCrop(version, "free") } })}>Reset crop</button>
     </section>
   );
 }
@@ -84,8 +84,8 @@ function ResizeControls({ version, draft, onChange }: { version: ImageVersion; d
       </div>
       <CheckRow label="Lock aspect ratio" checked={parameters.preserveAspectRatio} onChange={(preserveAspectRatio) => update({ preserveAspectRatio })} />
       <CheckRow label="Do not enlarge" checked={parameters.preventUpscale} onChange={(preventUpscale) => update({ preventUpscale })} />
-      {(parameters.width > version.width || parameters.height > version.height) && !parameters.preventUpscale ? <p className="border-l-2 border-[#d98b00] bg-[#fff0c7] p-3 text-[10px] leading-relaxed text-[#6f4300]">Upscaling changes pixel dimensions but cannot recover detail absent from the source.</p> : null}
-      <output className="font-mono text-[8px] uppercase tracking-[.12em] text-muted">Current {version.width} × {version.height}px · Output {parameters.width} × {parameters.height}px</output>
+      {(parameters.width > version.width || parameters.height > version.height) && !parameters.preventUpscale ? <p className="border-l-2 border-[#d98b00] bg-[#fff0c7] p-3 text-[12px] leading-relaxed text-[#6f4300]">Upscaling changes pixel dimensions but cannot recover detail absent from the source.</p> : null}
+      <output className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Current {version.width} × {version.height}px · Output {parameters.width} × {parameters.height}px</output>
     </section>
   );
 }
@@ -93,9 +93,9 @@ function ResizeControls({ version, draft, onChange }: { version: ImageVersion; d
 function RotateControls({ draft, onChange }: { draft: Extract<LocalEditDraft, { type: "rotate" }>; onChange: (draft: LocalEditDraft) => void }) {
   return (
     <section className="grid gap-3 border-t border-line py-4" aria-label="Rotate controls">
-      <button type="button" className="flex h-10 items-center justify-center gap-2 bg-[#e8e5dc] text-xs font-bold hover:bg-white/70" onClick={() => onChange({ ...draft, parameters: { quarterTurns: draft.parameters.quarterTurns === 1 ? 3 : draft.parameters.quarterTurns === 2 ? 1 : 2 } })}><RotateCcw className="size-4" />Rotate left</button>
-      <button type="button" className="flex h-10 items-center justify-center gap-2 bg-[#e8e5dc] text-xs font-bold hover:bg-white/70" onClick={() => onChange({ ...draft, parameters: { quarterTurns: draft.parameters.quarterTurns === 3 ? 1 : draft.parameters.quarterTurns === 2 ? 3 : 2 } })}><RotateCw className="size-4" />Rotate right</button>
-      <output className="font-mono text-[8px] uppercase tracking-[.12em] text-muted">Live rotation · {draft.parameters.quarterTurns * 90}° clockwise</output>
+      <button type="button" className="flex h-10 items-center justify-center gap-2 bg-surface text-xs font-bold hover:bg-white/70" onClick={() => onChange({ ...draft, parameters: { quarterTurns: draft.parameters.quarterTurns === 1 ? 3 : draft.parameters.quarterTurns === 2 ? 1 : 2 } })}><RotateCcw className="size-4" />Rotate left</button>
+      <button type="button" className="flex h-10 items-center justify-center gap-2 bg-surface text-xs font-bold hover:bg-white/70" onClick={() => onChange({ ...draft, parameters: { quarterTurns: draft.parameters.quarterTurns === 3 ? 1 : draft.parameters.quarterTurns === 2 ? 3 : 2 } })}><RotateCw className="size-4" />Rotate right</button>
+      <output className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Live rotation · {draft.parameters.quarterTurns * 90}° clockwise</output>
     </section>
   );
 }
@@ -103,18 +103,18 @@ function RotateControls({ draft, onChange }: { draft: Extract<LocalEditDraft, { 
 function FlipControls({ draft, onChange }: { draft: Extract<LocalEditDraft, { type: "flip" }>; onChange: (draft: LocalEditDraft) => void }) {
   return (
     <section className="grid gap-3 border-t border-line py-4" aria-label="Flip controls">
-      <button type="button" aria-pressed={draft.parameters.axis === "horizontal"} className={cn("flex h-10 items-center justify-center gap-2 bg-[#e8e5dc] text-xs font-bold hover:bg-white/70", draft.parameters.axis === "horizontal" && "bg-ink text-acid hover:bg-ink")} onClick={() => onChange({ ...draft, parameters: { axis: "horizontal" } })}><FlipHorizontal2 className="size-4" />Horizontal</button>
-      <button type="button" aria-pressed={draft.parameters.axis === "vertical"} className={cn("flex h-10 items-center justify-center gap-2 bg-[#e8e5dc] text-xs font-bold hover:bg-white/70", draft.parameters.axis === "vertical" && "bg-ink text-acid hover:bg-ink")} onClick={() => onChange({ ...draft, parameters: { axis: "vertical" } })}><FlipVertical2 className="size-4" />Vertical</button>
+      <button type="button" aria-pressed={draft.parameters.axis === "horizontal"} className={cn("flex h-10 items-center justify-center gap-2 bg-surface text-xs font-bold hover:bg-white/70", draft.parameters.axis === "horizontal" && "bg-ink text-acid hover:bg-ink")} onClick={() => onChange({ ...draft, parameters: { axis: "horizontal" } })}><FlipHorizontal2 className="size-4" />Horizontal</button>
+      <button type="button" aria-pressed={draft.parameters.axis === "vertical"} className={cn("flex h-10 items-center justify-center gap-2 bg-surface text-xs font-bold hover:bg-white/70", draft.parameters.axis === "vertical" && "bg-ink text-acid hover:bg-ink")} onClick={() => onChange({ ...draft, parameters: { axis: "vertical" } })}><FlipVertical2 className="size-4" />Vertical</button>
     </section>
   );
 }
 
 function NumberField({ label, value, min, onChange }: { label: string; value: number; min: number; onChange: (value: number) => void }) {
-  return <label className="grid gap-1 font-mono text-[8px] uppercase tracking-[.08em] text-muted">{label}<input aria-label={label === label.toLowerCase() ? `Crop ${label}` : label} className="h-9 min-w-0 bg-[#e8e5dc] px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-accent" type="number" min={min} max={40000} value={value} onChange={(event) => onChange(Math.max(min, Math.round(Number(event.target.value) || min)))} /></label>;
+  return <label className="grid gap-1 font-mono text-[10px] uppercase tracking-[.08em] text-muted">{label}<input aria-label={label === label.toLowerCase() ? `Crop ${label}` : label} className="h-9 min-w-0 bg-surface px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-ink/30" type="number" min={min} max={40000} value={value} onChange={(event) => onChange(Math.max(min, Math.round(Number(event.target.value) || min)))} /></label>;
 }
 
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  return <label className="flex min-h-10 items-center gap-2 bg-[#e8e5dc] px-3 text-[10px] text-ink"><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />{label}</label>;
+  return <label className="flex min-h-10 items-center gap-2 bg-surface px-3 text-[12px] text-ink"><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />{label}</label>;
 }
 
 function ratioNumber(ratio: CropRatio, version: ImageVersion): number | null {

@@ -6,11 +6,11 @@ test("cloud landing sends a signed-out visitor to the Google sign-in journey", a
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Edit boldly. Keep the original." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/sign-in");
+  await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute("href", "/sign-in?next=/projects");
   await expect(page.getByText("Sign in to continue", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Sign in with Google" }).click();
-  await expect(page).toHaveURL(/\/sign-in$/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/sign-in\?next=\/projects$/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "Continue with Google." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
   await expect(page.getByText("Signing in does not automatically grant product access.", { exact: false })).toBeVisible();
@@ -47,4 +47,12 @@ test("account pages remain readable and scrollable on a narrow screen", async ({
   }));
   expect(viewport.pageWidth).toBe(viewport.viewportWidth);
   expect(viewport.canScrollVertically).toBe(true);
+});
+
+
+test("sign-in failures keep the Google action available", async ({ page }) => {
+  await page.goto("/sign-in?error=callback&next=/projects");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("incomplete or expired");
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+  await expect(page.locator('input[name="next"]')).toHaveValue("/projects");
 });

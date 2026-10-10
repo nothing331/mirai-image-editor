@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { Check, Focus, ImagePlus, LoaderCircle, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Check, Focus, LoaderCircle, SlidersHorizontal, X } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -12,6 +12,7 @@ import { blocksTransformAcceptance } from "@/shared/transform-fidelity";
 import type { TransformFidelityAssessment } from "@/shared/transform-fidelity";
 import { getCurrentVersion, useEditorStore } from "../store";
 import type { BusyAction, ComparisonBase } from "./workspace-types";
+import { EmptyCanvas } from "./EmptyCanvas";
 
 const EditorCanvas = dynamic(() => import("../EditorCanvas").then((module) => module.EditorCanvas), {
   ssr: false,
@@ -43,14 +44,14 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
   const comparisonVersion = cloudMode ? state.currentVersion : compareWith === "previous" && currentIndex > 0 ? state.versions[currentIndex - 1] : state.originalVersion;
 
   return (
-    <section className="order-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_28px] bg-[#cfcdc5] p-2 pb-0 md:order-2 md:p-3 md:pb-0" aria-label="Image canvas">
-      <div className="relative min-h-0 overflow-hidden bg-[#151513] shadow-[0_1px_0_rgba(255,255,255,.35)]">
+    <section className="order-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_32px] bg-workspace p-2 pb-0 md:order-2 md:p-4 md:pb-0" aria-label="Image canvas">
+      <div className="canvas-stage relative min-h-0 overflow-hidden rounded-lg ring-1 ring-ink/5">
         {cloudMode && state.pendingAcceptance && state.currentVersion ? (
-          <div className="absolute inset-0 grid grid-rows-[auto_minmax(0,1fr)] gap-3 bg-[#151513] p-3 text-paper" data-testid="cloud-pending-comparison">
-            <p className="font-mono text-[9px] uppercase tracking-wider text-acid">Edited pixels pending cloud save</p>
+          <div className="absolute inset-0 grid grid-rows-[auto_minmax(0,1fr)] gap-3 bg-stage p-3 text-paper" data-testid="cloud-pending-comparison">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-acid">Edited pixels pending cloud save</p>
             <div className="grid min-h-0 grid-cols-2 gap-3">
-              <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-white/20"><figcaption className="p-2 font-mono text-[9px] uppercase">Current saved</figcaption><div className="relative min-h-0"><Image src={state.currentVersion.dataUrl} alt="Current saved version" fill unoptimized sizes="50vw" className="object-contain" /></div></figure>
-              <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-acid"><figcaption className="p-2 font-mono text-[9px] uppercase text-acid">Pending edit</figcaption><div className="relative min-h-0"><Image src={state.pendingAcceptance.output.dataUrl} alt="Pending edited version" fill unoptimized sizes="50vw" className="object-contain" /></div></figure>
+              <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-white/20"><figcaption className="p-2 font-mono text-[10px] uppercase">Current saved</figcaption><div className="relative min-h-0"><Image src={state.currentVersion.dataUrl} alt="Current saved version" fill unoptimized sizes="50vw" className="object-contain" /></div></figure>
+              <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] border border-acid"><figcaption className="p-2 font-mono text-[10px] uppercase text-acid">Pending edit</figcaption><div className="relative min-h-0"><Image src={state.pendingAcceptance.output.dataUrl} alt="Pending edited version" fill unoptimized sizes="50vw" className="object-contain" /></div></figure>
             </div>
           </div>
         ) : state.preview && comparisonVersion && state.currentVersion && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") ? (
@@ -75,25 +76,12 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
         ) : state.currentVersion && state.selectionMask ? (
           <EditorCanvas version={state.currentVersion} mask={state.selectionMask} color={state.color} viewResetKey={state.viewResetKey} />
         ) : (
-          <div className="absolute inset-0 grid place-items-center p-6 text-[#d4d1c8]">
-            <div className="grid w-full max-w-xl gap-6 text-center">
-              <div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-acid">Start a new original</p><h2 className="mt-2 text-2xl font-bold tracking-[-.04em] text-paper sm:text-3xl">Bring an image—or invent the mark.</h2></div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="group grid min-h-36 cursor-pointer place-items-center border border-[#77746c] p-5 hover:border-paper hover:bg-white/5">
-                  <span><ImagePlus className="mx-auto mb-3 size-5 transition-transform group-hover:rotate-90" /><strong className="block text-sm">Open an image</strong><small className="mt-1 block font-mono text-[8px] uppercase tracking-wider text-[#8e8b82]">PNG or JPEG</small></span>
-                  <input className="sr-only" type="file" accept="image/png,image/jpeg" onChange={onUpload} />
-                </label>
-                <button data-testid="open-asset-generator" type="button" className="group grid min-h-36 place-items-center border border-acid bg-acid p-5 text-ink hover:bg-paper" onClick={onGenerateAsset}>
-                  <span><Sparkles className="mx-auto mb-3 size-5 transition-transform group-hover:scale-125" /><strong className="block text-sm">Create with AI</strong><small className="mt-1 block font-mono text-[8px] uppercase tracking-wider text-muted">Logo mark · icon · image</small></span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <EmptyCanvas busy={busyAction !== null} onUpload={onUpload} onGenerateAsset={onGenerateAsset} cloudMode={cloudMode} />
         )}
         {busyAction === "open" && <ProjectLoadingOverlay />}
       </div>
 
-      <div className="flex min-w-0 items-center justify-between gap-2 px-1 font-mono text-[8px] uppercase tracking-[.1em] text-[#5f5d56]" aria-label="Canvas status">
+      <div className="flex min-w-0 items-center justify-between gap-2 px-1 font-mono text-[10px] uppercase tracking-[.06em] text-muted" aria-label="Canvas status">
         <div className="flex min-w-0 items-center gap-3">
           <span className="truncate">{state.currentVersion ? `${state.currentVersion.width} × ${state.currentVersion.height}px` : "Canvas"}</span>
           {state.currentVersion && <span className="hidden sm:inline">{Math.round(state.viewport.scale * 100)}%</span>}
@@ -101,7 +89,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {!cloudMode && state.preview && !(extendPreviewAdjustmentOpen && state.preview.type === "extend") && (
-            <label className="flex items-center gap-1.5">Compare<select aria-label="Comparison base" className="h-6 bg-transparent text-[8px] outline-none focus:ring-1 focus:ring-accent" value={compareWith} onChange={(event) => setCompareWith(event.target.value as ComparisonBase)}><option value="original">Original</option><option value="previous">Previous</option></select></label>
+            <label className="flex items-center gap-1.5">Compare<select aria-label="Comparison base" className="h-6 bg-transparent text-[10px] outline-none focus:ring-1 focus:ring-accent" value={compareWith} onChange={(event) => setCompareWith(event.target.value as ComparisonBase)}><option value="original">Original</option><option value="previous">Previous</option></select></label>
           )}
           {cloudMode ? <><span role="status" aria-live="polite" className="sm:hidden">{cloudStatusLabel}</span><span className="hidden sm:inline">Cloud history</span></>
             : <span>{state.operations.length} accepted edit{state.operations.length === 1 ? "" : "s"}</span>}
@@ -114,11 +102,11 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
 
 function ProjectLoadingOverlay() {
   return (
-    <div className="absolute inset-0 z-30 grid place-items-center bg-[#151513]/82 text-paper backdrop-blur-[3px]" role="status" aria-live="polite" data-testid="project-loading-overlay">
-      <div className="grid justify-items-center gap-3 bg-[#151513] px-8 py-6 shadow-[6px_6px_0_rgba(216,244,65,.35)] ring-1 ring-white/20">
+    <div className="absolute inset-0 z-30 grid place-items-center bg-stage/82 text-paper backdrop-blur-[3px]" role="status" aria-live="polite" data-testid="project-loading-overlay">
+      <div className="grid justify-items-center gap-3 bg-stage px-8 py-6 shadow-[6px_6px_0_rgba(216,244,65,.35)] ring-1 ring-white/20">
         <LoaderCircle className="size-7 animate-spin text-acid" />
         <strong className="text-sm">Opening project</strong>
-        <span className="font-mono text-[9px] uppercase tracking-[.14em] text-white/55">Restoring image and edit history</span>
+        <span className="font-mono text-[10px] uppercase tracking-[.14em] text-white/55">Restoring image and edit history</span>
       </div>
     </div>
   );
@@ -145,29 +133,29 @@ function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy,
     ? boundaryPolicy === "review" ? "Complete AI proposal" : "Protected-mask composite"
     : extendPreview ? "Complete AI extension" : transformPreview ? "Full-image transformation" : "Edit proposal";
   return (
-    <div className="preview-enter absolute inset-0 grid grid-rows-[auto_1fr_auto] bg-[#151513] p-2 sm:p-3" data-testid="preview-comparison">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1 font-mono text-[8px] uppercase tracking-wider text-white/65 sm:mb-3">
+    <div className="preview-enter absolute inset-0 grid grid-rows-[auto_minmax(0,1fr)_auto] bg-stage p-2 sm:p-3" data-testid="preview-comparison">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1 font-mono text-[10px] uppercase tracking-wider text-white/65 sm:mb-3">
         <span>{reviewLabel}</span>
         {candidateAnalysis && <span className={candidateAnalysis.changedOutsideSelectionPixels > 0 ? "text-[#ffb5a7]" : "text-acid"}>{candidateAnalysis.changedOutsideSelectionPixels > 0 ? `${Math.round(candidateAnalysis.changedOutsideSelectionRatio * 1000) / 10}% outside focus changed` : "Changes stayed inside focus"}</span>}
       </div>
       <div className="grid min-h-0 grid-cols-2 gap-2 sm:gap-3">
-        <figure className="grid min-h-0 grid-rows-[auto_1fr] bg-black/15 ring-1 ring-white/15">
-          <figcaption className="px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-white/65">{baseLabel}</figcaption>
+        <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-md bg-black/15 ring-1 ring-white/15">
+          <figcaption className="px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-white/65">{baseLabel}</figcaption>
           <div className="relative min-h-0 overflow-hidden" data-testid="comparison-source"><Image src={originalUrl} alt={`${baseLabel} image`} fill unoptimized sizes="50vw" className="object-contain" /></div>
         </figure>
-        <figure className="grid min-h-0 grid-rows-[auto_1fr] bg-black/15 ring-1 ring-acid">
-          <figcaption className="px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-acid">Preview</figcaption>
+        <figure className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-md bg-black/15 ring-1 ring-acid">
+          <figcaption className="px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-acid">Preview</figcaption>
           <div className="relative min-h-0 overflow-hidden" data-testid="comparison-candidate"><Image src={previewUrl} alt="Generated preview" fill unoptimized sizes="50vw" className="object-contain" /></div>
         </figure>
       </div>
       <div className="flex flex-col gap-2 pt-2 sm:pt-3">
-        {transformFidelityAssessment && transformFidelityAssessment.verdict !== "pass" && <p className={transformFidelityAssessment.verdict === "block" ? "bg-[#4a1f1a] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffb5a7]" : "bg-[#443914] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffe78a]"} role="alert" data-testid="transform-fidelity-assessment"><strong className="block uppercase">Transform fidelity {transformFidelityAssessment.verdict}</strong>{transformFidelityAssessment.explanation}</p>}
-        {scopeMismatch && <p className="bg-[#443914] px-3 py-2 font-mono text-[9px] leading-relaxed text-[#ffe78a]" role="status" data-testid="replace-scope-mismatch"><strong className="block uppercase">Changes extend beyond the selection</strong>Most detected changes are outside your selection. Review the entire image before accepting, or use protected mode for exact boundaries.</p>}
+        {transformFidelityAssessment && transformFidelityAssessment.verdict !== "pass" && <p className={transformFidelityAssessment.verdict === "block" ? "bg-[#4a1f1a] px-3 py-2 font-mono text-[10px] leading-relaxed text-[#ffb5a7]" : "bg-[#443914] px-3 py-2 font-mono text-[10px] leading-relaxed text-[#ffe78a]"} role="alert" data-testid="transform-fidelity-assessment"><strong className="block uppercase">Transform fidelity {transformFidelityAssessment.verdict}</strong>{transformFidelityAssessment.explanation}</p>}
+        {scopeMismatch && <p className="bg-[#443914] px-3 py-2 font-mono text-[10px] leading-relaxed text-[#ffe78a]" role="status" data-testid="replace-scope-mismatch"><strong className="block uppercase">Changes extend beyond the selection</strong>Most detected changes are outside your selection. Review the entire image before accepting, or use protected mode for exact boundaries.</p>}
         <div className="flex justify-end gap-2">
-          {transformPreview && <button type="button" className="flex h-9 items-center gap-2 px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustTransform}><SlidersHorizontal className="size-4" />Adjust</button>}
-          {extendPreview && <button type="button" className="flex h-9 items-center gap-2 px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustExtend}><SlidersHorizontal className="size-4" />Adjust frame</button>}
-          <button type="button" className="flex h-9 items-center gap-2 px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onDiscard}><X className="size-4" />Discard</button>
-          <button type="button" data-testid="accept-preview" className="flex h-9 items-center gap-2 bg-acid px-3 text-xs font-bold text-ink outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-acid disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/40" disabled={acceptanceBlocked} onClick={onAccept}><Check className="size-4" />Accept edit</button>
+          {transformPreview && <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustTransform}><SlidersHorizontal className="size-4" />Adjust</button>}
+          {extendPreview && <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustExtend}><SlidersHorizontal className="size-4" />Adjust frame</button>}
+          <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onDiscard}><X className="size-4" />Discard</button>
+          <button type="button" data-testid="accept-preview" className="flex h-10 items-center gap-2 rounded-md bg-acid px-4 text-xs font-bold text-ink outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-acid disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/40" disabled={acceptanceBlocked} onClick={onAccept}><Check className="size-4" />Accept edit</button>
         </div>
       </div>
     </div>
@@ -185,14 +173,14 @@ function ExtendPlanCanvas({ imageUrl, imageWidth, imageHeight, plan, processingP
           <Image src={imageUrl} alt="Source positioned inside proposed Extend frame" unoptimized width={imageWidth} height={imageHeight} className="absolute max-w-none" style={{ width: `${imageWidth / crop.width * 100}%`, height: `${imageHeight / crop.height * 100}%`, left: `${-crop.x / crop.width * 100}%`, top: `${-crop.y / crop.height * 100}%` }} />
         </div>
         <div className="pointer-events-none absolute inset-0 border border-acid/70" />
-        <span className="absolute bottom-2 right-2 bg-ink/85 px-2 py-1 font-mono text-[8px] uppercase tracking-[.1em] text-acid">{plan.outputWidth} × {plan.outputHeight}</span>
+        <span className="absolute bottom-2 right-2 bg-ink/85 px-2 py-1 font-mono text-[10px] uppercase tracking-[.1em] text-acid">{plan.outputWidth} × {plan.outputHeight}</span>
       </div>
       {processingLabel && (
-        <div className="absolute inset-0 grid place-items-center bg-[#151513]/72 text-paper backdrop-blur-[2px]" role="status" aria-live="polite" data-testid="extend-processing-overlay">
-          <div className="grid justify-items-center gap-3 border border-white/20 bg-[#151513] px-7 py-5 shadow-[6px_6px_0_rgba(216,244,65,.3)]">
+        <div className="absolute inset-0 grid place-items-center bg-stage/72 text-paper backdrop-blur-[2px]" role="status" aria-live="polite" data-testid="extend-processing-overlay">
+          <div className="grid justify-items-center gap-3 border border-white/20 bg-stage px-7 py-5 shadow-[6px_6px_0_rgba(216,244,65,.3)]">
             <LoaderCircle className="size-6 animate-spin text-acid" />
             <strong className="text-sm">{processingLabel}</strong>
-            <span className="font-mono text-[8px] uppercase tracking-[.14em] text-white/55">The planned frame stays fixed</span>
+            <span className="font-mono text-[10px] uppercase tracking-[.14em] text-white/55">The planned frame stays fixed</span>
           </div>
         </div>
       )}
