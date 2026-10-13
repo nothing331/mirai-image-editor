@@ -226,6 +226,13 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 - Show processing and unknown outcomes separately. Unknown work has a pending credit and a short support reference, with no automatic repurchase. Offer saved-preview recovery without replacing another draft; preserve normal comparison and Save/Accept controls.
 - Developer provider/scenario controls and disk diagnostics are absent in cloud mode. A cloud error must have a usable recovery path rather than a dead diagnostics button.
 
+### AI creation review
+
+- Before generation, the creation studio owns the brief, creation-type tabs, visual treatment, format, and references. Once a complete image exists, replace that configuration layout with a full-width image stage and a bottom refinement composer. Keep the image contained at its original aspect ratio; never crop it to fill the stage.
+- The focused review has no creation-type tabs, persistent settings sidebar, selected-result card, or prose reference summary. Keep Use in Mirai in the compact header. Create another image reveals the initial brief explicitly and retains the last successful preview; Return to image restores focused review without buying generation.
+- The bottom composer owns the follow-up instruction, generation action, compact numbered reference thumbnails, and add/remove controls. Show the member credit price on the action. Attachment preparation and processing preserve the image and disable competing actions. Failure preserves the image, prompt, and attachments while allowing retry.
+- Bound the composer on narrow or short screens and allow it to scroll internally, preserving space for the image. Reuse the short preview entrance and reduced-motion fallback for image changes and attachment entry.
+
 ### Review
 
 Review is a distinct dark stage owned by the canvas for generated proposals and explicitly reviewable local operations such as selection recolor. Show the comparison at the largest practical size. Accept, Discard, and feature-specific adjustment controls live with the preview. Fidelity or scope warnings must remain adjacent to those decisions. Do not route directly manipulated Text, Watermark, Crop, Resize, Rotate, or Flip drafts through this stage; they remain visible on the ordinary canvas and have a persistent Save/Discard inspector footer.
