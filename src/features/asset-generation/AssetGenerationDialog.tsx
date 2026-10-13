@@ -1,5 +1,8 @@
 "use client";
 
+import { ReferenceImagePicker } from "@/features/reference-images/ReferenceImagePicker";
+import type { ReferenceImage } from "@/shared/reference-images";
+
 import { discardCloudAiPreview } from "@/features/cloud-projects/cloud-ai-client";
 
 import Image from "next/image";
@@ -80,6 +83,8 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
 }) {
   const [choice, setChoice] = useState<CreationChoice>(initialChoice);
   const [brief, setBrief] = useState(defaultBrief);
+  const [referencesLoading, setReferencesLoading] = useState(false);
+  const [references, setReferences] = useState<ReferenceImage[]>([]);
   const [imagePrompt, setImagePrompt] = useState("");
   const [treatment, setTreatment] = useState<ImageTreatment>("auto");
   const [format, setFormat] = useState<ImageFormat>("instagram-post");
@@ -106,8 +111,8 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   }, [open, cloudSessionId]);
 
   const draftRequest = useMemo<AssetCreationRequest | object>(() => choice === "image"
-    ? { mode: "image", prompt: imagePrompt, treatment, format }
-    : { mode: "mark", brief: { ...brief, assetType: choice }, format: "square-mark" }, [brief, choice, format, imagePrompt, treatment]);
+    ? { mode: "image", prompt: imagePrompt, treatment, format, references }
+    : { mode: "mark", brief: { ...brief, assetType: choice }, format: "square-mark" }, [brief, choice, format, imagePrompt, treatment, references]);
   const validation = useMemo(() => assetCreationRequestSchema.safeParse(draftRequest), [draftRequest]);
 
   const closeDialog = useCallback(() => {
@@ -144,7 +149,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   }
 
   async function generate() {
-    if (!cloudAiAvailable || !validation.success || !capabilities) return;
+    if (referencesLoading || !cloudAiAvailable || !validation.success || !capabilities) return;
     if (!cloudSessionId && capabilities.provider === "openai") {
       if (batchesUsed >= capabilities.maxBatchesPerSession) {
         setError(`The session limit of ${capabilities.maxBatchesPerSession} paid image requests has been reached.`);
@@ -228,9 +233,10 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
             {choice === "image" ? <ImageControls prompt={imagePrompt} treatment={treatment} format={format} capabilities={capabilities} onPromptChange={setImagePrompt} onTreatmentChange={setTreatment} onFormatChange={setFormat} /> : <MarkControls brief={{ ...brief, assetType: choice }} onChange={setBrief} />}
             {choice !== "image" && <div className="flex items-center justify-between border border-line/40 bg-paper/55 px-3 py-2"><span className="font-mono text-[11px] uppercase tracking-wider">Output</span><span className="text-[12px] text-muted">Square · 1024 × 1024</span></div>}
 
+            {choice === "image" && <ReferenceImagePicker images={references} onChange={setReferences} onBusyChange={setReferencesLoading} disabled={status !== "idle"} />}
             {validationMessage && <p className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{validationMessage}</p>}
             {error && <p role="alert" className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{error}</p>}
-            <button data-testid="generate-assets" type="submit" className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-paper outline-none hover:bg-acid hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-35" disabled={!cloudAiAvailable || !validation.success || !capabilities || status !== "idle"}>
+            <button data-testid="generate-assets" type="submit" className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-paper outline-none hover:bg-acid hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-35" disabled={referencesLoading || !cloudAiAvailable || !validation.success || !capabilities || status !== "idle"}>
               {status === "generating" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
               {status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}` : `Create ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}
             </button>

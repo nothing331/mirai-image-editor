@@ -1,3 +1,4 @@
+import type { ReferenceImage } from "@/shared/reference-images";
 import type { CandidateAnalysis, EditBoundaryPolicy } from "@/shared/edit-boundary";
 import type { TransformFidelityAssessment } from "@/shared/transform-fidelity";
 import type { TransformPresetId, TransformPreservationMode } from "@/shared/transform-presets";
@@ -212,6 +213,7 @@ interface GenerativeRequestBase {
 }
 
 export interface LocalizedGenerativeRequestSnapshot extends GenerativeRequestBase {
+  references?: ReferenceImage[];
   selectionId: string;
   selectionMask: ProcessingMask;
   boundaryPolicy: EditBoundaryPolicy;

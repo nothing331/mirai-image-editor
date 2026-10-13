@@ -88,6 +88,7 @@ async function sendCloudGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
     requestId: snapshot.requestId, projectId: snapshot.projectId, inputVersionId: snapshot.inputVersion.id,
     operation: snapshot.operation, boundaryPolicy: snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy,
     prompt: snapshot.operation === "transform" ? snapshot.userPrompt : snapshot.prompt,
+    ...(snapshot.operation !== "transform" ? { references: snapshot.references ?? [] } : {}),
     ...(snapshot.operation === "transform" ? { presetId: snapshot.presetId, presetVersion: snapshot.presetVersion, preservationMode: snapshot.preservationMode }
       : { selectionMaskBase64: alphaBase64(snapshot.selectionMask.data), providerMaskBase64: alphaBase64(snapshot.providerMask.data) }),
   };
@@ -96,6 +97,7 @@ async function sendCloudGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
 
 async function sendLocalGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
   const form = new FormData();
+  if (snapshot.operation !== "transform" && snapshot.references?.length) form.set("references", JSON.stringify(snapshot.references));
   const sourcePng = pixelsToDataUrl(snapshot.inputVersion.pixels, snapshot.inputVersion.width, snapshot.inputVersion.height);
   form.set("image", new File([await (await fetch(sourcePng)).blob()], "image.png", { type: "image/png" }));
   if (snapshot.operation === "transform") {

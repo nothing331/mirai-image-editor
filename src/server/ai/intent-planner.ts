@@ -4,6 +4,7 @@ import type { EditPlan } from "@/shared/edit-plan";
 
 export interface EditIntentPlannerRequest {
   imagePng: Uint8Array;
+  referenceImages?: Uint8Array[];
   selectionMaskPng: Uint8Array;
   width: number;
   height: number;

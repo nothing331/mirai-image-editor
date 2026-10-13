@@ -87,4 +87,18 @@ describe("OpenAIImageEditProvider", () => {
     expect(removal).toContain("strict edit boundary");
     expect(buildEditInstruction("transform", "Transform the complete image as graphite.", selection, "review")).toBe("Transform the complete image as graphite.");
   });
+  it("keeps the canvas first and reference images after it with the mask on the canvas", async () => {
+    const input = await sharp({ create: { width: 4, height: 3, channels: 4, background: "blue" } }).png().toBuffer();
+    const reference = await sharp({ create: { width: 2, height: 5, channels: 4, background: "red" } }).png().toBuffer();
+    mocks.edit.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { data: [{ b64_json: input.toString("base64") }] }, request_id: "reference-edit" }) });
+    await new OpenAIImageEditProvider("test-key").edit({ imagePng: input, maskPng: input, referenceImages: [reference], width: 4, height: 3, operation: "replace", boundaryPolicy: "protected", prompt: "Use reference 1" });
+    const options = mocks.edit.mock.calls[0][0];
+    expect(options.image).toHaveLength(2);
+    expect(await sharp(options.image[0]).metadata()).toMatchObject({ width: 4, height: 3 });
+    expect(Buffer.from(options.image[1])).toEqual(reference);
+    expect(options).toHaveProperty("mask");
+    expect(options.prompt).toContain("first supplied image is the canvas");
+    expect(options.prompt).toContain("strict edit boundary");
+  });
+
 });

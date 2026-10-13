@@ -1,3 +1,5 @@
+import { prepareReferenceImages } from "@/server/ai/reference-images";
+import { referenceImageInstruction } from "@/shared/reference-images";
 import "server-only";
 import sharp from "sharp";
 import { getCloudProject } from "@/server/cloud-projects/cloud-projects";
@@ -14,13 +16,15 @@ import { validateAiDimensions } from "./editing";
 export async function generateCloudOriginal(ownerId: string, raw: unknown) {
   const input = cloudCreationSchema.parse(raw);
   const creation = input.creation;
+  const referenceImages = await prepareReferenceImages(creation.mode === "image" ? creation.references : []);
   const dimensions = creation.mode === "image" ? resolveImageFormat(creation.format) : { width: 1024, height: 1024 };
   validateAiDimensions(dimensions.width, dimensions.height);
   const colors = creation.mode === "mark" && creation.brief.colorMode === "custom" ? creation.brief.colors : [];
   const matteColor = creation.mode === "mark" ? chooseMatteColor(colors) : null;
-  const prompt = creation.mode === "mark" ? buildAssetGenerationPrompt(creation.brief, matteColor!) : buildImageGenerationPrompt(creation.prompt, creation.treatment, resolveImageFormat(creation.format));
+  const basePrompt = creation.mode === "mark" ? buildAssetGenerationPrompt(creation.brief, matteColor!) : buildImageGenerationPrompt(creation.prompt, creation.treatment, resolveImageFormat(creation.format));
+  const prompt = [basePrompt, referenceImageInstruction(referenceImages.length)].filter(Boolean).join("\n\n");
   return runAiAttempt({ ownerId, requestId: input.requestId, sessionId: input.sessionId, workflow: "creation", payload: input, stages: ["image"], real: configuredAssetGenerationProvider() === "openai" }, async (attempt) => {
-    const result = await attempt.stage("image", () => createAssetGenerator().generate({ mode: creation.mode, prompt, count: 1, ...dimensions, quality: "low", matteColor, colors }));
+    const result = await attempt.stage("image", () => createAssetGenerator().generate({ mode: creation.mode, referenceImages, prompt, count: 1, ...dimensions, quality: "low", matteColor, colors }));
     if (result.candidates.length !== 1) aiError("invalid candidate count");
     const png = result.candidates[0].png;
     const normalized = creation.mode === "mark" ? await normalizeAssetCandidate(png, matteColor!) : { png, ...(await sharp(png, { limitInputPixels: 4_194_304 }).metadata()), transparency: undefined };

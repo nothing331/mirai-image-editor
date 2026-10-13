@@ -1,3 +1,4 @@
+import { prepareReferenceImages } from "@/server/ai/reference-images";
 import "server-only";
 import sharp from "sharp";
 import { readCloudVersionBytes } from "@/server/cloud-projects/cloud-edit-history";
@@ -48,6 +49,8 @@ async function maskPng(alpha: Uint8Array, width: number, height: number) {
 
 export async function generateCloudEdit(ownerId: string, raw: unknown) {
   const input = cloudAiEditSchema.parse(raw);
+  const referenceImages = await prepareReferenceImages(input.references);
+  if (referenceImages.length && input.operation !== "replace" && input.operation !== "restyle") throw new CloudProjectError("invalid", "Reference images are supported for Replace and Restyle.");
   if (input.operation !== "remove" && !input.prompt && !input.presetId) throw new CloudProjectError("invalid", "Describe the requested change.");
   if (input.operation === "transform" && (input.boundaryPolicy !== "review" || !input.preservationMode)) throw new CloudProjectError("invalid", "Transform requires complete-image review and a preservation mode.");
   const source = await aiSourceInfo(ownerId, input.projectId, input.inputVersionId);
@@ -63,10 +66,10 @@ export async function generateCloudEdit(ownerId: string, raw: unknown) {
     const source = await aiSource(ownerId, input.projectId, input.inputVersionId);
     const selectionMaskPng = await maskPng(selection, source.width, source.height);
     const providerMaskPng = await maskPng(mask, source.width, source.height);
-    const plan = input.operation === "replace" ? (await attempt.stage("replace-plan", () => createEditIntentPlanner().plan({ imagePng: source.png, selectionMaskPng, width: source.width, height: source.height, prompt: input.prompt }))).plan : undefined;
+    const plan = input.operation === "replace" ? (await attempt.stage("replace-plan", () => createEditIntentPlanner().plan({ imagePng: source.png, referenceImages, selectionMaskPng, width: source.width, height: source.height, prompt: input.prompt }))).plan : undefined;
     const transformPlan = input.operation === "transform" ? (await attempt.stage("transform-plan", () => createTransformPlanner().plan({ imagePng: source.png, width: source.width, height: source.height }))).plan : undefined;
     const instruction = transformPlan ? buildTransformInstruction({ ...transform, plan: transformPlan }) : input.prompt;
-    const result = await attempt.stage("image", () => createImageEditProvider().edit({ imagePng: source.png, maskPng: input.operation === "transform" ? undefined : providerMaskPng, width: source.width, height: source.height, operation: input.operation, boundaryPolicy: input.boundaryPolicy, prompt: instruction, plan }));
+    const result = await attempt.stage("image", () => createImageEditProvider().edit({ imagePng: source.png, referenceImages, maskPng: input.operation === "transform" ? undefined : providerMaskPng, width: source.width, height: source.height, operation: input.operation, boundaryPolicy: input.boundaryPolicy, prompt: instruction, plan }));
     const candidate = await sharp(result.candidatePng, { limitInputPixels: MAX_PIXELS }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     if (candidate.info.width !== source.width || candidate.info.height !== source.height) throw new CloudProjectError("invalid", "The provider candidate dimensions do not match the source.");
     let candidateAnalysis;

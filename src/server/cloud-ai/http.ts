@@ -1,3 +1,4 @@
+import { ReferenceImageValidationError } from "@/server/ai/reference-images";
 import "server-only";
 import { authorizedProjectOwner, projectResponse } from "@/server/cloud-projects/http";
 import { readRuntimeEnvironment } from "@/server/config/runtime-environment";
@@ -12,7 +13,7 @@ export async function cloudAiPost(request: Request, workflow: "edit" | "extend-p
     const owner = await authorizedProjectOwner(request, true);
     if (!readRuntimeEnvironment().aiEnabled) throw new CloudProjectError("unavailable", "AI is currently unavailable. Local edits and export remain available.");
     const length = Number(request.headers.get("content-length"));
-    if (length > 13_000_000) throw new CloudProjectError("invalid", "This AI request is too large.");
+    if (length > 16_000_000) throw new CloudProjectError("invalid", "This AI request is too large.");
     // Bound the streamed body too; Content-Length alone is not an admission control.
     const reader = request.body?.getReader();
     if (!reader) throw new CloudProjectError("invalid", "AI request details are required.");
@@ -22,7 +23,7 @@ export async function cloudAiPost(request: Request, workflow: "edit" | "extend-p
       const next = await reader.read();
       if (next.done) break;
       bytes += next.value.length;
-      if (bytes > 13_000_000) { await reader.cancel(); throw new CloudProjectError("invalid", "This AI request is too large."); }
+      if (bytes > 16_000_000) { await reader.cancel(); throw new CloudProjectError("invalid", "This AI request is too large."); }
       chunks.push(next.value);
     }
     let raw: unknown;
@@ -33,5 +34,5 @@ export async function cloudAiPost(request: Request, workflow: "edit" | "extend-p
       : workflow === "extend" ? await generateCloudExtend(owner, raw)
       : await generateCloudOriginal(owner, raw);
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
-  } catch (cause) { return projectResponse(cause); }
+  } catch (cause) { return projectResponse(cause instanceof ReferenceImageValidationError ? new CloudProjectError("invalid", cause.message) : cause); }
 }

@@ -84,4 +84,22 @@ describe("asset generation route", () => {
     expect(transformResponse.status).toBe(400);
     expect(mocks.generate).not.toHaveBeenCalled();
   });
+  it("rejects corrupt references before buying a generation", async () => {
+    const response = await POST(request({ mode: "image", prompt: "Combine both references", treatment: "auto", format: "instagram-post", references: [{ name: "broken.png", dataUrl: "data:image/png;base64,YWJj" }] }));
+    expect(response.status).toBe(400);
+    expect(mocks.generate).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({ imageGenerationAttempted: false });
+  });
+
+  it("passes validated references and numbering to the creation provider", async () => {
+    const image = await completeCandidate(8, 12);
+    mocks.generate.mockResolvedValue({ providerRequestId: "reference-creation", candidates: [{ ordinal: 0, png: image }] });
+    const response = await POST(request({ mode: "image", prompt: "Use reference 1", treatment: "auto", format: "instagram-post", references: [{ name: "photo.png", dataUrl: `data:image/png;base64,${image.toString("base64")}` }] }));
+    expect(response.status).toBe(200);
+    const sent = mocks.generate.mock.calls[0][0];
+    expect(sent.referenceImages).toHaveLength(1);
+    expect(await sharp(sent.referenceImages[0]).metadata()).toMatchObject({ width: 8, height: 12 });
+    expect(sent.prompt).toContain("numbered 1 through 1");
+  });
+
 });

@@ -1,3 +1,4 @@
+import { referenceImageInstruction } from "@/shared/reference-images";
 import OpenAI, { toFile } from "openai";
 import sharp from "sharp";
 import type { ImageEditDiagnosticSink, RequestDiagnosticError } from "@/shared/request-diagnostics";
@@ -31,7 +32,8 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
       const selection = request.maskPng
         ? await describeSelection(request.maskPng, request.width, request.height)
         : { leftPercent: 0, topPercent: 0, widthPercent: 100, heightPercent: 100, touchesImageEdge: true };
-      const instruction = buildEditInstruction(request.operation, request.prompt, selection, request.boundaryPolicy, request.plan);
+      const baseInstruction = buildEditInstruction(request.operation, request.prompt, selection, request.boundaryPolicy, request.plan);
+      const instruction = [baseInstruction, request.referenceImages?.length ? `The first supplied image is the canvas to edit. The remaining images are user references. ${referenceImageInstruction(request.referenceImages.length)}` : ""].filter(Boolean).join("\n\n");
       const requestedOutputSize = request.operation === "transform" ? resolveTransformOutputSize(providerWidth, providerHeight) : null;
       await diagnostics?.event("provider-preparation", providerMask ? "Prepared resized provider image, transparency mask, and instruction." : "Prepared resized provider image and complete-image instruction without an inpainting mask.", { providerWidth, providerHeight, providerMaskSent: Boolean(providerMask), requestedOutputSize });
       await diagnostics?.artifact("provider-input.png", providerImage, "image/png");
@@ -46,7 +48,9 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
       const { data: response, request_id: providerRequestId } = await this.client.images.edit({
         model: this.model,
         n: 1,
-        image: await toFile(providerImage, "image.png", { type: "image/png" }),
+        image: request.referenceImages?.length
+          ? await Promise.all([providerImage, ...request.referenceImages].map((image, index) => toFile(image, index === 0 ? "image.png" : `reference-${index}.png`, { type: "image/png" })))
+          : await toFile(providerImage, "image.png", { type: "image/png" }),
         ...(providerMask ? { mask: await toFile(providerMask, "mask.png", { type: "image/png" }) } : {}),
         prompt: instruction,
         size: requestedOutputSize ?? "auto",

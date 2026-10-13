@@ -642,3 +642,17 @@ describe("filled selection preview and acceptance", () => {
     expect(useEditorStore.getState().selectionMask).toMatchObject({ width: 3, height: 1 });
   });
 });
+
+
+describe("reference-image request snapshots", () => {
+  it("blocks generation during preparation and clears references when a new image opens", async () => {
+    useEditorStore.getState().loadImage(original);
+    useEditorStore.getState().setReferences([{ name: "chair.png", dataUrl: "data:image/png;base64,YWJj" }]);
+    useEditorStore.getState().setReferencesLoading(true);
+    expect(await useEditorStore.getState().requestGenerativePreview()).toBe(false);
+    expect(useEditorStore.getState().error).toContain("finish preparing");
+    useEditorStore.getState().loadImage({ ...original, id: "another-original" });
+    expect(useEditorStore.getState().references).toEqual([]);
+    expect(useEditorStore.getState().referencesLoading).toBe(false);
+  });
+});
