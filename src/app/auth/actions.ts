@@ -13,8 +13,8 @@ export interface InvitationActionState {
   inviteUrl: string | null;
   expiresAt: string | null;
   error: string | null;
-  invitationId?: string | null;
-  emailStatus?: AccessEmailStatus | null;
+  invitationId: string | null;
+  emailStatus: AccessEmailStatus | null;
 }
 
 export async function startGoogleSignIn(formData: FormData): Promise<void> {

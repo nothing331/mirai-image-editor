@@ -3,21 +3,22 @@
 import { useActionState } from "react";
 import { createInvitationAction, type InvitationActionState } from "@/app/auth/actions";
 import { SubmitButton } from "./SubmitButton";
+import { AccessEmailNotice } from "./AccessEmailNotice";
 
-const initialState: InvitationActionState = { inviteUrl: null, expiresAt: null, error: null };
+const initialState: InvitationActionState = { inviteUrl: null, expiresAt: null, error: null, invitationId: null, emailStatus: null };
 
 export function InvitationForm() {
   const [state, action] = useActionState(createInvitationAction, initialState);
   return (
     <div className="border-t border-line pt-5">
-      <h2 className="text-lg font-bold tracking-[-0.03em]">Create invitation</h2>
-      <p className="mt-1 text-sm leading-5 text-muted">The link works only for the matching Google email and expires after 14 days.</p>
+      <h2 className="text-lg font-bold tracking-[-0.03em]">Invite someone</h2>
+      <p className="mt-1 text-sm leading-5 text-muted">Send an email with a link for the matching Google account. The link expires after 14 days. Inviting the same address again replaces its previous link.</p>
       <form action={action} className="mt-4 flex flex-col gap-3 sm:flex-row">
         <label className="flex flex-1 flex-col gap-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
           Google email
           <input name="email" type="email" required autoComplete="email" className="h-11 border border-line bg-paper px-3 font-sans text-sm normal-case tracking-normal text-ink outline-none focus:border-ink focus:ring-2 focus:ring-ink" />
         </label>
-        <div className="self-end"><SubmitButton idle="Create link" pending="Creating…" /></div>
+        <div className="self-end"><SubmitButton idle="Send invitation" pending="Sending…" /></div>
       </form>
       {state.error && <p role="alert" className="mt-3 border-l-2 border-accent bg-[#ffd5cc] p-3 text-sm">{state.error}</p>}
       {state.inviteUrl && (
@@ -26,6 +27,15 @@ export function InvitationForm() {
           <input readOnly aria-label="Invitation link" value={state.inviteUrl} className="mt-2 w-full border border-line bg-paper px-3 py-2 font-mono text-xs" />
           <p className="mt-2 text-xs text-muted">Expires {new Date(state.expiresAt!).toLocaleString()}.</p>
         </div>
+      )}
+      {state.emailStatus && <AccessEmailNotice status={state.emailStatus} />}
+      {state.inviteUrl && state.emailStatus !== "sent" && (
+        <form action={action} className="mt-3">
+          <input type="hidden" name="intent" value="retry-email" />
+          <input type="hidden" name="invitationId" value={state.invitationId ?? ""} />
+          <input type="hidden" name="token" value={new URL(state.inviteUrl).searchParams.get("invite") ?? ""} />
+          <SubmitButton idle="Retry invitation email" pending="Sending…" variant="secondary" />
+        </form>
       )}
     </div>
   );
