@@ -93,6 +93,9 @@ jobs:
       - name: Test account authorization
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/accounts_and_access_test.sql
 
+      - name: Test access email receipts
+        run: npx --yes supabase@2.116.0 test db --local supabase/tests/access_email_test.sql
+
       - name: Test private asset quotas and access
         run: npx --yes supabase@2.116.0 test db --local supabase/tests/private_asset_foundation_test.sql
 

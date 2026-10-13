@@ -24,6 +24,8 @@ Cloud AI routes resolve owned immutable source assets on the server, reserve acc
 
 Wave D is implemented and qualified locally with fake providers. Real AI remains off until an explicit funding budget and representative hosted memory, latency, restart and recovery measurements qualify it. See [Wave D runbook](./docs/cloud/WAVE_D_RUNBOOK.md) and the living [feature context](./FEATURE_CONTEXT.md).
 
+Owner-approved access and direct invitations optionally send transactional mail through Resend's HTTPS API. Access commits before delivery; PostgreSQL stores minimal fenced/idempotent delivery receipts, while raw invitation tokens remain once-returned values and are never persisted as email payloads. There is no email worker or automatic retry queue. Server-only sender/key configuration and owner-visible retries are described in the [access email runbook](./docs/cloud/ACCESS_EMAIL_RUNBOOK.md).
+
 ## v0.1 scope
 
 The first complete vertical slice is:
