@@ -1,3 +1,4 @@
+import type { PreviewRefinement } from "@/shared/preview-refinement";
 import type { ReferenceImage } from "@/shared/reference-images";
 import type { CandidateAnalysis, EditBoundaryPolicy } from "@/shared/edit-boundary";
 import type { TransformFidelityAssessment } from "@/shared/transform-fidelity";
@@ -158,6 +159,7 @@ interface GenerativeTransformParameters extends TransformInput {
 }
 
 interface PreviewBase {
+  referenceImages?: ReferenceImage[];
   id: string;
   inputVersionId: string;
   mask: MaskAsset;
@@ -176,7 +178,7 @@ export type EditPreview = PreviewBase & (
   | { type: "transform"; method: "local"; parameters: TransformInput & { resolvedInstruction: string } }
   | { type: "transform"; method: "generative"; parameters: GenerativeTransformParameters }
   | { type: "extend"; method: "generative"; parameters: ExtendParameters }
-  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
+  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { referenceNames?: string[]; canRefine?: boolean; refinementPrompts?: string[]; prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
 );
 
 interface OperationBase {
@@ -199,7 +201,7 @@ export type EditOperation = OperationBase & (
   | { type: "transform"; method: "local"; parameters: TransformInput & { resolvedInstruction: string } }
   | { type: "transform"; method: "generative"; parameters: GenerativeTransformParameters }
   | { type: "extend"; method: "generative"; parameters: ExtendParameters }
-  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
+  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { referenceNames?: string[]; canRefine?: boolean; refinementPrompts?: string[]; prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
 );
 
 interface GenerativeRequestBase {
@@ -214,6 +216,7 @@ interface GenerativeRequestBase {
 
 export interface LocalizedGenerativeRequestSnapshot extends GenerativeRequestBase {
   references?: ReferenceImage[];
+  refinement?: PreviewRefinement;
   selectionId: string;
   selectionMask: ProcessingMask;
   boundaryPolicy: EditBoundaryPolicy;

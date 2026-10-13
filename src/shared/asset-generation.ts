@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { previewRefinementSchema, type PreviewRefinementMetadata } from "./preview-refinement";
 import { referenceImagesSchema } from "./reference-images";
 
 export const assetTypes = ["icon", "logo-mark"] as const;
@@ -36,6 +37,7 @@ export const assetCreationRequestSchema = z.discriminatedUnion("mode", [
     mode: z.literal("image"),
     prompt: z.string().trim().min(3, "Describe the image you want to create.").max(2000, "Keep the prompt under 2,000 characters."),
     references: referenceImagesSchema.optional(),
+    refinement: previewRefinementSchema.optional(),
     treatment: z.enum(imageTreatments),
     format: z.enum(imageFormats),
   }).strict(),
@@ -55,6 +57,7 @@ export interface ImageFormatCapability {
 export interface AssetGenerationCapabilities {
   provider: AssetGenerationProviderName;
   model: string;
+  conversationModel?: string;
   quality: "low";
   candidateCount: 1;
   markSize: { width: 1024; height: 1024 };
@@ -75,7 +78,7 @@ export interface AssetGenerationCandidate {
   };
 }
 
-export interface AssetGenerationResponse {
+export interface AssetGenerationResponse extends PreviewRefinementMetadata {
   projectId: string;
   requestId: string;
   creation?: AssetCreationRequest;
@@ -106,6 +109,8 @@ export interface GeneratedProjectOrigin {
   height: number;
   colorMode?: AssetGenerationBrief["colorMode"];
   colors: string[];
+  referenceNames?: string[];
+  refinementPrompts?: string[];
   provider: AssetGenerationProviderName;
   model: string;
   quality: "low";
