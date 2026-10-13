@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (!parsed.success) throw new RequestValidationError(parsed.error.issues[0]?.message ?? "Check the creation request.");
     if (parsed.data.mode === "image" && parsed.data.refinement) {
       const parent = await readLocalPreview(projectId, parsed.data.refinement.parentRequestId);
-      const refined = await refineCreationPreview(parent, parsed.data.refinement, { projectId, requestId }, diagnostics ?? undefined, input => { imageGenerationAttempted = true; return createAssetGenerator().generate(input, diagnostics ?? undefined); });
+      const refined = await refineCreationPreview(parent, parsed.data.refinement, { projectId, requestId }, diagnostics ?? undefined, input => { imageGenerationAttempted = true; return createAssetGenerator().generate(input, diagnostics ?? undefined); }, parsed.data.references);
       await saveLocalPreview(projectId, requestId, refined.conversation, refined.response);
       await diagnostics?.succeed(refined.response.providerRequestId);
       return diagnosticResponse(refined.response, 200, requestId);
