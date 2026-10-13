@@ -92,6 +92,7 @@ interface EditorState {
   applyLocalDraft: () => boolean;
   createPreview: () => boolean;
   requestGenerativePreview: () => Promise<boolean>;
+  requestSelectionPreview: () => Promise<boolean>;
   requestTransformPreview: (input: TransformInput) => Promise<boolean>;
   planExtend: (input: ExtendInput) => Promise<boolean>;
   generateExtend: () => Promise<boolean>;
@@ -608,6 +609,44 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
     return executeGenerativeRequest(snapshot);
   },
+  requestSelectionPreview: async () => {
+    const state = get();
+    if (state.generativeState.status === "processing") return false;
+    if (state.referencesLoading) { set({ error: "Wait for reference images to finish preparing." }); return false; }
+    const input = state.versions.find((version) => version.id === state.currentVersionId);
+    if (state.localDraft) {
+      set({ error: "Apply or discard the current local edit before generating an edit." });
+      return false;
+    }
+    if (state.paintSession) {
+      set({ error: "Apply or discard the pending paint before generating an edit." });
+      return false;
+    }
+    if (!input || !state.selectionMask || !state.selectionId || !maskHasSelection(state.selectionMask)) {
+      set({ error: "Select an area before previewing the change." });
+      return false;
+    }
+    if (state.prompt.trim().length === 0) {
+      set({ error: "Describe the requested change." });
+      return false;
+    }
+    const snapshot: GenerativeRequestSnapshot = {
+      projectId: state.projectId!,
+      cloud: state.acceptanceMode === "cloud",
+      requestId: crypto.randomUUID(),
+      retryOfRequestId: null,
+      inputVersion: { ...input, pixels: new Uint8ClampedArray(input.pixels) },
+      selectionId: state.selectionId,
+      selectionMask: { width: state.selectionMask.width, height: state.selectionMask.height, data: new Uint8ClampedArray(state.selectionMask.data) },
+      providerMask: createGenerativeProviderMask(state.selectionMask, "replace"),
+      boundaryPolicy: state.boundaryPolicy,
+      operation: "auto",
+      references: state.references.map((image) => ({ ...image })),
+      prompt: state.prompt.trim(),
+      scenario: state.fakeScenario,
+    };
+    return executeGenerativeRequest(snapshot);
+  },
   requestTransformPreview: async (transformInput) => {
     const state = get();
     const input = state.versions.find((version) => version.id === state.currentVersionId);
@@ -662,15 +701,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const preview = state.preview;
     const input = getCurrentVersion(state);
     if (state.generativeState.status === "processing" || state.pendingAcceptance || !input || !preview
-      || preview.method !== "generative" || (preview.type !== "replace" && preview.type !== "restyle")
+      || (preview.type !== "recolor" && preview.type !== "remove" && preview.type !== "replace" && preview.type !== "restyle")
       || !preview.parameters.canRefine || preview.inputVersionId !== input.id || !prompt.trim() || prompt.trim().length > 2000) return false;
     const snapshot: GenerativeRequestSnapshot = {
       projectId: state.projectId!, cloud: state.acceptanceMode === "cloud", requestId: crypto.randomUUID(), retryOfRequestId: null,
-      inputVersion: { ...input, pixels: new Uint8ClampedArray(input.pixels) }, operation: preview.type,
+      inputVersion: { ...input, pixels: new Uint8ClampedArray(input.pixels) }, operation: preview.parameters.automatic ? "auto" : preview.type === "recolor" ? "auto" : preview.type,
       selectionId: state.selectionId ?? crypto.randomUUID(), selectionMask: state.selectionMask ?? preview.mask,
-      providerMask: { ...preview.mask, data: new Uint8ClampedArray(preview.mask.data) }, boundaryPolicy: preview.parameters.boundaryPolicy,
-      prompt: preview.parameters.prompt, references: state.references.map(image => ({ ...image })), scenario: state.fakeScenario,
-      refinement: { parentRequestId: preview.parameters.diagnosticRequestId, prompt: prompt.trim() },
+      providerMask: { ...preview.mask, data: new Uint8ClampedArray(preview.mask.data) }, boundaryPolicy: preview.type === "recolor" ? "protected" : preview.parameters.boundaryPolicy,
+      prompt: preview.parameters.prompt ?? "", references: state.references.map(image => ({ ...image })), scenario: state.fakeScenario,
+      refinement: { parentRequestId: preview.parameters.diagnosticRequestId!, prompt: prompt.trim() },
     };
     return executeGenerativeRequest(snapshot);
   },
@@ -837,7 +876,8 @@ async function executeGenerativeRequest(snapshot: GenerativeRequestSnapshot): Pr
     const candidate = await requestGenerativeCandidate(snapshot);
     const state = useEditorStore.getState();
     if (state.generativeState.snapshot?.requestId !== snapshot.requestId) return false;
-    const mask: MaskAsset = { id: crypto.randomUUID(), width: snapshot.providerMask.width, height: snapshot.providerMask.height, data: new Uint8ClampedArray(snapshot.providerMask.data) };
+    const effectiveMask = candidate.mask ?? snapshot.providerMask;
+    const mask: MaskAsset = { id: crypto.randomUUID(), width: effectiveMask.width, height: effectiveMask.height, data: new Uint8ClampedArray(effectiveMask.data) };
     let preview: EditPreview;
     if (snapshot.operation === "transform") {
       preview = {
@@ -855,11 +895,19 @@ async function executeGenerativeRequest(snapshot: GenerativeRequestSnapshot): Pr
         },
         mask, pixels: candidate.pixels, dataUrl: candidate.dataUrl, width: snapshot.inputVersion.width, height: snapshot.inputVersion.height,
       };
+    } else if (candidate.operation === "recolor" && candidate.method === "local") {
+      preview = { id: crypto.randomUUID(), inputVersionId: snapshot.inputVersion.id, type: "recolor", method: "local", referenceImages: candidate.references ?? snapshot.references,
+        parameters: { color: candidate.color!, prompt: snapshot.prompt, automatic: true, diagnosticRequestId: candidate.diagnosticRequestId,
+          canRefine: candidate.canRefine, refinementPrompts: candidate.refinementPrompts, referenceNames: candidate.referenceNames },
+        mask, pixels: candidate.pixels, dataUrl: candidate.dataUrl, width: snapshot.inputVersion.width, height: snapshot.inputVersion.height };
     } else {
+      const operation = candidate.operation ?? snapshot.operation;
+      if (operation === "auto" || operation === "recolor") throw new Error("The preview has no validated editing method.");
       preview = {
         referenceImages: candidate.references ?? snapshot.references,
-        id: crypto.randomUUID(), inputVersionId: snapshot.inputVersion.id, type: snapshot.operation, method: "generative",
+        id: crypto.randomUUID(), inputVersionId: snapshot.inputVersion.id, type: operation, method: "generative",
         parameters: {
+          automatic: candidate.automatic,
           referenceNames: candidate.referenceNames,
           canRefine: candidate.canRefine,
           refinementPrompts: candidate.refinementPrompts,

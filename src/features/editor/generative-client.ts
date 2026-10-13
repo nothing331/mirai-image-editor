@@ -7,6 +7,11 @@ import type { TransformFidelityAssessment } from "@/shared/transform-fidelity";
 import type { GenerativeRequestSnapshot, ProcessingMask } from "./types";
 
 interface GenerativeCandidate {
+  operation?: import("@/shared/selection-intent").SelectionOperation;
+  method?: "local" | "generative";
+  automatic?: boolean;
+  color?: string | null;
+  mask?: ProcessingMask;
   pixels: Uint8ClampedArray;
   dataUrl: string;
   providerRequestId: string;
@@ -36,7 +41,12 @@ export class GenerativeRequestError extends Error {
 export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnapshot): Promise<GenerativeCandidate> {
   const response = snapshot.cloud ? await sendCloudGenerativeRequest(snapshot) : await sendLocalGenerativeRequest(snapshot);
   const payload = await response.json() as {
-    references?: ReferenceImage[];
+    operation?: import("@/shared/selection-intent").SelectionOperation;
+    method?: "local" | "generative";
+    automatic?: boolean;
+    color?: string | null;
+    maskAlphaBase64?: string;
+      references?: ReferenceImage[];
     referenceNames?: string[];
     canRefine?: boolean;
     refinementPrompts?: string[];
@@ -65,11 +75,17 @@ export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnap
   if (candidate.width !== snapshot.inputVersion.width || candidate.height !== snapshot.inputVersion.height) {
     throw new GenerativeRequestError("The provider candidate dimensions do not match the input image.", false, responseRequestId);
   }
-  const boundaryPolicy = snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy;
-  const pixels = prepareGenerativePreviewPixels(snapshot.inputVersion.pixels, candidate.pixels, snapshot.providerMask, boundaryPolicy);
+  if (snapshot.operation === "auto" && (!payload.operation || !payload.method || !payload.maskAlphaBase64 || payload.operation === "recolor" && !payload.color)) {
+    throw new GenerativeRequestError("The preview has no validated editing method.", false, responseRequestId);
+  }
+  const mask = payload.maskAlphaBase64 ? { width: candidate.width, height: candidate.height, data: Uint8ClampedArray.from(atob(payload.maskAlphaBase64), character => character.charCodeAt(0)) } : snapshot.providerMask;
+  if (mask.data.length !== candidate.width * candidate.height) throw new GenerativeRequestError("The preview mask does not match the input image.", false, responseRequestId);
+  const boundaryPolicy = snapshot.operation === "transform" ? "review" : payload.method === "local" ? "protected" : snapshot.boundaryPolicy;
+  const pixels = payload.method === "local" ? candidate.pixels : prepareGenerativePreviewPixels(snapshot.inputVersion.pixels, candidate.pixels, mask, boundaryPolicy);
   const dataUrl = pixelsToDataUrl(pixels, candidate.width, candidate.height);
   if (!snapshot.cloud) await uploadFinalPreview(snapshot.projectId, responseRequestId, dataUrl, boundaryPolicy);
   return {
+    operation: payload.operation, method: payload.method, automatic: payload.automatic, color: payload.color, mask,
     pixels,
     dataUrl,
     providerRequestId: payload.providerRequestId,
