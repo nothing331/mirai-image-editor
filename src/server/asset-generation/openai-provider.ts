@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import type { ImageEditDiagnosticSink, RequestDiagnosticError } from "@/shared/request-diagnostics";
 import type { AssetGenerator, AssetGeneratorRequest, AssetGeneratorResult } from "./contracts";
 import { AssetGenerationProviderError } from "./contracts";
@@ -17,14 +17,17 @@ export class OpenAIAssetGenerator implements AssetGenerator {
       await diagnostics?.beginProviderCall("asset-generator", "openai", this.model);
       await diagnostics?.event("provider-call", "Calling the OpenAI image generation provider.", { candidateCount: request.count });
       const size = `${request.width}x${request.height}` as OpenAI.Images.ImageGenerateParams["size"];
-      const call = this.client.images.generate({
+      const options = {
         model: this.model,
         prompt: request.prompt,
-        n: 1,
+        n: 1 as const,
         size,
         quality: request.quality,
-        output_format: "png",
-      });
+        output_format: "png" as const,
+      };
+      const call = request.referenceImages?.length
+        ? this.client.images.edit({ ...options, image: await Promise.all(request.referenceImages.map((image, index) => toFile(image, `reference-${index + 1}.png`, { type: "image/png" }))) })
+        : this.client.images.generate(options);
       const { data: response, request_id: providerRequestId } = await call.withResponse();
       providerCompleted = true;
       const candidates = (response.data ?? []).flatMap((candidate, ordinal) => candidate.b64_json

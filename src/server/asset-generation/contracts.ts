@@ -3,6 +3,7 @@ import type { ImageEditDiagnosticSink } from "@/shared/request-diagnostics";
 export interface AssetGeneratorRequest {
   mode: "mark" | "image";
   prompt: string;
+  referenceImages?: Uint8Array[];
   count: 1;
   width: number;
   height: number;

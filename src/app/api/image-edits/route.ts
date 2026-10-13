@@ -1,3 +1,4 @@
+import { prepareReferenceImages, ReferenceImageValidationError } from "@/server/ai/reference-images";
 import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -38,6 +39,10 @@ export async function POST(request: Request) {
 
   try {
     const form = await request.formData();
+    let references: unknown;
+    try { references = JSON.parse(String(form.get("references") ?? "[]")); }
+    catch { throw new RequestValidationError("Check the reference images."); }
+    const referenceImages = await prepareReferenceImages(references);
     const image = form.get("image");
     const selectionMask = form.get("selectionMask");
     const providerFocusMask = form.get("mask");
@@ -55,6 +60,7 @@ export async function POST(request: Request) {
     if (boundaryPolicy !== "review" && boundaryPolicy !== "protected") {
       throw new RequestValidationError("Choose review or protected AI edit behavior.");
     }
+    if (referenceImages.length && operation !== "replace" && operation !== "restyle") throw new RequestValidationError("Reference images are supported for Replace and Restyle.");
     if (operation === "transform" && boundaryPolicy !== "review") throw new RequestValidationError("Transform requires complete-image review behavior.");
     if (typeof prompt !== "string") throw new RequestValidationError("Prompt is required.");
 
@@ -131,6 +137,7 @@ export async function POST(request: Request) {
 
     const plan = operation === "replace" ? (await createEditIntentPlanner().plan({
       imagePng,
+      referenceImages,
       selectionMaskPng,
       width: imageMetadata.width,
       height: imageMetadata.height,
@@ -155,9 +162,11 @@ export async function POST(request: Request) {
       });
     }
 
+    for (const [index, reference] of referenceImages.entries()) await diagnostics?.artifact(`reference-${index + 1}.png` as import("@/shared/request-diagnostics").DiagnosticArtifactName, reference, "image/png");
     imageGenerationAttempted = true;
     const result = await createImageEditProvider().edit({
       imagePng,
+      referenceImages,
       maskPng: operation === "transform" ? undefined : maskPng,
       width: imageMetadata.width,
       height: imageMetadata.height,
@@ -229,7 +238,7 @@ export async function POST(request: Request) {
     }, 200, requestId);
   } catch (error) {
     const retryable = error instanceof ImageProviderError && error.retryable;
-    const status = error instanceof RequestValidationError ? 400 : retryable ? 503 : 500;
+    const status = (error instanceof RequestValidationError || error instanceof ReferenceImageValidationError) ? 400 : retryable ? 503 : 500;
     if (imageGenerationAttempted && error instanceof ImageProviderError && error.diagnostics?.providerRequestId) {
       await diagnostics?.metadata({ providerRequestId: error.diagnostics.providerRequestId });
     }

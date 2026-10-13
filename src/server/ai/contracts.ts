@@ -8,6 +8,7 @@ export type ProviderScenario = "success" | "slow" | "retryable-error" | "fatal-e
 /** Provider-neutral request. Localized edits require a same-size mask; Transform intentionally omits it. */
 export interface ImageEditRequest {
   imagePng: Uint8Array;
+  referenceImages?: Uint8Array[];
   maskPng?: Uint8Array;
   width: number;
   height: number;

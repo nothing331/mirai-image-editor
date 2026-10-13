@@ -1,3 +1,4 @@
+import { referenceImageInstruction } from "@/shared/reference-images";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { editPlanSchema } from "@/shared/edit-plan";
@@ -14,7 +15,7 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
   }
 
   async plan(request: EditIntentPlannerRequest, diagnostics?: ImageEditDiagnosticSink): Promise<EditIntentPlannerResult> {
-    const instruction = buildPlannerInstruction();
+    const instruction = [buildPlannerInstruction(), request.referenceImages?.length ? `After the two highlighted canvas views, additional images are user references, not scene targets. ${referenceImageInstruction(request.referenceImages.length)}` : ""].filter(Boolean).join("\n\n");
     const images = await preparePlannerImages(request);
     await diagnostics?.event("planner-preparation", "Prepared highlighted full-scene and selection-detail planner inputs.", {
       sourceWidth: request.width,
@@ -40,6 +41,10 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
             { type: "input_text", text: `${instruction}\n\nUser edit instruction: ${request.prompt}` },
             { type: "input_image", image_url: pngDataUrl(images.contextPng), detail: "low" },
             { type: "input_image", image_url: pngDataUrl(images.detailPng), detail: "high" },
+            ...(request.referenceImages ?? []).flatMap((image, index) => [
+              { type: "input_text" as const, text: `Reference ${index + 1}` },
+              { type: "input_image" as const, image_url: pngDataUrl(image), detail: "high" as const },
+            ]),
           ],
         }],
         text: { format: zodTextFormat(editPlanSchema, "edit_plan") },

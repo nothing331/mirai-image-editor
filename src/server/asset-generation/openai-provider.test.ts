@@ -1,18 +1,19 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ generate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ generate: vi.fn(), edit: vi.fn() }));
 vi.mock("openai", () => ({
+  toFile: vi.fn(async (image) => image),
   default: class MockOpenAI {
     static APIError = class APIError extends Error {};
-    images = { generate: mocks.generate };
+    images = { generate: mocks.generate, edit: mocks.edit };
   },
 }));
 
 import { OpenAIAssetGenerator } from "./openai-provider";
 
 describe("OpenAIAssetGenerator", () => {
-  beforeEach(() => { mocks.generate.mockReset(); });
+  beforeEach(() => { mocks.generate.mockReset(); mocks.edit.mockReset(); });
 
   it("requests one low-quality image and decodes its PNG", async () => {
     const first = Buffer.from("candidate-one");
@@ -45,4 +46,12 @@ describe("OpenAIAssetGenerator", () => {
     expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ model: "gpt-image-2", prompt: "a graphite mountain", n: 1, size: "1024x1280", quality: "low", output_format: "png" }));
     expect(Buffer.from(result.candidates[0].png)).toEqual(output);
   });
+  it("uses the edit endpoint to create from ordered reference images", async () => {
+    mocks.edit.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { data: [{ b64_json: Buffer.from("output").toString("base64") }] }, request_id: "references-1" }) });
+    const references = [new Uint8Array([1]), new Uint8Array([2])];
+    await new OpenAIAssetGenerator("test-key").generate({ mode: "image", prompt: "Combine reference 1 and 2", referenceImages: references, count: 1, width: 1024, height: 1024, quality: "low", matteColor: null, colors: [] });
+    expect(mocks.generate).not.toHaveBeenCalled();
+    expect(mocks.edit).toHaveBeenCalledWith(expect.objectContaining({ image: references, n: 1, size: "1024x1024" }));
+  });
+
 });

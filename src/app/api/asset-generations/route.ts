@@ -1,3 +1,5 @@
+import { prepareReferenceImages, ReferenceImageValidationError } from "@/server/ai/reference-images";
+import { referenceImageInstruction } from "@/shared/reference-images";
 import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -28,7 +30,9 @@ export async function POST(request: Request) {
   try {
     const parsed = assetCreationRequestSchema.safeParse(await request.json());
     if (!parsed.success) throw new RequestValidationError(parsed.error.issues[0]?.message ?? "Check the creation request.");
+    const referenceImages = await prepareReferenceImages(parsed.data.mode === "image" ? parsed.data.references : []);
     const creation = await prepareCreation(parsed.data);
+    creation.prompt = [creation.prompt, referenceImageInstruction(referenceImages.length)].filter(Boolean).join("\n\n");
     await diagnostics?.requestMetadata({
       operation: "asset-generation",
       boundaryPolicy: "review",
@@ -52,9 +56,11 @@ export async function POST(request: Request) {
     });
     await diagnostics?.event("validated", `Validated the ${parsed.data.mode} request and built its provider instruction.`, { creationMode: parsed.data.mode, outputFormat: parsed.data.format });
 
+    for (const [index, reference] of referenceImages.entries()) await diagnostics?.artifact(`reference-${index + 1}.png` as import("@/shared/request-diagnostics").DiagnosticArtifactName, reference, "image/png");
     imageGenerationAttempted = true;
     const result = await createAssetGenerator().generate({
       mode: parsed.data.mode,
+      referenceImages,
       prompt: creation.prompt,
       count: capabilities.candidateCount,
       width: creation.width,
@@ -104,7 +110,7 @@ export async function POST(request: Request) {
     return diagnosticResponse(response, 200, requestId);
   } catch (error) {
     const retryable = error instanceof AssetGenerationProviderError && error.retryable;
-    const status = error instanceof RequestValidationError ? 400 : retryable ? 503 : 500;
+    const status = (error instanceof RequestValidationError || error instanceof ReferenceImageValidationError) ? 400 : retryable ? 503 : 500;
     if (error instanceof AssetGenerationProviderError && error.diagnostics?.providerRequestId) {
       await diagnostics?.metadata({ providerRequestId: error.diagnostics.providerRequestId });
     }
