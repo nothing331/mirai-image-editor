@@ -7,7 +7,7 @@ import { discardCloudAiPreview } from "@/features/cloud-projects/cloud-ai-client
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, Box, Brush, Camera, Check, ImageIcon, LoaderCircle, PenLine, Shapes, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Box, Brush, Camera, Check, ImageIcon, LoaderCircle, PenLine, Shapes, Sparkles, X } from "lucide-react";
 import {
   assetCreationRequestSchema,
   assetStyles,
@@ -94,6 +94,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   const [batchesUsed, setBatchesUsed] = useState(0);
   const [status, setStatus] = useState<"idle" | "generating" | "refining" | "using">("idle");
   const [refinementPrompt, setRefinementPrompt] = useState("");
+  const [showCreationBrief, setShowCreationBrief] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -126,6 +127,8 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
     setCandidate(null);
     setProjectId(crypto.randomUUID());
     setError(null);
+    setRefinementPrompt("");
+    setShowCreationBrief(false);
     if (capabilities?.provider === "fake") setBatchesUsed(0);
     onClose();
   }, [capabilities?.provider, onClose]);
@@ -158,7 +161,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   async function generate(refinePrompt?: string) {
     if (referencesLoading || !cloudAiAvailable || !capabilities || status !== "idle") return;
     const submitted: AssetCreationRequest | null = refinePrompt && candidate?.request.mode === "image" && candidate.response.canRefine
-      ? { ...candidate.request, refinement: { parentRequestId: candidate.response.requestId, prompt: refinePrompt.trim() } }
+      ? { ...candidate.request, references, refinement: { parentRequestId: candidate.response.requestId, prompt: refinePrompt.trim() } }
       : !refinePrompt && validation.success ? validation.data : null;
     if (!submitted || refinePrompt && (!refinePrompt.trim() || refinePrompt.length > 2000)) return;
     if (!cloudSessionId && capabilities.provider === "openai") {
@@ -181,7 +184,8 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
       const next = response.candidates[0];
       if (!next) throw new Error("The image provider returned no result.");
       if (cloudSessionId && candidate) void discardCloudAiPreview(candidate.response.requestId).catch(() => {});
-      setCandidate({ ...next, response, request: submitted.mode === "image" ? { ...submitted, refinement: undefined } : submitted });
+      setCandidate({ ...next, response, request: response.creation ?? (submitted.mode === "image" ? { ...submitted, refinement: undefined } : submitted) });
+      setShowCreationBrief(false);
       if (refinePrompt) setRefinementPrompt("");
       if (capabilities.provider === "fake") setBatchesUsed((current) => current + 1);
     } catch (cause) {
@@ -222,20 +226,47 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   const validationMessage = !validation.success && (choice === "image" ? imagePrompt.length > 0 : brief.description.length > 0)
     ? validation.error.issues[0]?.message
     : null;
+  const imageReview = candidate?.request.mode === "image" && !showCreationBrief;
+  const useCandidateButton = <button data-testid="use-generated-asset" type="button" className="flex h-10 shrink-0 items-center gap-2 rounded-md bg-acid px-3 text-xs font-bold outline-none transition-colors hover:bg-ink hover:text-paper focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-35" disabled={!candidate || referencesLoading || status !== "idle"} onClick={() => void openSelected()}>{status === "using" ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}Use in Mirai</button>;
 
   return (
     <div className="fixed inset-0 z-50 grid bg-black/65 p-2 backdrop-blur-[3px] sm:p-5" role="dialog" aria-modal="true" aria-labelledby="asset-generator-title">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close AI creator" onClick={status === "idle" ? closeDialog : undefined} />
-      <section className="editor-dialog asset-dialog-enter relative rounded-xl m-auto grid h-full max-h-[900px] min-h-0 w-full max-w-[1180px] grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-clip border border-line bg-paper shadow-2xl">
+      <section className={cn("editor-dialog asset-dialog-enter relative m-auto grid h-full max-h-[900px] min-h-0 w-full overflow-clip rounded-xl border border-line bg-paper shadow-2xl", imageReview ? "max-w-[1400px] grid-rows-[auto_minmax(0,1fr)_auto]" : "max-w-[1180px] grid-rows-[auto_auto_minmax(0,1fr)_auto]")}>
         <header className="flex items-start justify-between gap-4 border-b border-line bg-paper px-4 py-3 text-ink sm:px-6 sm:py-4">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[.2em] text-muted">Mirai / New original</p>
-            <h2 id="asset-generator-title" className="mt-1 text-xl font-bold tracking-[-.04em] sm:text-2xl">Create with AI</h2>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">Create a logo mark, icon, or complete image. One low-quality result per request.</p>
+          <div className="flex min-w-0 items-center gap-3">
+            {imageReview && <button type="button" aria-label="Create another image" title="Create another image" disabled={referencesLoading || status !== "idle"} className="grid size-9 shrink-0 place-items-center rounded-md text-muted outline-none transition-colors hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-30" onClick={() => setShowCreationBrief(true)}><ArrowLeft className="size-4" /></button>}
+            <div>
+            <p className={cn("font-mono text-[11px] uppercase tracking-[.2em] text-muted", imageReview && "hidden sm:block")}>Mirai / New original</p>
+            <h2 id="asset-generator-title" className={cn("font-bold tracking-[-.04em]", imageReview ? "text-base sm:mt-1 sm:text-xl" : "mt-1 text-xl sm:text-2xl")}>Create with AI</h2>
+            {!imageReview && <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">Create a logo mark, icon, or complete image. One low-quality result per request.</p>}
+            </div>
           </div>
-          <button type="button" aria-label="Close" className="grid size-9 place-items-center text-muted hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-30" disabled={status !== "idle"} onClick={closeDialog}><X className="size-4" /></button>
+          <div className="flex shrink-0 items-center gap-2">
+            {candidate?.request.mode === "image" && showCreationBrief && <button type="button" disabled={referencesLoading || status !== "idle"} className="workspace-quiet-action px-2 text-xs" onClick={() => setShowCreationBrief(false)}>Return to image</button>}
+            {imageReview && useCandidateButton}
+            <button type="button" aria-label="Close" className="grid size-9 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-30" disabled={referencesLoading || status !== "idle"} onClick={closeDialog}><X className="size-4" /></button>
+          </div>
         </header>
 
+        {imageReview && candidate ? <>
+          <div data-testid="creation-review-stage" className="relative min-h-0 bg-workspace p-3 sm:p-5" aria-busy={status === "refining"}>
+            <div key={candidate.id} data-testid="asset-candidate-1" className="preview-enter relative h-full w-full">
+              <Image src={candidateDataUrl(candidate.candidateBase64)} alt="Generated image" fill sizes="(max-width: 1400px) 100vw, 1400px" unoptimized className="object-contain" />
+            </div>
+            {status === "refining" && <p role="status" className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-md border border-line bg-paper px-3 py-2 text-xs font-semibold"><LoaderCircle className="size-4 animate-spin" />Refining image…</p>}
+          </div>
+          <footer data-testid="creation-review-composer" className="max-h-[45dvh] overflow-y-auto border-t border-line bg-paper px-4 py-3 sm:px-6 sm:py-4">
+            {candidate.response.canRefine && <form aria-label="Refine image" className="mx-auto grid max-w-4xl gap-3" onSubmit={event => { event.preventDefault(); void generate(refinementPrompt); }}>
+              <ReferenceImagePicker compact label="Refinement references" images={references} onChange={setReferences} onBusyChange={setReferencesLoading} disabled={status !== "idle"} />
+              <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="grid gap-1 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" rows={2} value={refinementPrompt} maxLength={2000} disabled={referencesLoading || status !== "idle"} placeholder="Describe what to change. You can use reference 1…" className="workspace-field min-h-16 resize-none py-2 font-normal" onChange={event => setRefinementPrompt(event.target.value)} /></label>
+                <button type="submit" data-testid="refine-created-image" disabled={referencesLoading || status !== "idle" || !capabilities || !cloudAiAvailable || !refinementPrompt.trim()} className="workspace-action h-11 px-3 text-xs">{status === "refining" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{status === "refining" ? "Refining…" : `Generate refinement${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}</button>
+              </div>
+            </form>}
+            {error && <p role="alert" className="mx-auto mt-3 max-w-4xl rounded-md border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{error}</p>}
+          </footer>
+        </> : <>
         <div className="grid grid-cols-3 border-b border-line bg-paper" role="tablist" aria-label="Creation type">
           {choiceOptions.map(({ value, label, icon: Icon }) => <button key={value} type="button" role="tab" aria-selected={choice === value} className={cn("flex h-12 items-center justify-center gap-2 border-r border-line font-mono text-[11px] uppercase tracking-wider outline-none last:border-r-0 hover:bg-white hover:text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/30 sm:h-14", choice === value ? "bg-acid text-ink hover:bg-acid" : "bg-paper text-muted")} onClick={() => selectChoice(value)}><Icon className="size-4" /><span>{label}</span></button>)}
         </div>
@@ -260,14 +291,9 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
               <div><p className="font-mono text-[11px] uppercase tracking-[.15em] text-muted">Result</p><strong className="text-sm">{candidate ? `One temporary ${candidateLabel}` : `Ready to create a ${choiceLabel}`}</strong></div>
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted">Low / Draft</span>
             </div>
-            {candidate?.request.mode === "image" && candidate.response.canRefine && <form aria-label="Refine image" className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto] border-b border-line bg-paper p-3" onSubmit={event => { event.preventDefault(); void generate(refinementPrompt); }}>
-              <p className="text-[11px] leading-relaxed text-muted sm:col-span-2">{candidate.request.references?.length ? `This preview’s references: ${candidate.request.references.map((image, index) => `${index + 1}: ${image.name}`).join(" · ")}. ` : ""}Changes to the creation brief or references apply when you create another image.</p>
-              <label className="grid gap-1 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" value={refinementPrompt} maxLength={2000} disabled={status !== "idle"} placeholder="Make the background darker…" className="workspace-field min-h-16 resize-y p-2 text-xs font-normal" onChange={event => setRefinementPrompt(event.target.value)} /></label>
-              <button type="submit" data-testid="refine-created-image" disabled={status !== "idle" || !cloudAiAvailable || !refinementPrompt.trim()} className="workspace-action h-10 px-3 text-xs">{status === "refining" ? "Refining…" : `Generate refinement${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}</button>
-            </form>}
             {!candidate ? <EmptyResult choice={choice} generating={status === "generating"} /> : (
               <div className="grid place-items-center p-4 sm:p-6">
-                <div data-testid="asset-candidate-1" style={{ maxWidth: `min(100%, max(180px, calc((100dvh - ${candidate.request.mode === "image" && candidate.response.canRefine ? 610 : 410}px) * ${candidate.width / candidate.height})), 42rem)` }} className="grid max-h-full w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] border border-accent bg-paper shadow-[7px_7px_0_#ef4b32]">
+                <div data-testid="asset-candidate-1" style={{ maxWidth: `min(100%, max(180px, calc((100dvh - 410px) * ${candidate.width / candidate.height})), 42rem)` }} className="grid max-h-full w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] border border-accent bg-paper shadow-[7px_7px_0_#ef4b32]">
                   <span className="flex h-9 items-center justify-between border-b border-ink px-3 font-mono text-[9px] uppercase tracking-wider"><span>Generated result</span><span className="flex items-center gap-1 text-accent"><Check className="size-3" />Selected</span></span>
                   <span className="relative mx-auto w-full bg-[linear-gradient(45deg,#ddd_25%,transparent_25%),linear-gradient(-45deg,#ddd_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#ddd_75%),linear-gradient(-45deg,transparent_75%,#ddd_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px]" style={{ aspectRatio: `${candidate.width} / ${candidate.height}` }}><Image src={candidateDataUrl(candidate.candidateBase64)} alt={`Generated ${candidateLabel}`} fill unoptimized className={cn("object-contain", candidate.request.mode === "mark" && "p-5")} /></span>
                   <span className="flex h-9 items-center justify-between border-t border-line px-3 text-[12px]"><span>{candidate.width} × {candidate.height}</span><span className={candidate.transparency && candidate.transparency.status !== "clean" ? "text-[#9a4d00]" : "text-[#2c641d]"}>{candidate.transparency ? candidate.transparency.status === "clean" ? "Transparent PNG" : "Cleanup advised" : "Complete PNG"}</span></span>
@@ -279,8 +305,9 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-ink bg-paper px-4 py-3 sm:px-6">
           <p className="max-w-xl text-[10px] leading-relaxed text-muted">Using this result makes it the immutable original of a new project. {cloudSessionId ? cloudUnlimited ? "Closing keeps it recoverable for 24 hours." : "Closing keeps it recoverable for 24 hours; its credit remains spent." : "Closing this window discards the temporary result."}</p>
-          <button data-testid="use-generated-asset" type="button" className="flex h-10 items-center gap-2 bg-acid px-4 text-xs font-bold outline-none hover:bg-ink hover:text-paper focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-35" disabled={!candidate || status !== "idle"} onClick={() => void openSelected()}>{status === "using" ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}Use in Mirai</button>
+          {useCandidateButton}
         </footer>
+        </>}
       </section>
     </div>
   );

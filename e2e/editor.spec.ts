@@ -101,10 +101,20 @@ test("AI creator applies a treatment and destination format to one complete imag
   await dialog.getByTestId("generate-assets").click();
   const generated = dialog.getByTestId("asset-candidate-1");
   await expect(generated).toBeVisible();
-  await expect(generated.getByText("720 × 1280")).toBeVisible();
-  await expect(generated.getByText("Complete PNG")).toBeVisible();
+  await expect(generated.getByRole("img")).toHaveAttribute("alt", "Generated image");
+  await expect(dialog.getByRole("tablist")).toHaveCount(0);
+  await expect(dialog.getByTestId("asset-description")).toHaveCount(0);
   await expect(dialog.getByTestId("asset-candidate-2")).toHaveCount(0);
   await expect(dialog.getByTestId("transform-source-input")).toHaveCount(0);
+
+  const previewBeforeBrief = await generated.getByRole("img").getAttribute("src");
+  await dialog.getByRole("button", { name: "Create another image", exact: true }).click();
+  await expect(dialog.getByRole("tablist")).toBeVisible();
+  await expect(dialog.getByTestId("asset-description")).toHaveValue(imageConcept);
+  await dialog.getByRole("button", { name: /Photograph/ }).click();
+  await dialog.getByRole("button", { name: "Return to image" }).click();
+  await expect(generated.getByRole("img")).toHaveAttribute("src", previewBeforeBrief!);
+  await expect(dialog.getByRole("tablist")).toHaveCount(0);
 
   await page.route("**/api/asset-generations", async (route) => {
     if (route.request().method() === "POST") {
@@ -113,9 +123,11 @@ test("AI creator applies a treatment and destination format to one complete imag
     }
     await route.continue();
   });
-  await dialog.getByTestId("generate-assets").click();
+  await dialog.getByLabel("Refinement instruction").fill("Make the sunlight warmer");
+  await dialog.getByTestId("refine-created-image").click();
   await expect(dialog.getByRole("alert")).toContainText("Temporary provider failure. You can try again.");
   await expect(generated).toBeVisible();
+  await expect(dialog.getByLabel("Refinement instruction")).toHaveValue("Make the sunlight warmer");
   await page.unroute("**/api/asset-generations");
 
   await dialog.getByTestId("use-generated-asset").click();
@@ -125,6 +137,40 @@ test("AI creator applies a treatment and destination format to one complete imag
   const savedProject = await page.evaluate(async (projectId) => fetch(`/api/projects/${projectId}`).then((response) => response.json()), savedProjectId);
   expect(savedProject.origin).toMatchObject({ creationMode: "image", treatment: "sketch", format: "story-reel", width: 720, height: 1280 });
   expect(savedProject.operations).toHaveLength(0);
+});
+
+test("focused creation review keeps a wide image and three references usable on a short phone", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 568 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.getByTestId("open-asset-generator").click();
+  const dialog = page.getByRole("dialog", { name: "Create with AI" });
+  await dialog.getByRole("tab", { name: "Create Image" }).click();
+  await dialog.getByRole("button", { name: /YouTube Thumbnail/ }).click();
+  await dialog.getByTestId("asset-description").fill("A widescreen mountain lake at sunrise");
+  const buffer = Buffer.from(await page.evaluate(() => {
+    const canvas = document.createElement("canvas"); canvas.width = 16; canvas.height = 12;
+    canvas.getContext("2d")!.fillRect(0, 0, 16, 12);
+    return canvas.toDataURL("image/png").split(",")[1];
+  }), "base64");
+  await dialog.getByLabel("Add reference images").setInputFiles([1, 2, 3].map(index => ({ name: `reference-${index}.png`, mimeType: "image/png", buffer })));
+  await expect(dialog.getByAltText("Reference 3: reference-3.png")).toBeVisible();
+  await dialog.getByTestId("generate-assets").click();
+  const preview = dialog.getByTestId("asset-candidate-1");
+  await expect(preview).toBeVisible();
+  await expect(dialog.getByRole("tablist")).toHaveCount(0);
+  await expect(dialog.getByLabel("Add reference images")).toBeDisabled();
+  await dialog.getByLabel("Refinement instruction").fill("Make the scene darker");
+  await dialog.getByLabel("Refinement instruction").focus();
+  await expect(dialog.getByLabel("Refinement instruction")).toBeFocused();
+  await expect(dialog.getByTestId("refine-created-image")).toBeInViewport();
+  await expect(dialog.getByTestId("use-generated-asset")).toBeInViewport();
+  const actionBounds = await dialog.getByTestId("refine-created-image").boundingBox();
+  expect(actionBounds!.y + actionBounds!.height).toBeLessThanOrEqual(568);
+  expect((await preview.boundingBox())!.height).toBeGreaterThan(140);
+  expect(await preview.getByRole("img").evaluate(image => getComputedStyle(image).objectFit)).toBe("contain");
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.screenshot({ path: "/tmp/mirai-creation-review-short-phone.png", animations: "disabled" });
 });
 
 async function uploadTestImage(page: Page, width = 20, height = 20) {
@@ -639,26 +685,54 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
     await dialog.getByTestId("generate-assets").click();
     expect((await creationRequest).postDataJSON().references).toHaveLength(1);
     await expect(dialog.getByTestId("asset-candidate-1")).toBeVisible();
+    await expect(dialog.getByRole("tablist")).toHaveCount(0);
+    await expect(dialog.getByTestId("asset-description")).toHaveCount(0);
+    await expect(dialog.getByText(/This preview’s references/)).toHaveCount(0);
+    await expect(dialog.getByText("Visual treatment", { exact: true })).toHaveCount(0);
+    await expect(dialog.getByText("Intended format", { exact: true })).toHaveCount(0);
     await dialog.getByLabel("Add reference images").setInputFiles({ name: "next-image.png", mimeType: "image/png", buffer });
     await expect(dialog.getByAltText("Reference 2: next-image.png")).toBeVisible();
     const originalPreview = await dialog.getByTestId("asset-candidate-1").getByRole("img").getAttribute("src");
+    let releaseRefinement!: () => void;
+    const refinementGate = new Promise<void>(resolve => { releaseRefinement = resolve; });
+    await page.route("**/api/asset-generations", async route => {
+      if (route.request().method() === "POST") await refinementGate;
+      await route.continue();
+    });
     await dialog.getByLabel("Refinement instruction").fill("Make the sky darker");
     const refinementRequest = page.waitForRequest(request => request.url().endsWith("/api/asset-generations") && request.method() === "POST");
+    const refinementResponse = page.waitForResponse(response => response.url().endsWith("/api/asset-generations") && response.request().method() === "POST");
     await dialog.getByTestId("refine-created-image").click();
     const refinementPayload = (await refinementRequest).postDataJSON();
     expect(refinementPayload.refinement.prompt).toBe("Make the sky darker");
-    expect(refinementPayload.references).toHaveLength(1);
+    expect(refinementPayload.references).toHaveLength(2);
+    expect(refinementPayload.references[1].name).toBe("next-image.png");
     await expect(dialog.getByTestId("refine-created-image")).toBeDisabled();
+    await expect(dialog.getByRole("status")).toHaveText("Refining image…");
+    await expect(dialog.getByLabel("Refinement instruction")).toBeDisabled();
+    await expect(dialog.getByLabel("Add reference images")).toBeDisabled();
+    await expect(dialog.getByTestId("use-generated-asset")).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Create another image", exact: true })).toBeDisabled();
+    await expect(dialog.getByTestId("asset-candidate-1").getByRole("img")).toHaveAttribute("src", originalPreview!);
+    releaseRefinement();
+    expect((await (await refinementResponse).json()).creation.references.map((reference: { name: string }) => reference.name)).toEqual(["fabric.png", "next-image.png"]);
+    await page.unroute("**/api/asset-generations");
     await expect.poll(() => dialog.getByTestId("asset-candidate-1").getByRole("img").getAttribute("src")).not.toBe(originalPreview);
+    const previewBounds = await dialog.getByTestId("asset-candidate-1").boundingBox();
+    const footerBounds = await dialog.getByTestId("creation-review-composer").boundingBox();
+    expect(previewBounds!.y + previewBounds!.height).toBeLessThanOrEqual(footerBounds!.y);
+    expect(previewBounds!.height).toBeGreaterThan(200);
+    await expect(dialog.getByTestId("refine-created-image")).toBeInViewport();
+    await expect(dialog.getByTestId("use-generated-asset")).toBeInViewport();
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     if (viewport.width > 1024) {
-      const previewBounds = await dialog.getByTestId("asset-candidate-1").boundingBox();
-      const footerBounds = await dialog.locator("footer").boundingBox();
-      expect(previewBounds!.y + previewBounds!.height).toBeLessThanOrEqual(footerBounds!.y);
+      expect(previewBounds!.width).toBeGreaterThan(1000);
       const titleBounds = await dialog.getByRole("heading", { name: "Create with AI", exact: true }).boundingBox();
       expect(titleBounds!.y).toBeGreaterThanOrEqual((await dialog.locator("section.editor-dialog").boundingBox())!.y);
     }
-    await page.screenshot({ path: `/tmp/mirai-creation-refinement-${viewport.width}.png` });
+    await page.screenshot({ path: `/tmp/mirai-creation-refinement-${viewport.width}.png`, animations: "disabled" });
     await dialog.getByTestId("use-generated-asset").click();
+    await expect(dialog).toHaveCount(0);
     await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
     await page.getByTestId("open-lasso-edit").click();
 
