@@ -23,7 +23,7 @@ P02 makes deployment configuration explicit and repeatable. It does not turn the
 `render.yaml` is the canonical service skeleton:
 
 - Node 24.19.0 on the Free 0.1 CPU / 512 MB plan in Singapore;
-- `npm ci && npm run build` followed by `npm run start:cloud`;
+- `npm ci && npm run cloud:config:check && npm run build` followed by `npm run start:cloud`;
 - `/api/health/live` as the platform health check;
 - a 60-second shutdown window;
 - the P01 limits: 2,048 maximum edge, 4,194,304 pixels, and one heavy request at a time;

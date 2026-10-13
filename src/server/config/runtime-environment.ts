@@ -37,10 +37,28 @@ export class RuntimeEnvironmentError extends Error {
   readonly issues: string[];
 
   constructor(issues: string[]) {
-    super(`Unsafe Mirai runtime configuration:\n- ${issues.join("\n- ")}`);
+    const guidance = runtimeConfigurationGuidance(issues);
+    super(`Unsafe Mirai runtime configuration:\n- ${issues.join("\n- ")}${guidance ? `\n\n${guidance}` : ""}`);
     this.name = "RuntimeEnvironmentError";
     this.issues = issues;
   }
+}
+
+function runtimeConfigurationGuidance(issues: readonly string[]): string {
+  const hints: string[] = [];
+  if (issues.some(issue => issue.includes("must be true or false"))) {
+    hints.push("Render values must be the literal true or false, without quotes or an ENV_NAME= prefix.");
+  }
+  if (issues.some(issue => issue.includes("while cloud AI is disabled"))) {
+    hints.push("Cloud AI is disabled. For an invitation-only release, use IMAGE_EDIT_PROVIDER=fake and ASSET_GENERATION_PROVIDER=fake and remove OPENAI_API_KEY. For a qualified real-AI release, MIRAI_AI_ENABLED=true is also required; changing provider names alone does not enable AI.");
+  }
+  if (issues.some(issue => issue.startsWith("MIRAI_AI_HOST_QUALIFIED"))) {
+    hints.push("Hosted OpenAI activation requires recorded timeout/recovery qualification. Keep real AI off until qualification passes; MIRAI_AI_HOST_QUALIFIED=true records that result and must not be used to bypass it.");
+  }
+  if (issues.some(issue => issue.startsWith("MIRAI_AI_IMAGE_STAGE_MICROUSD") || issue.startsWith("MIRAI_AI_TEXT_STAGE_MICROUSD"))) {
+    hints.push("Set reviewed image and text stage ceilings as positive integer micro-USD, not decimal dollars (1 USD = 1000000 micro-USD). User credits do not fund the separate database AI budget.");
+  }
+  return hints.length ? `Configuration guidance:\n- ${hints.join("\n- ")}\nSee docs/cloud/RENDER_OPENAI_RUNBOOK.md.` : "";
 }
 
 export function readRuntimeEnvironment(
