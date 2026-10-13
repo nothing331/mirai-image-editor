@@ -51,6 +51,8 @@ The plan assumes approximately 1–2 hours per day. Complete and verify one mile
 | 21. Prompt reference images | Complete | Numbered uploads for Create Image and Replace/Restyle, validated provider/planner input and local/cloud UI |
 | 22. Conversational preview refinement | Complete; hosted real-provider qualification remains part of deployment gates | Responses continuity, current visual targets, final-only acceptance, owned recovery and combined stage budgets |
 
+| 23. Prompt-driven lasso editing | Complete; real classifier quality remains a deployment check | Selection plus prompt/references, automatic processor choice, deterministic recoloring, owned cloud recovery and final-only acceptance |
+
 Update this table whenever a milestone begins or completes.
 
 ## Milestone 1: Application shell
