@@ -139,7 +139,7 @@ For application rollback, select the previous recorded Render release. Do not re
 
 - No cloud projects or image uploads exist until P04–P07.
 - The five-image row is an eligibility grant; durable consumption and global spending admission arrive in P14.
-- Invitations are owner-copied links; no email service is configured.
+- Invitations retain an owner-copyable link. Optional approval/invitation email now uses Resend with owner-visible retries; follow the separate [access email runbook](./ACCESS_EMAIL_RUNBOOK.md) for its additive migration and sender configuration.
 - Account data export and deletion arrive in P12–P13.
 - Account-specific browser draft cleanup and stronger account-switch recovery arrive in P09.
 - Real AI credentials remain absent and all cloud providers remain fake.

@@ -7,11 +7,14 @@ import { createServerSupabaseClient } from "@/server/supabase/server-client";
 import { claimInvitation, createInvitation, decideAccess, requestAccess, revokeAccess } from "@/server/auth/access-service";
 import { requireAccount } from "@/server/auth/account";
 import { safeReturnPath } from "@/server/auth/return-path";
+import { sendAccessEmail, type AccessEmailStatus, type AccessEmailTarget } from "@/server/auth/access-email";
 
 export interface InvitationActionState {
   inviteUrl: string | null;
   expiresAt: string | null;
   error: string | null;
+  invitationId: string | null;
+  emailStatus: AccessEmailStatus | null;
 }
 
 export async function startGoogleSignIn(formData: FormData): Promise<void> {
@@ -51,7 +54,15 @@ export async function claimInvitationAction(formData: FormData): Promise<void> {
 
 export async function approveAccessAction(requestId: string): Promise<void> {
   await decideAccess(requestId, "approve");
+  const emailStatus = await attemptAccessEmail({ kind: "approval", requestId });
   revalidatePath("/admin/access");
+  redirect(`/admin/access?email=${emailStatus}`);
+}
+
+export async function retryApprovalEmailAction(requestId: string): Promise<void> {
+  const emailStatus = await attemptAccessEmail({ kind: "approval", requestId });
+  revalidatePath("/admin/access");
+  redirect(`/admin/access?email=${emailStatus}`);
 }
 
 export async function rejectAccessAction(requestId: string): Promise<void> {
@@ -71,13 +82,23 @@ export async function createInvitationAction(
   try {
     const environment = readRuntimeEnvironment();
     if (!environment.canonicalUrl) throw new Error("Missing canonical URL.");
+    if (valueOf(formData, "intent") === "retry-email") {
+      const invitationId = valueOf(formData, "invitationId") ?? "";
+      const token = valueOf(formData, "token") ?? "";
+      const emailStatus = await attemptAccessEmail({ kind: "invitation", invitationId, token });
+      const link = new URL("/access", environment.canonicalUrl);
+      link.searchParams.set("invite", token);
+      revalidatePath("/admin/access");
+      return { ..._previous, invitationId, inviteUrl: link.toString(), emailStatus, error: null };
+    }
     const invitation = await createInvitation(valueOf(formData, "email") ?? "");
     const inviteUrl = new URL("/access", environment.canonicalUrl);
     inviteUrl.searchParams.set("invite", invitation.token);
+    const emailStatus = await attemptAccessEmail({ kind: "invitation", invitationId: invitation.invitationId, token: invitation.token });
     revalidatePath("/admin/access");
-    return { inviteUrl: inviteUrl.toString(), expiresAt: invitation.expiresAt, error: null };
+    return { inviteUrl: inviteUrl.toString(), expiresAt: invitation.expiresAt, invitationId: invitation.invitationId, emailStatus, error: null };
   } catch {
-    return { inviteUrl: null, expiresAt: null, error: "Invitation could not be created. Check the address and try again." };
+    return { ..._previous, error: "Invitation could not be saved or sent. Check the address and try again." };
   }
 }
 
@@ -96,6 +117,11 @@ export async function signOutAction(): Promise<void> {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut({ scope: "local" });
   redirect("/sign-in?signedOut=1");
+}
+
+async function attemptAccessEmail(target: AccessEmailTarget): Promise<AccessEmailStatus> {
+  try { return await sendAccessEmail(target); }
+  catch { return "failed"; }
 }
 
 function valueOf(formData: FormData, name: string): string | null {

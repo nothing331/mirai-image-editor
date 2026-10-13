@@ -97,6 +97,8 @@ Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and
 
 ## Troubleshooting
 
+For automatic owner approval and invitation mail, follow the [access email setup and recovery runbook](./docs/cloud/ACCESS_EMAIL_RUNBOOK.md). Delivery is disabled by default and requires its migration, a verified Resend sender, `MIRAI_EMAIL_ENABLED=true`, `MIRAI_EMAIL_FROM`, and server-only `RESEND_API_KEY`.
+
 - **Unsupported Node.js version:** Run `nvm install` and `nvm use`, then confirm `node --version` reports `v24.19.0`.
 - **`npm ci` reports a lockfile mismatch:** Confirm `npm --version` reports `11.17.0`. Regenerate the lockfile only when intentionally updating dependencies.
 - **OpenAI key error:** Keep `IMAGE_EDIT_PROVIDER` and `ASSET_GENERATION_PROVIDER` set to `fake`, or configure a server-side key when intentionally testing OpenAI.

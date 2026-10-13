@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { approveAccessAction, rejectAccessAction, revokeAccessAction, signOutAction } from "@/app/auth/actions";
+import { approveAccessAction, rejectAccessAction, revokeAccessAction, signOutAction, retryApprovalEmailAction } from "@/app/auth/actions";
+import { AccessEmailNotice } from "@/features/account/AccessEmailNotice";
 import { AuthShell } from "@/features/account/AuthShell";
 import { InvitationForm } from "@/features/account/InvitationForm";
 import { SubmitButton } from "@/features/account/SubmitButton";
@@ -8,7 +9,7 @@ import { resolveCurrentAccount } from "@/server/auth/account";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccessManagementPage() {
+export default async function AccessManagementPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
   const account = await resolveCurrentAccount();
   if (!account) redirect("/sign-in?next=/admin/access");
   if (account.profile.status !== "active" || account.profile.account_role !== "owner") notFound();
@@ -16,6 +17,7 @@ export default async function AccessManagementPage() {
   const profiles = new Map(overview.profiles.map((profile) => [profile.id, profile]));
   const pending = overview.requests.filter((request) => request.status === "pending");
   const activeMembers = overview.profiles.filter((profile) => profile.status === "active" && profile.role === "member");
+  const parameters = await searchParams;
   return (
     <AuthShell
       eyebrow="OWNER CONTROL"
@@ -24,6 +26,7 @@ export default async function AccessManagementPage() {
       secondary={<form action={signOutAction}><button className="workspace-quiet-action">Sign out</button></form>}
     >
       <div className="w-full max-w-xl space-y-7 py-4">
+        {parameters.email && <AccessEmailNotice status={parameters.email} />}
         <section>
           <div className="flex items-baseline justify-between gap-4"><h2 className="text-lg font-bold tracking-[-0.03em]">Pending requests</h2><span className="font-mono text-[10px] text-muted">{pending.length}</span></div>
           <div className="mt-3 divide-y divide-line border-y border-line">
@@ -44,11 +47,16 @@ export default async function AccessManagementPage() {
         <InvitationForm />
         <section className="border-t border-line pt-5">
           <div className="flex items-baseline justify-between gap-4"><h2 className="text-lg font-bold tracking-[-0.03em]">Active members</h2><span className="font-mono text-[10px] text-muted">{activeMembers.length}</span></div>
+          <p className="mt-1 text-sm text-muted">You can retry an approval email here. Emails already sent won’t be duplicated.</p>
           <div className="mt-3 divide-y divide-line border-y border-line">
             {activeMembers.length === 0 && <p className="py-4 text-sm text-muted">No approved members yet.</p>}
             {activeMembers.map((profile) => <article key={profile.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
               <div><p className="font-bold">{profile.displayName}</p><p className="mt-1 break-all text-xs text-muted">{profile.email}</p></div>
-              <form action={revokeAccessAction.bind(null, profile.id)}><SubmitButton idle="Revoke" pending="Revoking…" variant="danger" /></form>
+              <div className="flex flex-wrap gap-2">
+                {overview.requests.filter(request => request.requesterId === profile.id && request.status === "approved").map(request =>
+                  <form key={request.id} action={retryApprovalEmailAction.bind(null, request.id)}><SubmitButton idle="Send approval email" pending="Sending…" variant="secondary" /></form>)}
+                <form action={revokeAccessAction.bind(null, profile.id)}><SubmitButton idle="Revoke" pending="Revoking…" variant="danger" /></form>
+              </div>
             </article>)}
           </div>
         </section>
