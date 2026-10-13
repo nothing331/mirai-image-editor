@@ -31,7 +31,7 @@ describe("prompt-driven selection", () => {
     expect(result.response.canRefine).toBe(true);
   });
 
-  it.each([["Remove this chair", "remove"], ["Add a lamp", "replace"], ["Give it a wooden material", "restyle"], ["Make it blue and add stripes", "replace"]])("routes %s through one image call", async (prompt, operation) => {
+  it.each([["Make it black", "restyle"], ["Make it darker blue", "restyle"], ["Remove this chair", "remove"], ["Add a lamp", "replace"], ["Give it a wooden material", "restyle"], ["Make it blue and add stripes", "replace"]])("routes %s through one image call", async (prompt, operation) => {
     const generate = vi.fn(request => new FakeImageEditProvider().edit(request));
     const result = await generateSelectionEdit(await fixture(prompt), undefined, { plan, generate });
     expect(result.response.operation).toBe(operation);

@@ -58,6 +58,6 @@ function jsonBytes(value: unknown): Uint8Array {
 function fakeSelectionIntent(prompt: string, references: boolean, plan: EditPlan): SelectionIntent {
   const named: Record<string, string> = { red: "#ff0000", blue: "#0000ff", green: "#008000", black: "#000000", white: "#ffffff", yellow: "#ffff00" };
   const color = prompt.match(/#[0-9a-f]{6}\b/i)?.[0] ?? named[prompt.match(/\b(red|blue|green|black|white|yellow)\b/i)?.[0].toLowerCase() ?? ""];
-  const operation = /\b(remove|erase|delete)\b/i.test(prompt) ? "remove" : /\b(replace|add|insert|put)\b/i.test(prompt) ? "replace" : color && !references && !/\b(material|pattern|wood|quilt|texture|only|stripe)\b/i.test(prompt) ? "recolor" : "restyle";
+  const operation = /\b(remove|erase|delete)\b/i.test(prompt) ? "remove" : /\b(replace|add|insert|put)\b/i.test(prompt) ? "replace" : color && !references && color.toLowerCase() !== "#000000" && color.toLowerCase() !== "#ffffff" && !/\b(material|pattern|wood|quilt|texture|only|stripe|dark|darker|light|lighter)\b/i.test(prompt) ? "recolor" : "restyle";
   return selectionIntentSchema.parse({ operation, color: operation === "recolor" ? color : null, plan });
 }
