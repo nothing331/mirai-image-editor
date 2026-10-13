@@ -1,3 +1,4 @@
+import type { ReferenceImage } from "@/shared/reference-images";
 import { create } from "zustand";
 import { GenerativeRequestError, requestGenerativeCandidate } from "./generative-client";
 import { pixelsToDataUrl } from "./image-data";
@@ -34,6 +35,8 @@ interface EditorState {
   localDraft: LocalEditDraft | null;
   localDraftDirty: boolean;
   editType: EditType;
+  references: ReferenceImage[];
+  referencesLoading: boolean;
   prompt: string;
   fakeScenario: FakeScenario;
   boundaryPolicy: EditBoundaryPolicy;
@@ -70,6 +73,8 @@ interface EditorState {
   setColor: (color: string) => void;
   setError: (error: string | null) => void;
   setEditType: (editType: EditType) => void;
+  setReferencesLoading: (loading: boolean) => void;
+  setReferences: (references: ReferenceImage[]) => void;
   setPrompt: (prompt: string) => void;
   setFakeScenario: (scenario: FakeScenario) => void;
   setBoundaryPolicy: (policy: EditBoundaryPolicy) => void;
@@ -109,6 +114,8 @@ const initialControls = {
   maskSoftness: 0.2,
   color: "#ef4b32",
   editType: "recolor" as EditType,
+  references: [],
+  referencesLoading: false,
   prompt: "",
   fakeScenario: "success" as FakeScenario,
   boundaryPolicy: "review" as EditBoundaryPolicy,
@@ -219,6 +226,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   ...initialControls,
   loadImage: (version, options) => set((state) => ({
     acceptanceMode: "local",
+    references: [], referencesLoading: false,
     pendingAcceptance: null,
     projectId: options?.projectId ?? crypto.randomUUID(),
     projectName: options?.projectName ?? "Untitled edit",
@@ -247,6 +255,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   })),
   loadCloudProject: (project) => set((state) => ({
     acceptanceMode: "cloud",
+    references: [], referencesLoading: false,
     pendingAcceptance: null,
     projectId: project.id,
     projectName: project.name,
@@ -343,6 +352,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setColor: (color) => set({ color, preview: null }),
   setError: (error) => set({ error }),
   setEditType: (editType) => set({ editType, preview: null, generativeState: idleGenerativeState, error: null }),
+  setReferencesLoading: (referencesLoading) => set({ referencesLoading }),
+  setReferences: (references) => set({ references: references.map((image) => ({ ...image })), preview: null, generativeState: idleGenerativeState }),
   setPrompt: (prompt) => set({ prompt, preview: null, generativeState: idleGenerativeState }),
   setFakeScenario: (fakeScenario) => set({ fakeScenario }),
   setBoundaryPolicy: (boundaryPolicy) => set({ boundaryPolicy, preview: null, generativeState: idleGenerativeState }),
@@ -559,6 +570,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   requestGenerativePreview: async () => {
     const state = get();
+    if (state.referencesLoading) { set({ error: "Wait for reference images to finish preparing." }); return false; }
     const input = state.versions.find((version) => version.id === state.currentVersionId);
     if (state.localDraft) {
       set({ error: "Apply or discard the current local edit before generating an edit." });
@@ -587,6 +599,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       providerMask: createGenerativeProviderMask(state.selectionMask, state.editType),
       boundaryPolicy: state.boundaryPolicy,
       operation: state.editType,
+      references: state.editType === "replace" || state.editType === "restyle" ? state.references.map((image) => ({ ...image })) : [],
       prompt: state.prompt.trim(),
       scenario: state.fakeScenario,
     };

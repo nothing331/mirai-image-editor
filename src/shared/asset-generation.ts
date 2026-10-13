@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceImagesSchema } from "./reference-images";
 
 export const assetTypes = ["icon", "logo-mark"] as const;
 export const assetStyles = ["minimal-geometric", "monoline", "flat", "bold", "playful"] as const;
@@ -34,6 +35,7 @@ export const assetCreationRequestSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("image"),
     prompt: z.string().trim().min(3, "Describe the image you want to create.").max(2000, "Keep the prompt under 2,000 characters."),
+    references: referenceImagesSchema.optional(),
     treatment: z.enum(imageTreatments),
     format: z.enum(imageFormats),
   }).strict(),
