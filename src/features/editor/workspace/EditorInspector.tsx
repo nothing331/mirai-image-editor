@@ -1,5 +1,6 @@
 "use client";
 
+import { ReferenceImagePicker } from "@/features/reference-images/ReferenceImagePicker";
 import { Activity, Brush, ChevronDown, Palette, Shield, Sparkles, WandSparkles } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -65,6 +66,10 @@ export function EditorInspector({
     maskSoftness: editor.maskSoftness,
     editType: editor.editType,
     prompt: editor.prompt,
+    references: editor.references,
+    referencesLoading: editor.referencesLoading,
+    setReferencesLoading: editor.setReferencesLoading,
+    setReferences: editor.setReferences,
     color: editor.color,
     fakeScenario: editor.fakeScenario,
     boundaryPolicy: editor.boundaryPolicy,
@@ -111,6 +116,7 @@ export function EditorInspector({
       <div className="inspector-enter grid h-full content-between gap-5 p-4">
         <div className="grid gap-3">
           <InspectorHeading eyebrow="Review" title="Compare the result" />
+          {state.references.length > 0 && (state.editType === "replace" || state.editType === "restyle") && <ReferenceImagePicker images={state.references} onChange={state.setReferences} disabled />}
           <p className="text-xs leading-relaxed text-muted">Accept the proposal to add one immutable version, or discard it without changing history.</p>
         </div>
         <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Review controls are on the canvas</span>
@@ -207,6 +213,8 @@ export function EditorInspector({
           )}
         </section>
 
+        {(state.editType === "replace" || state.editType === "restyle") && <ReferenceImagePicker images={state.references} onChange={state.setReferences} onBusyChange={state.setReferencesLoading} disabled={processing} />}
+
         {state.paintSession && (
           <div className="grid gap-2 border-l-2 border-acid bg-[#edf5c4] p-3 text-[12px] leading-relaxed text-ink">
             <span>Paint is still pending. Apply or discard it before running a selection edit.</span>
@@ -299,7 +307,7 @@ export function EditorInspector({
         {state.editType === "recolor" ? (
           <button type="button" data-testid="apply-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-45" disabled={Boolean(state.paintSession)} onClick={onGenerate}><Sparkles className="size-4" />Preview color</button>
         ) : (
-          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-45" disabled={aiUnavailable || processing || Boolean(state.paintSession)} onClick={onGenerate}>
+          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-45" disabled={state.referencesLoading || aiUnavailable || processing || Boolean(state.paintSession)} onClick={onGenerate}>
             {processing ? <><Sparkles className="size-4 animate-pulse" />Processing…</> : <><WandSparkles className="size-4" />{cloudCredits ? "Generate preview · 1 credit" : "Generate preview"}</>}
           </button>
         )}

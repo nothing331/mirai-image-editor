@@ -610,3 +610,44 @@ test("compact workspace preserves edit configuration when the inspector collapse
   await expect(page.getByRole("radio", { name: "Replace" })).toBeChecked();
   await expect.poll(() => page.evaluate(() => ({ vertical: document.documentElement.scrollHeight === document.documentElement.clientHeight, horizontal: document.documentElement.scrollWidth === document.documentElement.clientWidth }))).toEqual({ vertical: true, horizontal: true });
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 }]) {
+  test(`reference images stay separate from the canvas at ${viewport.width}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    const buffer = Buffer.from(await page.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = 16; canvas.height = 12;
+      const context = canvas.getContext("2d")!; context.fillStyle = "#c54242"; context.fillRect(0, 0, 16, 12);
+      return canvas.toDataURL("image/png").split(",")[1];
+    }), "base64");
+    await page.getByTestId("open-asset-generator").click();
+    const dialog = page.getByRole("dialog", { name: "Create with AI" });
+    await dialog.getByRole("tab", { name: "Create Image" }).click();
+    await dialog.getByLabel("Add reference images").setInputFiles([{ name: "chair.png", mimeType: "image/png", buffer }, { name: "fabric.png", mimeType: "image/png", buffer }]);
+    await expect(dialog.getByAltText("Reference 2: fabric.png")).toBeVisible();
+    await dialog.getByRole("button", { name: "Remove reference 1" }).click();
+    await expect(dialog.getByAltText("Reference 1: fabric.png")).toBeVisible();
+    await dialog.getByTestId("asset-description").fill("Create a room using reference 1");
+    const creationRequest = page.waitForRequest(request => request.url().endsWith("/api/asset-generations") && request.method() === "POST");
+    await dialog.getByTestId("generate-assets").click();
+    expect((await creationRequest).postDataJSON().references).toHaveLength(1);
+    await expect(dialog.getByTestId("asset-candidate-1")).toBeVisible();
+    await dialog.getByTestId("use-generated-asset").click();
+    await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
+    await page.getByTestId("open-lasso-edit").click();
+    await page.getByRole("radio", { name: "Replace", exact: true }).click();
+    await page.getByLabel("Add reference images").setInputFiles({ name: "chair.png", mimeType: "image/png", buffer });
+    await expect(page.getByAltText("Reference 1: chair.png")).toBeVisible();
+    await page.getByLabel("Edit instruction").fill("Use the chair from reference 1");
+    await drawSourceSelection(page, 100, 100, 600, 600);
+    const editResponse = page.waitForResponse(response => response.url().endsWith("/api/image-edits") && response.request().method() === "POST");
+    await page.getByTestId("generate-edit").click();
+    const edit = await (await editResponse).json();
+    const diagnostic = await page.request.get(`/api/request-logs/${edit.requestId}`);
+    expect(JSON.stringify(await diagnostic.json())).toContain("reference-1.png");
+    await expect(page.getByTestId("preview-comparison")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remove reference 1" })).toBeDisabled();
+    await page.getByTestId("accept-preview").click();
+    await expect(page.getByText("1 accepted edit", { exact: true })).toBeVisible();
+  });
+}
