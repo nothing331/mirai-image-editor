@@ -8,6 +8,15 @@ afterEach(() => {
 });
 
 describe("runtime environment", () => {
+  it("allows email only with a private key, sender and authenticated canonical application", () => {
+    const emailEnvironment = { ...stagingEnvironment(), MIRAI_AUTH_ENABLED: "true", MIRAI_OWNER_EMAILS: "owner@example.com", SUPABASE_SECRET_KEY: "server-only-placeholder-secret", MIRAI_EMAIL_ENABLED: "true", RESEND_API_KEY: "test-only-key", MIRAI_EMAIL_FROM: "hello@example.com" };
+    expect(() => readRuntimeEnvironment(emailEnvironment)).not.toThrow();
+    expect(() => readRuntimeEnvironment({ ...emailEnvironment, RESEND_API_KEY: "" })).toThrow("RESEND_API_KEY");
+    expect(() => readRuntimeEnvironment({ ...emailEnvironment, MIRAI_EMAIL_FROM: "wrong" })).toThrow("MIRAI_EMAIL_FROM");
+    expect(() => readRuntimeEnvironment({ ...emailEnvironment, MIRAI_AUTH_ENABLED: "false" })).toThrow("MIRAI_AUTH_ENABLED");
+    expect(() => readRuntimeEnvironment({ NEXT_PUBLIC_RESEND_API_KEY: "never-print-this" })).toThrow("NEXT_PUBLIC_");
+    expect(() => readRuntimeEnvironment({ MIRAI_EMAIL_ENABLED: "yes" })).toThrow("MIRAI_EMAIL_ENABLED");
+  });
   it("preserves a safe local default with fake providers", () => {
     const configuration = readRuntimeEnvironment({});
 

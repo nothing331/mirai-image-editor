@@ -58,6 +58,7 @@ export function readRuntimeEnvironment(
   const allowedOrigins = parseOrigins(environment.MIRAI_ALLOWED_ORIGINS, issues);
   const aiEnabled = parseBoolean("MIRAI_AI_ENABLED", environment.MIRAI_AI_ENABLED ?? "false", issues);
   const authEnabled = parseBoolean("MIRAI_AUTH_ENABLED", environment.MIRAI_AUTH_ENABLED ?? "false", issues);
+  const emailEnabled = parseBoolean("MIRAI_EMAIL_ENABLED", environment.MIRAI_EMAIL_ENABLED ?? "false", issues);
   const ownerEmails = parseEmails(environment.MIRAI_OWNER_EMAILS, issues);
   const imageEditProvider = environment.IMAGE_EDIT_PROVIDER ?? "fake";
   const assetGenerationProvider = environment.ASSET_GENERATION_PROVIDER ?? "fake";
@@ -71,6 +72,16 @@ export function readRuntimeEnvironment(
   };
   const supabaseUrl = parseOptionalUrl("NEXT_PUBLIC_SUPABASE_URL", environment.NEXT_PUBLIC_SUPABASE_URL, issues);
   const publishableKey = environment.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
+
+  if (environment.NEXT_PUBLIC_RESEND_API_KEY) issues.push("RESEND_API_KEY must never use a NEXT_PUBLIC_ variable name");
+  if (emailEnabled) {
+    if (!authEnabled) issues.push("MIRAI_EMAIL_ENABLED requires MIRAI_AUTH_ENABLED=true");
+    if (!canonicalUrl) issues.push("MIRAI_CANONICAL_URL is required for access email links");
+    if (!environment.RESEND_API_KEY?.trim()) issues.push("RESEND_API_KEY is required when access email is enabled");
+    if (!/^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(environment.MIRAI_EMAIL_FROM ?? "")) {
+      issues.push("MIRAI_EMAIL_FROM must be a sender email address when access email is enabled");
+    }
+  }
 
   if (environment.NEXT_PUBLIC_SUPABASE_SECRET_KEY || environment.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
     issues.push("Supabase privileged keys must never use a NEXT_PUBLIC_ variable name");
