@@ -92,7 +92,8 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   const [projectId, setProjectId] = useState(() => crypto.randomUUID());
   const [candidate, setCandidate] = useState<DisplayedAssetCandidate | null>(null);
   const [batchesUsed, setBatchesUsed] = useState(0);
-  const [status, setStatus] = useState<"idle" | "generating" | "using">("idle");
+  const [status, setStatus] = useState<"idle" | "generating" | "refining" | "using">("idle");
+  const [refinementPrompt, setRefinementPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,7 +105,13 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
       if (!result.ok) return;
       const attempt = await result.json() as { status: string; result: import("@/shared/asset-generation").AssetGenerationResponse | null };
       if (cancelled) return;
-      if (attempt.result?.creation && attempt.result.candidates[0]) setCandidate({ ...attempt.result.candidates[0], response: attempt.result, request: attempt.result.creation });
+      if (attempt.result?.creation && attempt.result.candidates[0]) {
+        setCandidate({ ...attempt.result.candidates[0], response: attempt.result, request: attempt.result.creation });
+        if (attempt.result.creation.mode === "image") {
+          setChoice("image"); setReferences(attempt.result.creation.references ?? []); setImagePrompt(attempt.result.creation.prompt);
+          setTreatment(attempt.result.creation.treatment); setFormat(attempt.result.creation.format);
+        }
+      }
       else if (["running", "unknown"].includes(attempt.status)) setError("The last generation is still processing or has an unknown outcome. Close and reopen to check its status; the request is pending.");
     }).catch(() => { if (!cancelled) setError("Generation recovery is unavailable. Close and reopen to retry."); });
     return () => { cancelled = true; };
@@ -148,29 +155,34 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
     setError(null);
   }
 
-  async function generate() {
-    if (referencesLoading || !cloudAiAvailable || !validation.success || !capabilities) return;
+  async function generate(refinePrompt?: string) {
+    if (referencesLoading || !cloudAiAvailable || !capabilities || status !== "idle") return;
+    const submitted: AssetCreationRequest | null = refinePrompt && candidate?.request.mode === "image" && candidate.response.canRefine
+      ? { ...candidate.request, refinement: { parentRequestId: candidate.response.requestId, prompt: refinePrompt.trim() } }
+      : !refinePrompt && validation.success ? validation.data : null;
+    if (!submitted || refinePrompt && (!refinePrompt.trim() || refinePrompt.length > 2000)) return;
     if (!cloudSessionId && capabilities.provider === "openai") {
       if (batchesUsed >= capabilities.maxBatchesPerSession) {
         setError(`The session limit of ${capabilities.maxBatchesPerSession} paid image requests has been reached.`);
         return;
       }
       const outputName = choice === "logo-mark" ? "logo mark" : choice;
-      if (!window.confirm(`Create one ${outputName} with ${capabilities.model} at low quality?\n\nThis makes one paid image API request.`)) return;
+      if (!window.confirm(`${refinePrompt ? "Refine this image" : `Create one ${outputName}`} with ${capabilities.model} at low quality?\n\nThis makes one paid image request${submitted.mode === "image" ? " and a language-model call for the image conversation" : ""}.`)) return;
       const nextUsage = batchesUsed + 1;
       setBatchesUsed(nextUsage);
       sessionStorage.setItem("mirai-asset-generation-batches", String(nextUsage));
     }
-    setStatus("generating");
+    setStatus(refinePrompt ? "refining" : "generating");
     setError(null);
     try {
       const requestId = crypto.randomUUID();
       if (cloudSessionId) sessionStorage.setItem(`mirai-ai-creation-${cloudSessionId}`, requestId);
-      const response = await requestAssetCandidates(validation.data, cloudSessionId ?? projectId, requestId, Boolean(cloudSessionId));
+      const response = await requestAssetCandidates(submitted, cloudSessionId ?? projectId, requestId, Boolean(cloudSessionId));
       const next = response.candidates[0];
       if (!next) throw new Error("The image provider returned no result.");
       if (cloudSessionId && candidate) void discardCloudAiPreview(candidate.response.requestId).catch(() => {});
-      setCandidate({ ...next, response, request: validation.data });
+      setCandidate({ ...next, response, request: submitted.mode === "image" ? { ...submitted, refinement: undefined } : submitted });
+      if (refinePrompt) setRefinementPrompt("");
       if (capabilities.provider === "fake") setBatchesUsed((current) => current + 1);
     } catch (cause) {
       if (!cloudSessionId && capabilities.provider === "openai" && cause instanceof AssetGenerationRequestError && !cause.imageGenerationAttempted) {
@@ -214,7 +226,7 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
   return (
     <div className="fixed inset-0 z-50 grid bg-black/65 p-2 backdrop-blur-[3px] sm:p-5" role="dialog" aria-modal="true" aria-labelledby="asset-generator-title">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close AI creator" onClick={status === "idle" ? closeDialog : undefined} />
-      <section className="editor-dialog asset-dialog-enter relative rounded-xl m-auto grid h-full max-h-[900px] min-h-0 w-full max-w-[1180px] grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-hidden border border-line bg-paper shadow-2xl">
+      <section className="editor-dialog asset-dialog-enter relative rounded-xl m-auto grid h-full max-h-[900px] min-h-0 w-full max-w-[1180px] grid-rows-[auto_auto_minmax(0,1fr)_auto] overflow-clip border border-line bg-paper shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-line bg-paper px-4 py-3 text-ink sm:px-6 sm:py-4">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[.2em] text-muted">Mirai / New original</p>
@@ -233,24 +245,29 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
             {choice === "image" ? <ImageControls prompt={imagePrompt} treatment={treatment} format={format} capabilities={capabilities} onPromptChange={setImagePrompt} onTreatmentChange={setTreatment} onFormatChange={setFormat} /> : <MarkControls brief={{ ...brief, assetType: choice }} onChange={setBrief} />}
             {choice !== "image" && <div className="flex items-center justify-between border border-line/40 bg-paper/55 px-3 py-2"><span className="font-mono text-[11px] uppercase tracking-wider">Output</span><span className="text-[12px] text-muted">Square · 1024 × 1024</span></div>}
 
-            {choice === "image" && <ReferenceImagePicker images={references} onChange={setReferences} onBusyChange={setReferencesLoading} disabled={status !== "idle"} />}
+            {choice === "image" && <ReferenceImagePicker label={candidate ? "References for next image" : "Reference images"} images={references} onChange={setReferences} onBusyChange={setReferencesLoading} disabled={status !== "idle"} />}
             {validationMessage && <p className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{validationMessage}</p>}
             {error && <p role="alert" className="border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{error}</p>}
             <button data-testid="generate-assets" type="submit" className="flex h-11 items-center justify-center gap-2 bg-ink px-4 text-xs font-bold text-paper outline-none hover:bg-acid hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-35" disabled={referencesLoading || !cloudAiAvailable || !validation.success || !capabilities || status !== "idle"}>
               {status === "generating" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}` : `Create ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}
+              {status === "refining" ? "Refining preview…" : status === "generating" ? `Creating ${choiceLabel}…` : candidate ? `Create another ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}` : `Create ${choiceLabel}${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}
             </button>
             <p className="text-center font-mono text-[8px] uppercase tracking-wider text-muted">{cloudSessionId ? cloudUnlimited ? "Unlimited AI · admin account" : "1 welcome credit per result · local edits use no credits" : capabilities ? `${capabilities.model} · low quality · 1 result` : "Loading configuration…"}</p>
           </form>
 
-          <div className="grid min-h-[430px] grid-rows-[auto_1fr] bg-workspace lg:min-h-0 lg:overflow-y-auto" aria-live="polite">
+          <div className="grid min-h-[430px] content-start auto-rows-auto bg-workspace lg:min-h-0 lg:overflow-y-auto" aria-live="polite">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div><p className="font-mono text-[11px] uppercase tracking-[.15em] text-muted">Result</p><strong className="text-sm">{candidate ? `One temporary ${candidateLabel}` : `Ready to create a ${choiceLabel}`}</strong></div>
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted">Low / Draft</span>
             </div>
+            {candidate?.request.mode === "image" && candidate.response.canRefine && <form aria-label="Refine image" className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto] border-b border-line bg-paper p-3" onSubmit={event => { event.preventDefault(); void generate(refinementPrompt); }}>
+              <p className="text-[11px] leading-relaxed text-muted sm:col-span-2">{candidate.request.references?.length ? `This preview’s references: ${candidate.request.references.map((image, index) => `${index + 1}: ${image.name}`).join(" · ")}. ` : ""}Changes to the creation brief or references apply when you create another image.</p>
+              <label className="grid gap-1 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" value={refinementPrompt} maxLength={2000} disabled={status !== "idle"} placeholder="Make the background darker…" className="workspace-field min-h-16 resize-y p-2 text-xs font-normal" onChange={event => setRefinementPrompt(event.target.value)} /></label>
+              <button type="submit" data-testid="refine-created-image" disabled={status !== "idle" || !cloudAiAvailable || !refinementPrompt.trim()} className="workspace-action h-10 px-3 text-xs">{status === "refining" ? "Refining…" : `Generate refinement${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}</button>
+            </form>}
             {!candidate ? <EmptyResult choice={choice} generating={status === "generating"} /> : (
               <div className="grid place-items-center p-4 sm:p-6">
-                <div data-testid="asset-candidate-1" style={{ maxWidth: `min(100%, max(180px, calc((100dvh - 410px) * ${candidate.width / candidate.height})), 42rem)` }} className="grid max-h-full w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] border border-accent bg-paper shadow-[7px_7px_0_#ef4b32]">
+                <div data-testid="asset-candidate-1" style={{ maxWidth: `min(100%, max(180px, calc((100dvh - ${candidate.request.mode === "image" && candidate.response.canRefine ? 610 : 410}px) * ${candidate.width / candidate.height})), 42rem)` }} className="grid max-h-full w-full max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] border border-accent bg-paper shadow-[7px_7px_0_#ef4b32]">
                   <span className="flex h-9 items-center justify-between border-b border-ink px-3 font-mono text-[9px] uppercase tracking-wider"><span>Generated result</span><span className="flex items-center gap-1 text-accent"><Check className="size-3" />Selected</span></span>
                   <span className="relative mx-auto w-full bg-[linear-gradient(45deg,#ddd_25%,transparent_25%),linear-gradient(-45deg,#ddd_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#ddd_75%),linear-gradient(-45deg,transparent_75%,#ddd_75%)] bg-[length:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px]" style={{ aspectRatio: `${candidate.width} / ${candidate.height}` }}><Image src={candidateDataUrl(candidate.candidateBase64)} alt={`Generated ${candidateLabel}`} fill unoptimized className={cn("object-contain", candidate.request.mode === "mark" && "p-5")} /></span>
                   <span className="flex h-9 items-center justify-between border-t border-line px-3 text-[12px]"><span>{candidate.width} × {candidate.height}</span><span className={candidate.transparency && candidate.transparency.status !== "clean" ? "text-[#9a4d00]" : "text-[#2c641d]"}>{candidate.transparency ? candidate.transparency.status === "clean" ? "Transparent PNG" : "Cleanup advised" : "Complete PNG"}</span></span>

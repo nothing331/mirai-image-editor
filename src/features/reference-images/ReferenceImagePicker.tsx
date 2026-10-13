@@ -6,20 +6,21 @@ import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { maxReferenceImages, type ReferenceImage } from "@/shared/reference-images";
 import { readReferenceImage } from "./reference-image-client";
 
-export function ReferenceImagePicker({ images, onChange, disabled = false, onBusyChange }: {
+export function ReferenceImagePicker({ images, onChange, disabled = false, onBusyChange, label = "Reference images" }: {
   images: ReferenceImage[];
   onChange: (images: ReferenceImage[]) => void;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  label?: string;
 }) {
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; onBusyChange?.(false); }; }, [onBusyChange]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const unavailable = disabled || loading;
-  return <section className="grid gap-2" aria-label="Reference images">
+  return <section className="grid gap-2" aria-label={label}>
     <div className="flex items-center justify-between gap-2">
-      <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Reference images</span>
+      <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">{label}</span>
       <span className="font-mono text-[10px] text-muted">{images.length}/{maxReferenceImages}</span>
     </div>
     {images.length > 0 && <ol className="grid grid-cols-3 gap-2">
@@ -32,7 +33,7 @@ export function ReferenceImagePicker({ images, onChange, disabled = false, onBus
         <p className="mt-1 truncate text-[10px] text-muted" title={reference.name}>{reference.name}</p>
       </li>)}
     </ol>}
-    <label className={`flex min-h-10 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-bold text-ink focus-within:ring-2 focus-within:ring-ink ${unavailable || images.length >= maxReferenceImages ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:border-ink hover:bg-surface"}`}>
+    <label className={`relative flex min-h-10 items-center justify-center gap-2 rounded-md border border-line px-3 text-xs font-bold text-ink focus-within:ring-2 focus-within:ring-ink ${unavailable || images.length >= maxReferenceImages ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:border-ink hover:bg-surface"}`}>
       {loading ? <LoaderCircle className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
       {loading ? "Preparing images…" : "Add reference images"}
       <input type="file" aria-label="Add reference images" className="sr-only" accept="image/png,image/jpeg,image/webp" multiple disabled={unavailable || images.length >= maxReferenceImages} onChange={async (event) => {

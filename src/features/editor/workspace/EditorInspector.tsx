@@ -36,6 +36,7 @@ export function EditorInspector({
   extendPreviewAdjustmentOpen,
   onReturnToExtendComparison,
   onRetry,
+  onRefine,
   onOpenDiagnostics,
   localOnly = false,
   aiUnavailable = false,
@@ -53,14 +54,17 @@ export function EditorInspector({
   extendPreviewAdjustmentOpen: boolean;
   onReturnToExtendComparison: () => void;
   onRetry: () => Promise<boolean>;
+  onRefine: (prompt: string) => Promise<boolean>;
   onOpenDiagnostics: () => void;
   localOnly?: boolean;
   aiUnavailable?: boolean;
   cloudCredits?: boolean;
   cloudUnlimited?: boolean;
 }) {
+  const [refinementPrompt, setRefinementPrompt] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const state = useEditorStore(useShallow((editor) => ({
+    preview: editor.preview,
     tool: editor.tool,
     brushSize: editor.brushSize,
     maskSoftness: editor.maskSoftness,
@@ -91,7 +95,7 @@ export function EditorInspector({
     commitPaintSession: editor.commitPaintSession,
     discardPaintSession: editor.discardPaintSession,
   })));
-  const processing = phase === "processing";
+  const processing = phase === "processing" || state.generativeState.status === "processing";
   const hasSelection = phase === "selected" || phase === "processing" || phase === "failed";
 
   if (phase === "empty") {
@@ -113,13 +117,21 @@ export function EditorInspector({
 
   if (phase === "preview") {
     return (
-      <div className="inspector-enter grid h-full content-between gap-5 p-4">
+      <div className="inspector-enter flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain p-4">
         <div className="grid gap-3">
           <InspectorHeading eyebrow="Review" title="Compare the result" />
           {state.references.length > 0 && (state.editType === "replace" || state.editType === "restyle") && <ReferenceImagePicker images={state.references} onChange={state.setReferences} disabled />}
           <p className="text-xs leading-relaxed text-muted">Accept the proposal to add one immutable version, or discard it without changing history.</p>
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Review controls are on the canvas</span>
+        {state.preview?.method === "generative" && (state.preview.type === "replace" || state.preview.type === "restyle") && state.preview.parameters.canRefine && <form className="grid gap-2 border-t border-line pt-3" aria-label="Refine preview" onSubmit={event => { event.preventDefault(); void onRefine(refinementPrompt).then(success => { if (success) setRefinementPrompt(""); }); }}>
+          <label className="grid gap-1.5 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" value={refinementPrompt} onChange={event => setRefinementPrompt(event.target.value)} placeholder="Make the replacement smaller…" maxLength={2000} disabled={processing} className="workspace-field min-h-20 resize-y p-2 text-xs font-normal" /></label>
+          <button type="submit" data-testid="refine-edit-preview" disabled={processing || aiUnavailable || !refinementPrompt.trim()} className="workspace-action min-h-10 text-xs">{processing ? "Refining…" : `Generate refinement${cloudCredits ? " · 1 credit" : ""}`}</button>
+          <p className="text-[11px] leading-relaxed text-muted">Refines this preview using the same references and selection. History changes when you accept.</p>
+        </form>}
+        {processing && <p role="status" className="text-xs text-muted">Refining the preview…</p>}
+        {state.error && <p role="alert" className="text-xs leading-relaxed text-accent">{state.error}</p>}
+        {state.generativeState.status === "failed" && state.generativeState.retryable && <button type="button" className="workspace-quiet-action h-10" onClick={() => void onRetry().then(success => { if (success) setRefinementPrompt(""); })}>Retry same refinement</button>}
+        <span className="mt-auto font-mono text-[10px] uppercase tracking-[.12em] text-muted">Review controls are on the canvas</span>
       </div>
     );
   }
@@ -177,6 +189,7 @@ export function EditorInspector({
                 key={mode.value}
                 type="button"
                 role="radio"
+                disabled={processing}
                 aria-checked={state.editType === mode.value}
                 aria-label={mode.accessibleLabel}
                 className={cn("grid min-h-12 content-center gap-0.5 px-2 text-left text-muted outline-none hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30", state.editType === mode.value && "bg-ink text-paper hover:bg-ink hover:text-acid")}
@@ -197,6 +210,7 @@ export function EditorInspector({
             <label className="grid gap-1.5 text-[12px] font-medium text-muted">
               <span>{state.editType === "replace" ? "Describe the replacement" : state.editType === "restyle" ? "Describe the new style" : "Removal context (optional)"}</span>
               <textarea
+                disabled={processing}
                 aria-label="Edit instruction"
                 className="min-h-24 resize-y bg-surface p-2.5 text-xs leading-relaxed text-ink outline-none placeholder:text-muted/55 focus:ring-2 focus:ring-ink/30"
                 value={state.prompt}
@@ -263,7 +277,7 @@ export function EditorInspector({
             <div className="grid gap-3 pt-3">
               <label className="grid gap-1.5 text-[12px] text-muted">
                 AI edit behavior
-                <select aria-label="AI edit behavior" className="h-9 bg-surface px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-ink/30" value={state.boundaryPolicy} onChange={(event) => state.setBoundaryPolicy(event.target.value as EditBoundaryPolicy)}>
+                <select disabled={processing} aria-label="AI edit behavior" className="h-9 bg-surface px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-ink/30" value={state.boundaryPolicy} onChange={(event) => state.setBoundaryPolicy(event.target.value as EditBoundaryPolicy)}>
                   <option value="review">Let AI blend naturally</option>
                   <option value="protected">Protect outside selection</option>
                 </select>
@@ -271,7 +285,7 @@ export function EditorInspector({
               {providerCapabilities?.fakeScenarios && (
                 <label className="grid gap-1.5 text-[12px] text-muted">
                   Fake provider scenario
-                  <select aria-label="Fake provider scenario" className="h-9 bg-surface px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-ink/30" value={state.fakeScenario} onChange={(event) => state.setFakeScenario(event.target.value as FakeScenario)}>
+                  <select disabled={processing} aria-label="Fake provider scenario" className="h-9 bg-surface px-2 text-xs text-ink outline-none focus:ring-2 focus:ring-ink/30" value={state.fakeScenario} onChange={(event) => state.setFakeScenario(event.target.value as FakeScenario)}>
                     <option value="success">Success</option>
                     <option value="slow">Slow success</option>
                     <option value="retryable-error">Retryable failure</option>
