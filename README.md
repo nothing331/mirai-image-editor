@@ -102,6 +102,7 @@ Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and
 - **OpenAI key error:** Keep `IMAGE_EDIT_PROVIDER` and `ASSET_GENERATION_PROVIDER` set to `fake`, or configure a server-side key when intentionally testing OpenAI.
 - **Port 3000 is already in use:** Start the development server with `npm run dev -- --port 3001`.
 - **Cloud startup refuses to run:** Follow the named variable errors and compare the service with the P02 environment matrix. Do not bypass validation by selecting local persistence on Render.
+- **Render rejects OpenAI providers:** Provider names alone do not enable AI. Follow the [Render OpenAI configuration runbook](./docs/cloud/RENDER_OPENAI_RUNBOOK.md) for the runtime flag, hosted qualification, stage ceilings and separate database funding gate.
 - **Cloud readiness returns 503:** Verify the Supabase project is active and the browser-safe URL/publishable key are correct. The public response intentionally omits upstream details.
 - **Cloud authentication will not start:** When `MIRAI_AUTH_ENABLED=true`, configure `MIRAI_OWNER_EMAILS`, `SUPABASE_SECRET_KEY`, and the public Supabase URL/publishable key. Never prefix the secret key with `NEXT_PUBLIC_`.
 

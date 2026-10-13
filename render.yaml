@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run cloud:config:check && npm run build
     startCommand: npm run start:cloud
     healthCheckPath: /api/health/live
     maxShutdownDelaySeconds: 60
