@@ -366,7 +366,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
     const state = useEditorStore.getState();
     const preview = state.preview;
     state.discardPreview();
-    if (preview?.method === "generative" && "diagnosticRequestId" in preview.parameters) {
+    if (preview && "diagnosticRequestId" in preview.parameters && typeof preview.parameters.diagnosticRequestId === "string") {
       void discardCloudAiPreview(preview.parameters.diagnosticRequestId).catch(() => state.setError("The preview was removed on this device. Server cleanup is unavailable; it will expire automatically."));
     }
   }
@@ -413,7 +413,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
             <CloudAiBalance usage={ai.usage} error={ai.error} />
             <CloudAiRecovery unlimited={ai.usage?.unlimited} projectId={projectId} currentVersionId={editor.currentVersionId} hasDraft={Boolean(editor.preview || editor.pendingAcceptance || editor.localDraftDirty || editor.paintSession)} />
             <EditorInspector cloudCredits={!ai.usage?.unlimited} cloudUnlimited={ai.usage?.unlimited} aiUnavailable={!ai.available} phase={phase} providerCapabilities={null} workflow={workflow} onSelectGeometryEdit={selectGeometry}
-              onGenerate={() => { const state = useEditorStore.getState(); if (state.editType === "recolor") state.createPreview(); else if (ai.available) void state.requestGenerativePreview(); }}
+              onGenerate={() => { const state = useEditorStore.getState(); if (ai.available) void state.requestSelectionPreview(); }}
               onGenerateTransform={async (input) => { if ((input.presetId === "monochrome" && !input.userPrompt.trim()) || ai.available) return editor.requestTransformPreview(input); return false; }}
               onPlanExtend={(input) => { const state = useEditorStore.getState(); return ai.available || Boolean(state.currentVersionId && state.extendAnalysisCache[state.currentVersionId]) ? state.planExtend(input) : Promise.resolve(false); }}
               onGenerateExtend={() => ai.available ? useEditorStore.getState().generateExtend() : Promise.resolve(false)} extendPreviewAdjustmentOpen={extendPreviewAdjustmentOpen}

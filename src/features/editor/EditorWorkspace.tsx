@@ -47,6 +47,7 @@ export function EditorWorkspace() {
     discardLocalDraft: state.discardLocalDraft,
     createPreview: state.createPreview,
     requestGenerativePreview: state.requestGenerativePreview,
+    requestSelectionPreview: state.requestSelectionPreview,
     requestTransformPreview: state.requestTransformPreview,
     extendState: state.extendState,
     planExtend: state.planExtend,
@@ -156,9 +157,11 @@ export function EditorWorkspace() {
   }, [editor, phase, selectExtend, selectTool, selectTransform]);
 
   /** Confirms a paid request before allowing it to reach the real provider. */
-  function authorizeProviderRequest(label: string, pipeline: "direct" | "replace-planned" | "transform-validated" | "extend-low" | "conversation"): boolean {
+  function authorizeProviderRequest(label: string, pipeline: "direct" | "replace-planned" | "transform-validated" | "extend-low" | "conversation" | "selection"): boolean {
     if (providerCapabilities?.provider !== "openai") return true;
-    const requestDescription = pipeline === "conversation"
+    const requestDescription = pipeline === "selection"
+      ? "paid visual prompt interpretation and, if needed, one image-conversation request. Simple color changes use local pixel processing after interpretation"
+      : pipeline === "conversation"
       ? "a paid image-conversation request with language-model processing and one generated image"
       : pipeline === "transform-validated"
       ? "source planning, one paid OpenAI image request, and semantic fidelity validation"
@@ -173,17 +176,13 @@ export function EditorWorkspace() {
   }
 
   async function handleGeneratePreview() {
-    if (editor.editType === "recolor") {
-      editor.createPreview();
-      return;
-    }
-    const ready = editor.selectionMask && maskHasSelection(editor.selectionMask) && (editor.editType === "remove" || editor.prompt.trim().length > 0);
-    if (!ready || authorizeProviderRequest("Generate preview", editor.editType === "replace" ? "replace-planned" : editor.editType === "restyle" ? "conversation" : "direct")) await editor.requestGenerativePreview();
+    const ready = editor.selectionMask && maskHasSelection(editor.selectionMask) && editor.prompt.trim().length > 0;
+    if (!ready || authorizeProviderRequest("Preview change", "selection")) await editor.requestSelectionPreview();
   }
 
   async function handleRetryPreview(): Promise<boolean> {
     const operation = editor.generativeState.snapshot?.operation;
-    const pipeline = editor.generativeState.snapshot?.operation !== "transform" && editor.generativeState.snapshot?.refinement ? "conversation" : operation === "transform" ? "transform-validated" : operation === "replace" ? "replace-planned" : operation === "restyle" ? "conversation" : "direct";
+    const pipeline = editor.generativeState.snapshot?.operation !== "transform" && editor.generativeState.snapshot?.refinement ? editor.preview?.type === "recolor" ? "selection" : "conversation" : operation === "auto" ? "selection" : operation === "transform" ? "transform-validated" : operation === "replace" ? "replace-planned" : operation === "restyle" ? "conversation" : "direct";
     if (!authorizeProviderRequest("Retry preview", pipeline)) return false;
     return editor.retryGenerativePreview();
   }
@@ -338,7 +337,7 @@ export function EditorWorkspace() {
                   onGenerateExtend={handleGenerateExtend}
                   extendPreviewAdjustmentOpen={isAdjustingExtendPreview}
                   onReturnToExtendComparison={handleReturnToExtendComparison}
-                  onRefine={async prompt => authorizeProviderRequest("Refine preview", "conversation") ? editor.refineGenerativePreview(prompt) : false} onRetry={handleRetryPreview}
+                  onRefine={async prompt => authorizeProviderRequest("Refine preview", editor.preview?.type === "recolor" ? "selection" : "conversation") ? editor.refineGenerativePreview(prompt) : false} onRetry={handleRetryPreview}
                   onOpenDiagnostics={() => setDiagnosticsOpen(true)}
                 />
               </div>

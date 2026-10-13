@@ -74,7 +74,7 @@ test("recovers and accepts a localized preview without repurchasing; Transform, 
   const generation = await page.evaluate(async ({ projectId, versionId }) => {
     const mask = new Uint8Array(320 * 200); mask.fill(255, 0, 160);
     let binary = ""; for (const value of mask) binary += String.fromCharCode(value);
-    const input = { requestId: crypto.randomUUID(), projectId, inputVersionId: versionId, operation: "replace", boundaryPolicy: "review", prompt: "Add a compass detail", selectionMaskBase64: btoa(binary), providerMaskBase64: btoa(binary) };
+    const input = { requestId: crypto.randomUUID(), projectId, inputVersionId: versionId, operation: "auto", boundaryPolicy: "review", prompt: "Add a compass detail", selectionMaskBase64: btoa(binary), providerMaskBase64: btoa(binary) };
     const response = await fetch("/api/image-edits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
     return { ok: response.ok, body: await response.json() };
   }, { projectId, versionId: originalVersionId });

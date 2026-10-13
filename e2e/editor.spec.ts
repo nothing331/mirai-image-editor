@@ -15,17 +15,24 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
     await uploadTestImage(page, 320, 200);
     const canvas = await page.getByTestId("editor-canvas").boundingBox();
     expect(canvas!.height).toBeGreaterThanOrEqual(130);
-    await expect(page.getByTestId("apply-edit")).toBeInViewport();
+    await expect(page.getByTestId("generate-edit")).toBeInViewport();
     await page.getByRole("radio", { name: "Brush" }).click();
     await expect(page.getByTestId("apply-paint")).toBeDisabled();
     await page.getByTestId("open-lasso-edit").click();
     await drawSourceSelection(page, 2, 2, 16, 16);
-    await page.getByTestId("apply-edit").click();
+    await page.getByLabel("Edit instruction").fill("Make it blue");
+    await page.getByTestId("generate-edit").click();
     await expect(page.getByTestId("preview-comparison")).toBeVisible();
+    await page.getByLabel("Refinement instruction").fill("Make it green");
+    await page.getByTestId("refine-edit-preview").click();
+    await expect(page.getByLabel("Refinement instruction")).toHaveValue("");
+    await expect(page.getByRole("radiogroup", { name: "Edit operation" })).toHaveCount(0);
     await expect(page.getByTestId("accept-preview")).toBeInViewport();
     await expect(page.getByRole("button", { name: "Discard", exact: true })).toBeInViewport();
+    await page.screenshot({ path: `/tmp/mirai-prompt-lasso-review-${viewport.width}.png`, animations: "disabled" });
     await page.getByRole("button", { name: "Discard", exact: true }).click();
     await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
+    await page.screenshot({ path: `/tmp/mirai-prompt-lasso-${viewport.width}.png`, animations: "disabled" });
     await expect.poll(() => page.evaluate(() => ({
       vertical: document.documentElement.scrollHeight === document.documentElement.clientHeight,
       horizontal: document.documentElement.scrollWidth === document.documentElement.clientWidth,
@@ -184,10 +191,10 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await inspector.evaluate((element) => element.scrollTo({ top: 0 }));
   await uploadTestImage(page);
   await expect(page.getByText("20 × 20px")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Choose an edit" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Select an area" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Draw selection on canvas" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add area" })).toHaveCount(0);
-  const operationTop = (await page.getByText("Edit operation", { exact: true }).boundingBox())?.y;
+  const operationTop = (await page.getByText("Describe the change", { exact: true }).boundingBox())?.y;
   const selectionTop = (await page.getByText("Selection area", { exact: true }).boundingBox())?.y;
   if (operationTop === undefined || selectionTop === undefined) throw new Error("Lasso inspector sections are not visible.");
   expect(operationTop).toBeLessThan(selectionTop);
@@ -213,7 +220,7 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Remove selection" })).toBeVisible();
   await page.getByRole("button", { name: "Remove selection" }).click();
   await expect(page.getByRole("button", { name: "Remove selection" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Choose an edit" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Select an area" })).toBeVisible();
   await drawSourceSelection(page);
   await page.getByRole("button", { name: "Add area" }).click();
   await expect(page.getByText("Draw another closed dashed shape on the image to add its interior.")).toBeVisible();
@@ -229,7 +236,8 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await expect(page.getByTestId("editor-inspector")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Select & edit" })).toBeChecked();
   await drawSourceSelection(page, 8, 8, 12, 12);
-  await page.getByTestId("apply-edit").click();
+  await page.getByLabel("Edit instruction").fill("Make it blue");
+  await page.getByTestId("generate-edit").click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
   await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
   await page.getByTestId("accept-preview").click();
@@ -240,9 +248,8 @@ test("upload, select, and recolor an image", async ({ page }) => {
   await page.getByLabel("Project name").fill(projectName);
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByLabel("Open saved project").locator("option", { hasText: projectName })).toHaveCount(1);
-  await page.getByRole("textbox", { name: "Recolor selection" }).fill("#22cc66");
-  await page.getByTestId("apply-edit").click();
-  await expect(page.getByText("Draw a closed selection before previewing the edit.").first()).toBeVisible();
+  await page.getByLabel("Edit instruction").fill("Make it #22cc66");
+  await expect(page.getByTestId("generate-edit")).toBeDisabled();
   await expect(page.getByText("1 accepted edit", { exact: true })).toBeVisible();
 
   const scaleBefore = await canvas.getAttribute("data-viewport-scale");
@@ -516,7 +523,7 @@ test("fake provider supports generative success, retry, and failure states", asy
   await drawSourceSelection(page);
   await expect(canvas).toHaveClass(/tool-lasso/);
 
-  await page.getByRole("radio", { name: "Remove" }).click();
+  await page.getByLabel("Edit instruction").fill("Remove the selected object");
   await page.getByText("Advanced", { exact: true }).click();
   await expect(page.getByLabel("AI edit behavior")).toHaveValue("review");
   await expect(page.getByText("Fake provider scenario")).toBeVisible();
@@ -546,7 +553,7 @@ test("fake provider supports generative success, retry, and failure states", asy
   await page.getByRole("button", { name: "Remove selection" }).click();
   await drawSourceSelection(page, 3, 3, 7, 7);
 
-  await page.getByRole("radio", { name: "Replace" }).click();
+
   await page.getByLabel("Edit instruction", { exact: true }).fill("add an Indian flag");
   await scenario.selectOption("success");
   await page.getByTestId("generate-edit").click();
@@ -561,7 +568,7 @@ test("fake provider supports generative success, retry, and failure states", asy
   await diagnostics.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Discard" }).click();
 
-  await page.getByRole("radio", { name: "Restyle" }).click();
+
   await page.getByLabel("Edit instruction", { exact: true }).fill("brushed copper");
   await scenario.selectOption("slow");
   await page.getByTestId("generate-edit").click();
@@ -570,7 +577,7 @@ test("fake provider supports generative success, retry, and failure states", asy
   await page.getByRole("button", { name: "Discard" }).click();
   await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
 
-  await page.getByRole("radio", { name: "Remove" }).click();
+  await page.getByLabel("Edit instruction").fill("Remove the selected object");
   await scenario.selectOption("retryable-error");
   await page.getByTestId("generate-edit").click();
   await expect(page.getByText("The fake provider is temporarily unavailable.").first()).toBeVisible();
@@ -600,14 +607,14 @@ test("compact workspace preserves edit configuration when the inspector collapse
   await page.setViewportSize({ width: 393, height: 727 });
   await page.goto("/");
   await uploadTestImage(page);
-  await page.getByRole("radio", { name: "Replace" }).click();
+
   await page.getByLabel("Edit instruction", { exact: true }).fill("add a small paper lantern");
   await page.getByRole("button", { name: "Collapse inspector" }).click();
   await expect(page.getByTestId("editor-inspector")).toHaveCount(0);
   await expect(page.getByTestId("editor-canvas")).toBeVisible();
   await page.getByRole("button", { name: "Open inspector" }).click();
   await expect(page.getByLabel("Edit instruction", { exact: true })).toHaveValue("add a small paper lantern");
-  await expect(page.getByRole("radio", { name: "Replace" })).toBeChecked();
+  await expect(page.getByRole("radiogroup", { name: "Edit operation" })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => ({ vertical: document.documentElement.scrollHeight === document.documentElement.clientHeight, horizontal: document.documentElement.scrollWidth === document.documentElement.clientWidth }))).toEqual({ vertical: true, horizontal: true });
 });
 
@@ -654,7 +661,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
     await dialog.getByTestId("use-generated-asset").click();
     await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
     await page.getByTestId("open-lasso-edit").click();
-    await page.getByRole("radio", { name: "Replace", exact: true }).click();
+
     await page.getByLabel("Add reference images").setInputFiles({ name: "chair.png", mimeType: "image/png", buffer });
     await expect(page.getByAltText("Reference 1: chair.png")).toBeVisible();
     await page.getByLabel("Edit instruction").fill("Use the chair from reference 1");

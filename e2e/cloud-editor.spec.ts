@@ -27,6 +27,7 @@ test.beforeAll(async () => {
   const password = randomUUID() + randomUUID();
   expect((await admin.auth.admin.createUser({ id: userId, email, password, email_confirm: true })).error).toBeNull();
   expect((await admin.from("profiles").update({ status: "active" }).eq("id", userId)).error).toBeNull();
+  expect((await admin.from("account_allowance_grants").insert({ account_id: userId, allowance_key: "initial-ai-images", granted_quantity: 25, granted_by: userId })).error).toBeNull();
   const source = await sharp({ create: { width: 320, height: 200, channels: 4, background: "#dc6a48" } }).png().toBuffer();
   const base = await sharp(source).rotate().toColourspace("srgb").png({ compressionLevel: 9 }).toBuffer();
   const reserved = await admin.rpc("mirai_reserve_original_upload", {
@@ -267,8 +268,8 @@ test("saves direct and paint edits, then undoes and redoes the saved versions", 
   }
   await page.mouse.up();
   await expect(page.getByRole("heading", { name: "Edit selected area" })).toBeVisible();
-  await page.getByLabel("Recolor selection").fill("#0000ff");
-  await page.getByTestId("apply-edit").click();
+  await page.getByLabel("Edit instruction").fill("Make it #0000ff");
+  await page.getByTestId("generate-edit").click();
   await expect(page.getByTestId("preview-comparison")).toBeVisible();
   await saveAndCheck("recolor", () => page.getByTestId("accept-preview").click());
 });
