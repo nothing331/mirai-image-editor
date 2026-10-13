@@ -173,12 +173,12 @@ export interface ExtendInput { presetId: ExtendPresetId; presetVersion: 1; strat
 export interface ExtendParameters extends ExtendInput { plan: SmartReframePlan; analysis: ExtendSceneAnalysis; resolvedInstruction: string; providerRequestId: string; diagnosticRequestId: string }
 
 export type EditPreview = PreviewBase & (
-  | { type: "recolor"; method: "local"; parameters: { color: string } }
+  | { type: "recolor"; method: "local"; parameters: { color: string; automatic?: boolean; prompt?: string; diagnosticRequestId?: string; canRefine?: boolean; refinementPrompts?: string[]; referenceNames?: string[] } }
   | { type: "paint"; method: "local"; parameters: { colors: string[]; strokeCount: number } }
   | { type: "transform"; method: "local"; parameters: TransformInput & { resolvedInstruction: string } }
   | { type: "transform"; method: "generative"; parameters: GenerativeTransformParameters }
   | { type: "extend"; method: "generative"; parameters: ExtendParameters }
-  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { referenceNames?: string[]; canRefine?: boolean; refinementPrompts?: string[]; prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
+  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { automatic?: boolean; referenceNames?: string[]; canRefine?: boolean; refinementPrompts?: string[]; prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
 );
 
 interface OperationBase {
@@ -190,7 +190,7 @@ interface OperationBase {
 }
 
 export type EditOperation = OperationBase & (
-  | { type: "recolor"; method: "local"; parameters: { color: string } }
+  | { type: "recolor"; method: "local"; parameters: { color: string; automatic?: boolean; prompt?: string; diagnosticRequestId?: string; canRefine?: boolean; refinementPrompts?: string[]; referenceNames?: string[] } }
   | { type: "paint"; method: "local"; parameters: { colors: string[]; strokeCount: number } }
   | { type: "crop"; method: "local"; parameters: { sourceRect: CropRect; ratio: CropRatio } }
   | { type: "resize"; method: "local"; parameters: { width: number; height: number; preserveAspectRatio: boolean; preventUpscale: boolean } }
@@ -201,7 +201,7 @@ export type EditOperation = OperationBase & (
   | { type: "transform"; method: "local"; parameters: TransformInput & { resolvedInstruction: string } }
   | { type: "transform"; method: "generative"; parameters: GenerativeTransformParameters }
   | { type: "extend"; method: "generative"; parameters: ExtendParameters }
-  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { referenceNames?: string[]; canRefine?: boolean; refinementPrompts?: string[]; prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
+  | { type: "remove" | "replace" | "restyle"; method: "generative"; parameters: { automatic?: boolean; referenceNames?: string[]; canRefine?: boolean; refinementPrompts?: string[]; prompt: string; providerRequestId: string; diagnosticRequestId: string; boundaryPolicy: EditBoundaryPolicy; candidateAnalysis: CandidateAnalysis } }
 );
 
 interface GenerativeRequestBase {
@@ -220,7 +220,7 @@ export interface LocalizedGenerativeRequestSnapshot extends GenerativeRequestBas
   selectionId: string;
   selectionMask: ProcessingMask;
   boundaryPolicy: EditBoundaryPolicy;
-  operation: "remove" | "replace" | "restyle";
+  operation: "auto" | "remove" | "replace" | "restyle";
   prompt: string;
 }
 

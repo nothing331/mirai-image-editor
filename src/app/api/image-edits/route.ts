@@ -1,3 +1,4 @@
+import { generateSelectionEdit } from "@/server/ai/selection-edit";
 import { referenceImagesSchema, type ReferenceImage } from "@/shared/reference-images";
 import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
 import { readLocalPreview, saveLocalPreview, PreviewConversationError } from "@/server/ai/preview-conversation";
@@ -50,7 +51,11 @@ export async function POST(request: Request) {
       try { refinement = previewRefinementSchema.parse(JSON.parse(String(form.get("refinement")))); }
       catch { throw new RequestValidationError("Describe the refinement and choose a valid previous preview."); }
       const parent = await readLocalPreview(projectId, refinement.parentRequestId);
-      const refined = await refineSelectionPreview(parent, refinement, { projectId, requestId }, diagnostics ?? undefined,
+      const refined = parent.conversation.edit?.operation === "recolor" ? await generateSelectionEdit({ projectId, requestId,
+        sourcePng: Buffer.from(parent.conversation.edit.sourceBase64, "base64"), selectionMaskPng: Buffer.from(parent.conversation.edit.selectionMaskBase64, "base64"),
+        width: parent.conversation.width, height: parent.conversation.height, prompt: refinement.prompt, boundaryPolicy: parent.conversation.edit.boundaryPolicy,
+        references: parent.conversation.references, parent, scenario: providerName === "fake" ? String(form.get("scenario") ?? "success") as ProviderScenario : undefined,
+      }, diagnostics ?? undefined, { plan: input => createEditIntentPlanner().plan(input, diagnostics ?? undefined), generate: input => { imageGenerationAttempted = true; return createImageEditProvider().edit(input, diagnostics ?? undefined); } }) : await refineSelectionPreview(parent, refinement, { projectId, requestId }, diagnostics ?? undefined,
         providerName === "fake" ? String(form.get("scenario") ?? "success") as ProviderScenario : undefined, input => { imageGenerationAttempted = true; return createImageEditProvider().edit(input, diagnostics ?? undefined); });
       await saveLocalPreview(projectId, requestId, refined.conversation, refined.response);
       await diagnostics?.succeed(refined.response.providerRequestId);
@@ -71,13 +76,13 @@ export async function POST(request: Request) {
     const presetVersionValue = form.get("presetVersion");
     const preservationModeValue = form.get("preservationMode");
     if (!(image instanceof File)) throw new RequestValidationError("A PNG source image is required.");
-    if (operation !== "remove" && operation !== "replace" && operation !== "restyle" && operation !== "transform") {
+    if (operation !== "auto" && operation !== "remove" && operation !== "replace" && operation !== "restyle" && operation !== "transform") {
       throw new RequestValidationError("Choose Remove, Replace, Restyle, or Transform.");
     }
     if (boundaryPolicy !== "review" && boundaryPolicy !== "protected") {
       throw new RequestValidationError("Choose review or protected AI edit behavior.");
     }
-    if (referenceImages.length && operation !== "replace" && operation !== "restyle") throw new RequestValidationError("Reference images are supported for Replace and Restyle.");
+    if (referenceImages.length && operation !== "auto" && operation !== "replace" && operation !== "restyle") throw new RequestValidationError("Reference images are supported for Replace and Restyle.");
     if (operation === "transform" && boundaryPolicy !== "review") throw new RequestValidationError("Transform requires complete-image review behavior.");
     if (typeof prompt !== "string") throw new RequestValidationError("Prompt is required.");
 
@@ -137,7 +142,7 @@ export async function POST(request: Request) {
     });
 
     await diagnostics?.requestMetadata({
-      operation,
+      operation: operation === "auto" ? "selection" : operation,
       boundaryPolicy,
       userPrompt: prompt,
       sourceDimensions: { width: imageMetadata.width, height: imageMetadata.height },
@@ -151,6 +156,15 @@ export async function POST(request: Request) {
       height: imageMetadata.height,
       operation,
     });
+
+    if (operation === "auto") {
+      const automatic = await generateSelectionEdit({ projectId, requestId, sourcePng: imagePng, selectionMaskPng, width: imageMetadata.width, height: imageMetadata.height,
+        prompt, boundaryPolicy, references, scenario: providerName === "fake" ? scenario as ProviderScenario : undefined }, diagnostics ?? undefined,
+        { plan: input => createEditIntentPlanner().plan(input, diagnostics ?? undefined), generate: input => { imageGenerationAttempted = true; return createImageEditProvider().edit(input, diagnostics ?? undefined); } });
+      await saveLocalPreview(projectId, requestId, automatic.conversation, automatic.response);
+      await diagnostics?.succeed(automatic.response.providerRequestId);
+      return diagnosticResponse(automatic.response, 200, requestId);
+    }
 
     const plan = operation === "replace" ? (await createEditIntentPlanner().plan({
       imagePng,

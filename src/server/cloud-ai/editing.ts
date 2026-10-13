@@ -1,3 +1,4 @@
+import { generateSelectionEdit, alphaPng } from "@/server/ai/selection-edit";
 import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
 import { refineSelectionPreview } from "@/server/ai/refine-preview";
 import { PreviewConversationError } from "@/server/ai/preview-conversation";
@@ -52,13 +53,15 @@ async function maskPng(alpha: Uint8Array, width: number, height: number) {
 
 export async function generateCloudEdit(ownerId: string, raw: unknown) {
   const input = cloudAiEditSchema.parse(raw);
+  if (input.operation === "auto") return generateCloudSelection(ownerId, input);
+  const operation = input.operation;
   if (input.refinement) {
     const parentAttempt = await ownedAttempt(ownerId, input.refinement.parentRequestId);
-    if (parentAttempt.project_id !== input.projectId || parentAttempt.input_version_id !== input.inputVersionId || parentAttempt.workflow !== input.operation || parentAttempt.status !== "ready") throw new PreviewConversationError("This preview belongs to another edit or is no longer available.");
+    if (parentAttempt.project_id !== input.projectId || parentAttempt.input_version_id !== input.inputVersionId || parentAttempt.workflow !== operation || parentAttempt.status !== "ready") throw new PreviewConversationError("This preview belongs to another edit or is no longer available.");
     const parent = await readAiResult(parentAttempt);
     if (!parent.acceptance || !parent.conversation?.edit || input.boundaryPolicy !== parent.conversation.edit.boundaryPolicy) throw new PreviewConversationError("Keep the original edit settings when refining this preview.");
     await aiSourceInfo(ownerId, input.projectId, input.inputVersionId);
-    return runAiAttempt({ ownerId, requestId: input.requestId, projectId: input.projectId, inputVersionId: input.inputVersionId, workflow: input.operation,
+    return runAiAttempt({ ownerId, requestId: input.requestId, projectId: input.projectId, inputVersionId: input.inputVersionId, workflow: operation,
       payload: input, stages: ["image"], conversational: true, real: configuredProviderName() === "openai" }, async (attempt) => {
       const source = await aiSource(ownerId, input.projectId, input.inputVersionId);
       const workingParent = { ...parent, conversation: { ...parent.conversation!, edit: { ...parent.conversation!.edit!, sourceBase64: Buffer.from(source.png).toString("base64") } } };
@@ -70,44 +73,44 @@ export async function generateCloudEdit(ownerId: string, raw: unknown) {
     });
   }
   const referenceImages = await prepareReferenceImages(input.references);
-  if (referenceImages.length && input.operation !== "replace" && input.operation !== "restyle") throw new CloudProjectError("invalid", "Reference images are supported for Replace and Restyle.");
-  if (input.operation !== "remove" && !input.prompt && !input.presetId) throw new CloudProjectError("invalid", "Describe the requested change.");
-  if (input.operation === "transform" && (input.boundaryPolicy !== "review" || !input.preservationMode)) throw new CloudProjectError("invalid", "Transform requires complete-image review and a preservation mode.");
+  if (referenceImages.length && operation !== "replace" && operation !== "restyle") throw new CloudProjectError("invalid", "Reference images are supported for Replace and Restyle.");
+  if (operation !== "remove" && !input.prompt && !input.presetId) throw new CloudProjectError("invalid", "Describe the requested change.");
+  if (operation === "transform" && (input.boundaryPolicy !== "review" || !input.preservationMode)) throw new CloudProjectError("invalid", "Transform requires complete-image review and a preservation mode.");
   const source = await aiSourceInfo(ownerId, input.projectId, input.inputVersionId);
   const full = Buffer.alloc(source.width * source.height, 255);
-  const selection = input.operation === "transform" ? full : decodeAiMask(input.selectionMaskBase64, source.width, source.height);
-  const mask = input.operation === "transform" ? full : decodeAiMask(input.providerMaskBase64, source.width, source.height);
+  const selection = operation === "transform" ? full : decodeAiMask(input.selectionMaskBase64, source.width, source.height);
+  const mask = operation === "transform" ? full : decodeAiMask(input.providerMaskBase64, source.width, source.height);
   const transform = { presetId: input.presetId ?? null, presetVersion: input.presetVersion ?? null, userPrompt: input.prompt, preservationMode: input.preservationMode ?? "faithful" as const };
-  if (input.operation === "transform") buildTransformInstruction(transform);
+  if (operation === "transform") buildTransformInstruction(transform);
   return runAiAttempt({ ownerId, requestId: input.requestId, projectId: input.projectId, inputVersionId: input.inputVersionId,
-    workflow: input.operation, payload: input, real: configuredProviderName() === "openai",
-    conversational: input.operation === "replace" || input.operation === "restyle",
-    stages: input.operation === "transform" ? ["transform-plan", "image", "transform-fidelity"] : input.operation === "replace" ? ["replace-plan", "image"] : ["image"],
+    workflow: operation, payload: input, real: configuredProviderName() === "openai",
+    conversational: operation === "replace" || operation === "restyle",
+    stages: operation === "transform" ? ["transform-plan", "image", "transform-fidelity"] : operation === "replace" ? ["replace-plan", "image"] : ["image"],
   }, async (attempt) => {
     const source = await aiSource(ownerId, input.projectId, input.inputVersionId);
     const selectionMaskPng = await maskPng(selection, source.width, source.height);
     const providerMaskPng = await maskPng(mask, source.width, source.height);
-    const plan = input.operation === "replace" ? (await attempt.stage("replace-plan", () => createEditIntentPlanner().plan({ imagePng: source.png, referenceImages, selectionMaskPng, width: source.width, height: source.height, prompt: input.prompt }))).plan : undefined;
-    const transformPlan = input.operation === "transform" ? (await attempt.stage("transform-plan", () => createTransformPlanner().plan({ imagePng: source.png, width: source.width, height: source.height }))).plan : undefined;
+    const plan = operation === "replace" ? (await attempt.stage("replace-plan", () => createEditIntentPlanner().plan({ imagePng: source.png, referenceImages, selectionMaskPng, width: source.width, height: source.height, prompt: input.prompt }))).plan : undefined;
+    const transformPlan = operation === "transform" ? (await attempt.stage("transform-plan", () => createTransformPlanner().plan({ imagePng: source.png, width: source.width, height: source.height }))).plan : undefined;
     const instruction = transformPlan ? buildTransformInstruction({ ...transform, plan: transformPlan }) : input.prompt;
-    const result = await attempt.stage("image", () => createImageEditProvider().edit({ imagePng: source.png, referenceImages, maskPng: input.operation === "transform" ? undefined : providerMaskPng, width: source.width, height: source.height, operation: input.operation, boundaryPolicy: input.boundaryPolicy, prompt: instruction, plan }));
+    const result = await attempt.stage("image", () => createImageEditProvider().edit({ imagePng: source.png, referenceImages, maskPng: operation === "transform" ? undefined : providerMaskPng, width: source.width, height: source.height, operation: operation, boundaryPolicy: input.boundaryPolicy, prompt: instruction, plan }));
     const candidate = await sharp(result.candidatePng, { limitInputPixels: MAX_PIXELS }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     if (candidate.info.width !== source.width || candidate.info.height !== source.height) throw new CloudProjectError("invalid", "The provider candidate dimensions do not match the source.");
     let candidateAnalysis;
-    try { candidateAnalysis = (await analyzeCandidate({ sourcePng: source.png, candidatePng: result.candidatePng, selectionMaskPng, width: source.width, height: source.height, operation: input.operation })).analysis; }
+    try { candidateAnalysis = (await analyzeCandidate({ sourcePng: source.png, candidatePng: result.candidatePng, selectionMaskPng, width: source.width, height: source.height, operation: operation })).analysis; }
     catch { candidateAnalysis = { differenceThreshold: 12, changedPixels: 0, changedPixelRatio: 0, changedInsideSelectionPixels: 0, changedInsideSelectionRatio: 0, changedOutsideSelectionPixels: 0, changedOutsideSelectionRatio: 0, changedBoundaryPixels: 0, classification: "analysis-unavailable", warnings: ["candidate-analysis-failed"] }; }
     let assessment = null;
     if (transformPlan) {
       try { assessment = (await attempt.stage("transform-fidelity", () => createTransformValidator().validate({ sourcePng: source.png, candidatePng: result.candidatePng, width: source.width, height: source.height, plan: transformPlan, preservationMode: transform.preservationMode, changedPixelRatio: candidateAnalysis.changedPixelRatio }))).assessment; }
       catch { assessment = unavailableTransformFidelityAssessment(); }
     }
-    const parameters: Record<string, unknown> = input.operation === "transform"
+    const parameters: Record<string, unknown> = operation === "transform"
       ? { ...transform, resolvedInstruction: instruction, providerRequestId: result.providerRequestId, diagnosticRequestId: input.requestId, candidateAnalysis, transformFidelityAssessment: assessment }
       : { prompt: input.prompt, providerRequestId: result.providerRequestId, diagnosticRequestId: input.requestId, boundaryPolicy: input.boundaryPolicy, candidateAnalysis };
-    const conversation = input.operation === "replace" || input.operation === "restyle" ? {
+    const conversation = operation === "replace" || operation === "restyle" ? {
       responseId: result.conversationResponseId ?? null, languageModel: configuredImageConversationModel(), provider: configuredProviderName(), imageModel: configuredProviderName() === "openai" ? process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2" : "fake-image-editor",
       width: source.width, height: source.height, references: input.references ?? [], refinementPrompts: [],
-      edit: { operation: input.operation, boundaryPolicy: input.boundaryPolicy, prompt: input.prompt, sourceBase64: "",
+      edit: { operation: operation, boundaryPolicy: input.boundaryPolicy, prompt: input.prompt, sourceBase64: "",
         selectionMaskBase64: Buffer.from(selectionMaskPng).toString("base64"), providerMaskBase64: Buffer.from(providerMaskPng).toString("base64") }
     } : undefined;
     return {
@@ -173,7 +176,7 @@ export async function prepareAiAcceptance(ownerId: string, projectId: string, in
   const requestId = operation.parameters.diagnosticRequestId;
   if (typeof requestId !== "string") throw new CloudProjectError("invalid", "A stored AI result reference is required.");
   const attempt = await ownedAttempt(ownerId, requestId);
-  if (attempt.project_id !== projectId || attempt.input_version_id !== inputVersionId || attempt.workflow !== operation.type) throw new CloudProjectError("invalid", "This AI preview belongs to another edit.");
+  if (attempt.project_id !== projectId || attempt.input_version_id !== inputVersionId || (attempt.workflow === "selection" ? attempt.resolved_operation !== operation.type : attempt.workflow !== operation.type)) throw new CloudProjectError("invalid", "This AI preview belongs to another edit.");
   const result: StoredAiResult = await readAiResult(attempt);
   const acceptance = result.acceptance;
   if (!acceptance) throw new CloudProjectError("invalid", "This request has no editable candidate.");
@@ -192,4 +195,40 @@ export async function prepareAiAcceptance(ownerId: string, projectId: string, in
     png = await sharp(composite, { raw: { width: source.width, height: source.height, channels: 4 } }).png().toBuffer();
   }
   return { outputDataUrl: `data:image/png;base64,${png.toString("base64")}`, maskAlphaBase64: mask.toString("base64"), maskWidth: acceptance.maskWidth, maskHeight: acceptance.maskHeight, width: acceptance.width, height: acceptance.height, parameters };
+}
+
+async function generateCloudSelection(ownerId: string, input: import("@/shared/cloud-ai").CloudAiEdit) {
+  if (!input.prompt.trim() && !input.refinement) throw new CloudProjectError("invalid", "Describe the requested change.");
+  const sourceInfo = await aiSourceInfo(ownerId, input.projectId, input.inputVersionId);
+  let parent: StoredAiResult | undefined;
+  if (input.refinement) {
+    const attempt = await ownedAttempt(ownerId, input.refinement.parentRequestId);
+    if (attempt.workflow !== "selection" || attempt.project_id !== input.projectId || attempt.input_version_id !== input.inputVersionId || attempt.status !== "ready") throw new PreviewConversationError("This preview belongs to another edit or is no longer available.");
+    parent = await readAiResult(attempt);
+    if (!parent.conversation?.edit || !parent.acceptance || parent.conversation.edit.boundaryPolicy !== input.boundaryPolicy) throw new PreviewConversationError("Keep the original edit settings when refining.");
+  }
+  const selection = parent ? null : decodeAiMask(input.selectionMaskBase64, sourceInfo.width, sourceInfo.height);
+  const needsPlan = !parent || parent.conversation!.edit!.operation === "recolor";
+  return runAiAttempt({ ownerId, requestId: input.requestId, projectId: input.projectId, inputVersionId: input.inputVersionId, workflow: "selection", payload: input,
+    real: configuredProviderName() === "openai", conversational: true, stages: needsPlan ? ["selection-plan", "image"] : ["image"] }, async attempt => {
+    const source = await aiSource(ownerId, input.projectId, input.inputVersionId);
+    const workingParent = parent ? { ...parent, conversation: { ...parent.conversation!, edit: { ...parent.conversation!.edit!, sourceBase64: Buffer.from(source.png).toString("base64") } } } : undefined;
+    if (!needsPlan) {
+      const refined = await refineSelectionPreview(workingParent!, input.refinement!, { projectId: input.projectId, requestId: input.requestId }, undefined, undefined,
+        request => attempt.stage("image", () => createImageEditProvider().edit(request)));
+      refined.conversation.edit!.sourceBase64 = "";
+      const parameters = { ...parent!.acceptance!.parameters, providerRequestId: refined.response.providerRequestId, diagnosticRequestId: input.requestId,
+        candidateAnalysis: refined.response.candidateAnalysis, refinementPrompts: refined.response.refinementPrompts };
+      return { ...refined, response: { ...refined.response, parameters }, acceptance: { ...parent!.acceptance!, parameters } };
+    }
+    const automatic = await generateSelectionEdit({ projectId: input.projectId, requestId: input.requestId, sourcePng: source.png,
+      selectionMaskPng: workingParent ? Buffer.from(workingParent.conversation.edit.selectionMaskBase64, "base64") : await alphaPng(selection!, source.width, source.height),
+      width: source.width, height: source.height, prompt: input.refinement?.prompt ?? input.prompt, boundaryPolicy: input.boundaryPolicy,
+      references: input.references ?? [], parent: workingParent }, undefined, {
+        plan: request => attempt.stage("selection-plan", () => createEditIntentPlanner().plan(request)),
+        generate: request => attempt.stage("image", () => createImageEditProvider().edit(request)),
+      });
+    automatic.conversation.edit!.sourceBase64 = "";
+    return automatic;
+  });
 }

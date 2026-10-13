@@ -1,3 +1,4 @@
+import { selectionIntentSchema, type SelectionIntent } from "@/shared/selection-intent";
 import type { EditPlan } from "@/shared/edit-plan";
 import type { ImageEditDiagnosticSink } from "@/shared/request-diagnostics";
 import { buildPlannerInstruction, preparePlannerImages } from "./intent-planner";
@@ -9,6 +10,7 @@ export class FakeEditIntentPlanner implements EditIntentPlanner {
     const instruction = buildPlannerInstruction();
     const images = await preparePlannerImages(request);
     const plan = fakePlan(request.prompt);
+    const intent = request.automatic ? fakeSelectionIntent(request.prompt, Boolean(request.referenceImages?.length), plan) : undefined;
     const providerRequestId = `fake-planner-${crypto.randomUUID()}`;
     await diagnostics?.event("planner-preparation", "Prepared deterministic fake-planner inputs.");
     await diagnostics?.artifact("planner-context.png", images.contextPng, "image/png");
@@ -23,7 +25,7 @@ export class FakeEditIntentPlanner implements EditIntentPlanner {
       representation: plan.representation,
       confidence: plan.confidence,
     });
-    return { plan, providerRequestId };
+    return { plan, providerRequestId, intent };
   }
 }
 
@@ -50,4 +52,12 @@ function fakePlan(prompt: string): EditPlan {
 
 function jsonBytes(value: unknown): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(value, null, 2));
+}
+
+/** Test-only vocabulary; real routing always uses the visual model's validated result. */
+function fakeSelectionIntent(prompt: string, references: boolean, plan: EditPlan): SelectionIntent {
+  const named: Record<string, string> = { red: "#ff0000", blue: "#0000ff", green: "#008000", black: "#000000", white: "#ffffff", yellow: "#ffff00" };
+  const color = prompt.match(/#[0-9a-f]{6}\b/i)?.[0] ?? named[prompt.match(/\b(red|blue|green|black|white|yellow)\b/i)?.[0].toLowerCase() ?? ""];
+  const operation = /\b(remove|erase|delete)\b/i.test(prompt) ? "remove" : /\b(replace|add|insert|put)\b/i.test(prompt) ? "replace" : color && !references && color.toLowerCase() !== "#000000" && color.toLowerCase() !== "#ffffff" && !/\b(material|pattern|wood|quilt|texture|only|stripe|dark|darker|light|lighter)\b/i.test(prompt) ? "recolor" : "restyle";
+  return selectionIntentSchema.parse({ operation, color: operation === "recolor" ? color : null, plan });
 }

@@ -9,6 +9,7 @@ import type { ReferenceImage } from "@/shared/reference-images";
 
 export interface PreviewConversation {
   responseId: string | null;
+  automatic?: boolean;
   provider: "fake" | "openai";
   imageModel: string;
   languageModel: string;
@@ -18,7 +19,7 @@ export interface PreviewConversation {
   refinementPrompts: string[];
   creation?: Extract<AssetCreationRequest, { mode: "image" }>;
   edit?: {
-    operation: "replace" | "restyle";
+    operation: "recolor" | "remove" | "replace" | "restyle";
     boundaryPolicy: EditBoundaryPolicy;
     prompt: string;
     sourceBase64: string;
@@ -62,14 +63,14 @@ export async function readLocalPreview(scope: string, requestId: string): Promis
 }
 
 export function assertConversationProvider(conversation: PreviewConversation, provider: "fake" | "openai", imageModel: string) {
-  if (conversation.provider !== provider || conversation.imageModel !== imageModel || conversation.languageModel !== configuredImageConversationModel() || provider === "openai" && !conversation.responseId) {
+  if (conversation.provider !== provider || conversation.imageModel !== imageModel || conversation.languageModel !== configuredImageConversationModel() || provider === "openai" && conversation.edit?.operation !== "recolor" && !conversation.responseId) {
     throw new PreviewConversationError("The AI configuration changed or this preview has no conversation context. Generate a new preview before refining.");
   }
 }
 
 /** Mirrors browser protected compositing so the next target is exactly the image the user reviewed. */
 export async function visibleEditPreview(candidate: Uint8Array, edit: NonNullable<PreviewConversation["edit"]>, width: number, height: number): Promise<Uint8Array> {
-  if (edit.boundaryPolicy === "review") return candidate;
+  if (edit.boundaryPolicy === "review" || edit.operation === "recolor") return candidate;
   const source = await sharp(Buffer.from(edit.sourceBase64, "base64")).ensureAlpha().raw().toBuffer();
   const proposal = await sharp(candidate).ensureAlpha().raw().toBuffer();
   const mask = await sharp(Buffer.from(edit.providerMaskBase64, "base64")).ensureAlpha().raw().toBuffer();

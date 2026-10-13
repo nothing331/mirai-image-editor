@@ -38,7 +38,7 @@ function hslToRgb(hue: number, saturation: number, lightness: number): [number, 
 }
 
 /** Applies target hue and saturation while retaining source lightness, alpha, and all unmasked bytes. */
-export function recolorPixels(input: ImageVersion, mask: ProcessingMask, color: string): Uint8ClampedArray {
+export function recolorPixels(input: Pick<ImageVersion, "width" | "height" | "pixels">, mask: ProcessingMask, color: string): Uint8ClampedArray {
   if (mask.width !== input.width || mask.height !== input.height || mask.data.length !== input.width * input.height) {
     throw new Error("The selection does not match the image dimensions.");
   }

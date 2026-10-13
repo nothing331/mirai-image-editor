@@ -1,10 +1,11 @@
 import { referenceImageInstruction } from "@/shared/reference-images";
 import OpenAI from "openai";
+import { selectionIntentSchema } from "@/shared/selection-intent";
 import { zodTextFormat } from "openai/helpers/zod";
 import { editPlanSchema } from "@/shared/edit-plan";
 import type { ImageEditDiagnosticSink, RequestDiagnosticError } from "@/shared/request-diagnostics";
 import { ImageProviderError } from "./contracts";
-import { buildPlannerInstruction, preparePlannerImages } from "./intent-planner";
+import { buildPlannerInstruction, buildSelectionIntentInstruction, preparePlannerImages } from "./intent-planner";
 import type { EditIntentPlanner, EditIntentPlannerRequest, EditIntentPlannerResult } from "./intent-planner";
 
 export class OpenAIEditIntentPlanner implements EditIntentPlanner {
@@ -15,7 +16,7 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
   }
 
   async plan(request: EditIntentPlannerRequest, diagnostics?: ImageEditDiagnosticSink): Promise<EditIntentPlannerResult> {
-    const instruction = [buildPlannerInstruction(), request.referenceImages?.length ? `After the two highlighted canvas views, additional images are user references, not scene targets. ${referenceImageInstruction(request.referenceImages.length)}` : ""].filter(Boolean).join("\n\n");
+    const instruction = [(request.automatic ? buildSelectionIntentInstruction() : buildPlannerInstruction()), request.referenceImages?.length ? `After the two highlighted canvas views, additional images are user references, not scene targets. ${referenceImageInstruction(request.referenceImages.length)}` : ""].filter(Boolean).join("\n\n");
     const images = await preparePlannerImages(request);
     await diagnostics?.event("planner-preparation", "Prepared highlighted full-scene and selection-detail planner inputs.", {
       sourceWidth: request.width,
@@ -47,11 +48,13 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
             ]),
           ],
         }],
-        text: { format: zodTextFormat(editPlanSchema, "edit_plan") },
+        text: { format: request.automatic ? zodTextFormat(selectionIntentSchema, "selection_intent") : zodTextFormat(editPlanSchema, "edit_plan") },
       }).withResponse();
       providerCompleted = true;
       providerRequestId = requestId;
-      const plan = response.output_parsed;
+      if (!response.output_parsed || response.status && response.status !== "completed") throw new ImageProviderError("The edit planner returned no complete interpretation.", false, { providerRequestId });
+      const intent = request.automatic ? selectionIntentSchema.parse(response.output_parsed) : undefined;
+      const plan = intent?.plan ?? editPlanSchema.parse(response.output_parsed);
       if (!plan) throw new ImageProviderError("The edit planner returned no usable structured plan.", false, { providerRequestId });
 
       const usage = flattenUsage(response.usage);
@@ -69,7 +72,7 @@ export class OpenAIEditIntentPlanner implements EditIntentPlanner {
         usage: response.usage,
       }), "application/json");
       await diagnostics?.metadata({ editPlan: plan });
-      return { usage: response.usage, plan, providerRequestId: providerRequestId ?? `openai-planner-unreported-${crypto.randomUUID()}` };
+      return { usage: response.usage, plan, intent, providerRequestId: providerRequestId ?? `openai-planner-unreported-${crypto.randomUUID()}` };
     } catch (error) {
       const providerError = toProviderError(error, providerRequestId);
       await diagnostics?.failProviderCall("intent-planner", toDiagnosticError(providerError), providerError.retryable, providerError.diagnostics?.providerRequestId);

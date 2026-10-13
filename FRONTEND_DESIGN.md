@@ -49,7 +49,7 @@ The rail chooses the workflow; the inspector configures it; the canvas performs 
 - Brush owns pending paint.
 - Eraser corrects pending paint only.
 - Hand owns navigation and removes the inspector because it has no settings.
-- Create with AI, Select & edit, AI Transform, and AI Extend form one high-visibility group at the start of the rail. Select & edit uses the standard rail treatment and no AI marker because it combines local Recolor with AI Remove, Replace, and Restyle; each operation exposes its execution type in the inspector.
+- Create with AI, Select & edit, AI Transform, and AI Extend form one high-visibility group at the start of the rail. Select & edit keeps the standard rail treatment and no AI marker, with one prompt field and optional references. Users select an area and describe the result; the server chooses local recoloring or image generation. Do not expose internal operation choices in its inspector. Prompt interpretation requires AI even when pixel processing is local.
 - Transform is image-wide but behaves as a first-class rail selection; its presets and controls live in the inspector.
 - Size & position, Text, and Watermark are direct rail workflows. Their inspector settings update a source-space canvas draft immediately. The local editor offers Save edit / Discard changes / Keep editing when switching tools. In the cloud editor, changing tools, history versions, or in-app screens with a valid edit offers a save-first decision with Keep editing and no discard action; it continues only after the cloud save succeeds. Incomplete work stays in place or can be kept as a device draft when leaving the editor. Saving creates one accepted version without opening comparison.
 - Every icon-only rail control must reveal its full name on hover and keyboard focus. Show its shortcut when one exists.
@@ -222,7 +222,7 @@ Use verbs that describe the immediate result: “Generate preview,” “Apply p
 ### Cloud AI usage and recovery
 
 - Keep the account balance and pending-credit state beside the active inspector and creation entry. Use plain copy: “25 AI credits shared across your projects” and “1 credit per generated preview.” State the one-time member policy in welcome/settings. Admin accounts show “Unlimited” for AI, projects and account storage, with no one-credit action prices; communicate service availability separately.
-- Price the generation action before the click. Local Monochrome, deterministic tools and export remain usable when credits are exhausted or AI is off. Cached frame changes remain free; do not imply a fresh generation is free.
+- Price the generation action before the click. Local Monochrome, direct deterministic tools and export remain usable when credits are exhausted or AI is off. Prompt-based Select & edit requires AI interpretation and uses one member credit per produced preview, including locally processed recoloring. Cached frame changes remain free; do not imply a fresh generation is free.
 - Show processing and unknown outcomes separately. Unknown work has a pending credit and a short support reference, with no automatic repurchase. Offer saved-preview recovery without replacing another draft; preserve normal comparison and Save/Accept controls.
 - Developer provider/scenario controls and disk diagnostics are absent in cloud mode. A cloud error must have a usable recovery path rather than a dead diagnostics button.
 

@@ -692,4 +692,29 @@ describe("reference-image request snapshots", () => {
     expect(useEditorStore.getState().references).toEqual([]);
     expect(useEditorStore.getState().referencesLoading).toBe(false);
   });
+  it("uses prompt intent without an operation choice and accepts only the final recolor refinement", async () => {
+    const store = useEditorStore.getState();
+    store.loadImage(original);
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    useEditorStore.getState().setPrompt("Make it blue");
+    const pixels = new Uint8ClampedArray(original.pixels); pixels[0] = 0; pixels[1] = 0; pixels[2] = 200;
+    const response = { pixels, dataUrl: "data:image/png;base64,blue", operation: "recolor" as const, method: "local" as const, automatic: true,
+      color: "#0000ff", providerRequestId: "planner", diagnosticRequestId: "00000000-0000-4000-8000-000000000001", candidateAnalysis,
+      resolvedInstruction: "Make it blue", canRefine: true, refinementPrompts: [] };
+    vi.mocked(requestGenerativeCandidate).mockResolvedValueOnce(response);
+    expect(await useEditorStore.getState().requestSelectionPreview()).toBe(true);
+    expect(requestGenerativeCandidate).toHaveBeenLastCalledWith(expect.objectContaining({ operation: "auto", prompt: "Make it blue" }));
+    expect(useEditorStore.getState().preview).toMatchObject({ type: "recolor", method: "local", parameters: { automatic: true, color: "#0000ff" } });
+    expect(useEditorStore.getState().operations).toHaveLength(0);
+    vi.mocked(requestGenerativeCandidate).mockResolvedValueOnce({ ...response, color: "#008000", refinementPrompts: ["Make it green"] });
+    expect(await useEditorStore.getState().refineGenerativePreview("Make it green")).toBe(true);
+    expect(requestGenerativeCandidate).toHaveBeenLastCalledWith(expect.objectContaining({ operation: "auto", refinement: { parentRequestId: response.diagnosticRequestId, prompt: "Make it green" } }));
+    expect(useEditorStore.getState().acceptPreview()).toBe(true);
+    expect(useEditorStore.getState().operations).toHaveLength(1);
+    expect(useEditorStore.getState().operations[0]).toMatchObject({ type: "recolor", method: "local", parameters: { refinementPrompts: ["Make it green"] } });
+    expect(useEditorStore.getState().versions).toHaveLength(2);
+    useEditorStore.getState().undo();
+    expect(useEditorStore.getState().currentVersionId).toBe(original.id);
+  });
+
 });

@@ -37,8 +37,8 @@ export async function discardCloudAiPreview(requestId: string) {
 }
 export async function recoverCloudAiPreview(requestId: string, source: ImageVersion): Promise<EditPreview> {
   const attempt = await cloudAiJson<{
-    workflow: "remove" | "replace" | "restyle" | "transform" | "extend"; inputVersionId: string;
-    result: { candidateBase64: string; references?: import("@/shared/reference-images").ReferenceImage[] }; preview: { maskBase64: string; maskWidth: number; maskHeight: number; parameters: EditPreview["parameters"]; width: number; height: number };
+    workflow: "selection" | "remove" | "replace" | "restyle" | "transform" | "extend"; inputVersionId: string;
+    result: { candidateBase64: string; operation?: import("@/shared/selection-intent").SelectionOperation; method?: "local" | "generative"; references?: import("@/shared/reference-images").ReferenceImage[] }; preview: { maskBase64: string; maskWidth: number; maskHeight: number; parameters: EditPreview["parameters"]; width: number; height: number };
   }>(await fetch(`/api/ai/attempts/${requestId}`, { cache: "no-store" }));
   if (attempt.inputVersionId !== source.id || !attempt.result || !attempt.preview) throw new Error("This result belongs to a different input version or is unavailable.");
   const bytes = Uint8Array.from(atob(attempt.result.candidateBase64), (character) => character.charCodeAt(0));
@@ -47,5 +47,5 @@ export async function recoverCloudAiPreview(requestId: string, source: ImageVers
   const mask = { id: crypto.randomUUID(), width: preview.maskWidth, height: preview.maskHeight, data: Uint8ClampedArray.from(atob(preview.maskBase64), (character) => character.charCodeAt(0)) };
   const protectedMode = "boundaryPolicy" in preview.parameters && preview.parameters.boundaryPolicy === "protected";
   const pixels = protectedMode ? compositeCandidate(source.pixels, candidate.pixels, mask) : candidate.pixels;
-  return { referenceImages: attempt.result.references, id: crypto.randomUUID(), inputVersionId: source.id, type: attempt.workflow, method: "generative", parameters: preview.parameters, mask, pixels, dataUrl: pixelsToDataUrl(pixels, candidate.width, candidate.height), width: candidate.width, height: candidate.height } as EditPreview;
+  return { referenceImages: attempt.result.references, id: crypto.randomUUID(), inputVersionId: source.id, type: attempt.result.operation ?? attempt.workflow, method: attempt.result.method ?? "generative", parameters: preview.parameters, mask, pixels, dataUrl: pixelsToDataUrl(pixels, candidate.width, candidate.height), width: candidate.width, height: candidate.height } as EditPreview;
 }

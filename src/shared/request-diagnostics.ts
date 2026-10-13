@@ -82,7 +82,7 @@ export interface RequestDiagnosticManifest {
   retryOfRequestId: string | null;
   providerRequestId: string | null;
   provider: "fake" | "openai";
-  operation: "remove" | "replace" | "restyle" | "transform" | "extend" | "asset-generation" | null;
+  operation: "remove" | "replace" | "restyle" | "transform" | "extend" | "asset-generation" | "selection" | null;
   boundaryPolicy: EditBoundaryPolicy;
   previewSource: "full-candidate" | "protected-composite" | null;
   status: RequestDiagnosticStatus;
@@ -115,6 +115,7 @@ export type RequestDiagnosticSummary = Pick<
 > & { artifactNames: DiagnosticArtifactName[] };
 
 export interface ImageEditDiagnosticSink {
+  requestMetadata?(values: Pick<RequestDiagnosticManifest, "operation" | "boundaryPolicy" | "userPrompt" | "sourceDimensions">): Promise<void>;
   event(stage: string, message: string, details?: Record<string, string | number | boolean | null>): Promise<void>;
   artifact(name: DiagnosticArtifactName, bytes: Uint8Array, mediaType: RequestDiagnosticArtifact["mediaType"]): Promise<void>;
   metadata(values: Partial<Pick<RequestDiagnosticManifest, "providerRequestId" | "plannerInstruction" | "editPlan" | "transformPlan" | "transformFidelityAssessment" | "candidateAnalysis" | "providerInstruction" | "providerDimensions" | "previewSource" | "configuration">>): Promise<void>;

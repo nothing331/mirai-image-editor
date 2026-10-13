@@ -9,9 +9,10 @@ import { CloudProjectError } from "@/server/cloud-projects/cloud-projects";
 import { aiUsageSchema } from "@/shared/cloud-ai";
 
 export const AI_RESULT_BUCKET = "mirai-ai-results";
-export type AiWorkflow = "remove" | "replace" | "restyle" | "transform" | "extend" | "extend-analysis" | "creation";
+export type AiWorkflow = "selection" | "remove" | "replace" | "restyle" | "transform" | "extend" | "extend-analysis" | "creation";
 export interface AiAttempt {
   id: string; owner_id: string; project_id: string | null; input_version_id: string | null;
+  resolved_operation: string | null;
   creation_session_id: string | null; executor_id: string; workflow: AiWorkflow; digest: string;
   status: "running" | "unknown" | "ready" | "failed" | "accepted" | "discarded" | "expired" | "cleaning";
   result_key: string; expires_at: string; lease_until: string; accepted_project_id: string | null;
@@ -24,7 +25,7 @@ export interface StoredAiResult {
     width: number; height: number; parameters: Record<string, unknown>;
   };
 }
-export type AiStage = "replace-plan" | "transform-plan" | "transform-fidelity" | "extend-analysis" | "image";
+export type AiStage = "selection-plan" | "replace-plan" | "transform-plan" | "transform-fidelity" | "extend-analysis" | "image";
 
 export function aiError(message: string): never {
   if (/not found|not eligible|revoked/.test(message)) throw new CloudProjectError("not-found", "This AI request is unavailable.");
@@ -160,6 +161,10 @@ export async function runAiAttempt(input: {
     if (bytes.length > (input.workflow === "extend-analysis" ? 65536 : 41943040)) throw new CloudProjectError("invalid", "The AI result exceeds the supported storage envelope.");
     const stored = await client.storage.from(AI_RESULT_BUCKET).upload(attempt.result_key, bytes, { contentType: "application/json", upsert: false });
     if (stored.error) aiError("result storage failed");
+    if (input.workflow === "selection") {
+      const resolved = await client.from("ai_attempts").update({ resolved_operation: result.response.operation }).eq("id", attempt.id).eq("owner_id", input.ownerId).eq("executor_id", executorId).eq("status", "running");
+      if (resolved.error) aiError(resolved.error.message);
+    }
     const finished = await client.rpc("mirai_finish_ai", { target_owner: input.ownerId, target_id: attempt.id, target_status: "ready", target_bytes: bytes.length });
     if (finished.error) aiError(finished.error.message);
     return result.response;

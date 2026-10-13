@@ -55,6 +55,54 @@ describe.runIf(enabled)("Wave D cloud AI with actual Postgres and private Storag
   }
 
 
+  it("resolves prompt recoloring, recovers it idempotently, and accepts one authoritative local version", async () => {
+    const { project, input, source } = await editFixture();
+    try {
+      const request = { ...input, operation: "auto", prompt: "Make it blue", boundaryPolicy: "review" };
+      const before = await aiUsage(ownerId);
+      const result = await generateCloudEdit(ownerId, request);
+      expect(result).toMatchObject({ operation: "recolor", method: "local", color: "#0000ff", canRefine: true });
+      const attempt = await ownedAttempt(ownerId, request.requestId);
+      expect(attempt).toMatchObject({ workflow: "selection", resolved_operation: "recolor" });
+      const stages = await createAdminSupabaseClient().from("ai_stage_attempts").select("stage").eq("attempt_id", request.requestId);
+      expect(stages.data).toEqual([{ stage: "selection-plan" }]);
+      expect(await generateCloudEdit(ownerId, request)).toEqual(result);
+      expect((await aiUsage(ownerId)).spent).toBe(before.spent + 1);
+      const authority = await prepareAiAcceptance(ownerId, project.id, project.currentVersionId!, { type: "recolor", parameters: { diagnosticRequestId: request.requestId } });
+      const original = await sharp(source).ensureAlpha().raw().toBuffer();
+      const output = await sharp(Buffer.from(authority.outputDataUrl.split(",")[1], "base64")).ensureAlpha().raw().toBuffer();
+      expect(output.subarray(4)).toEqual(original.subarray(4));
+      await expect(prepareAiAcceptance(ownerId, project.id, project.currentVersionId!, { type: "remove", parameters: { diagnosticRequestId: request.requestId } })).rejects.toThrow("another edit");
+      const saved = commit(project.id, project.currentVersionId!, request.requestId, "recolor");
+      saved.command.operation.method = "local";
+      await commitCloudEdit(ownerId, project.id, saved.command);
+      const history = await listCloudHistory(ownerId, project.id);
+      expect(history.versions).toHaveLength(2);
+      expect(history.versions.find(version => version.id !== project.currentVersionId)?.operationType).toBe("recolor");
+      const operation = await createAdminSupabaseClient().from("cloud_edit_operations").select("kind,method").eq("project_id", project.id).single();
+      expect(operation.data).toEqual({ kind: "recolor", method: "local" });
+      expect((await ownedAttempt(ownerId, request.requestId)).status).toBe("accepted");
+    } finally { await changeProjectLifecycle(ownerId, project.id, "trash"); }
+  });
+
+  it("continues an automatic recolor into a generated preview and refines it without changing history", async () => {
+    const { project, input } = await editFixture();
+    try {
+      const first = { ...input, operation: "auto", prompt: "Make it blue", boundaryPolicy: "protected" };
+      await generateCloudEdit(ownerId, first);
+      const second = { ...first, requestId: randomUUID(), refinement: { parentRequestId: first.requestId, prompt: "Add an emblem" } };
+      const generated = await generateCloudEdit(ownerId, second);
+      expect(generated).toMatchObject({ operation: "replace", method: "generative", refinementPrompts: ["Add an emblem"] });
+      await expect(generateCloudEdit(foreignId, { ...second, requestId: randomUUID() })).rejects.toThrow();
+      const third = { ...first, requestId: randomUUID(), refinement: { parentRequestId: second.requestId, prompt: "Make the emblem smaller" } };
+      expect(await generateCloudEdit(ownerId, third)).toMatchObject({ operation: "replace", refinementPrompts: ["Add an emblem", "Make the emblem smaller"] });
+      expect((await listCloudHistory(ownerId, project.id)).versions).toHaveLength(1);
+      const saved = commit(project.id, project.currentVersionId!, third.requestId, "replace");
+      await commitCloudEdit(ownerId, project.id, saved.command);
+      expect((await listCloudHistory(ownerId, project.id)).versions.filter(version => version.operationType)).toHaveLength(1);
+    } finally { await changeProjectLifecycle(ownerId, project.id, "trash"); }
+  });
+
   it("refines owned protected previews without accepting intermediate versions or repurchasing duplicates", async () => {
     const fixture = await editFixture();
     const { project, source } = fixture;

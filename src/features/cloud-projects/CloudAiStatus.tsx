@@ -23,7 +23,7 @@ export function useCloudAiUsage() {
 
 export function CloudAiBalance({ usage, error }: { usage: AiUsage | null; error: string | null }) {
   return <div className="border-b border-line px-4 py-3 text-xs leading-5 text-muted" role="status">
-    {error ?? (usage ? <><strong className="text-ink">{usage.unlimited ? "Unlimited AI · admin account" : `${Math.max(0, usage.granted - usage.spent - usage.pending)} of ${usage.granted} AI credits remaining`}</strong>{usage.pending > 0 && <span> · {usage.pending} pending</span>}<br />{!usage.enabled ? "AI is currently unavailable. Local edits and export remain available." : usage.unlimited ? "No account allowance. Service availability still applies." : "Each generated preview uses 1 credit. Local edits use no credits."}</> : "Checking AI availability…")}
+    {error ?? (usage ? <><strong className="text-ink">{usage.unlimited ? "Unlimited AI · admin account" : `${Math.max(0, usage.granted - usage.spent - usage.pending)} of ${usage.granted} AI credits remaining`}</strong>{usage.pending > 0 && <span> · {usage.pending} pending</span>}<br />{!usage.enabled ? "AI is currently unavailable. Local edits and export remain available." : usage.unlimited ? "No account allowance. Service availability still applies." : "Each AI preview uses 1 credit. Direct tools and export use no credits."}</> : "Checking AI availability…")}
   </div>;
 }
 interface RecoverableAttempt { id: string; status: string; workflow: string; input_version_id: string }

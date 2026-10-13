@@ -51,4 +51,19 @@ describe("OpenAIEditIntentPlanner", () => {
     const content = mocks.parse.mock.calls[0][0].input[0].content;
     expect(content.filter((item: { type: string }) => item.type === "input_image")).toHaveLength(2);
   });
+  it("validates automatic operation and concrete color from the same multimodal planning call", async () => {
+    const plan = { target: "selected surface", representation: "surface_transformation", integration: "Preserve texture", constraints: ["keep geometry"], exclusions: [], confidence: "high", rationale: "Uniform color change" };
+    const intent = { operation: "recolor", color: "#0000ff", plan };
+    mocks.parse.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { status: "completed", output_parsed: intent }, request_id: "intent-request" }) });
+    const result = await new OpenAIEditIntentPlanner("test-key").plan({ ...await plannerRequest(), automatic: true, prompt: "Make it blue" });
+    expect(result.intent).toEqual(intent);
+    expect(result.plan).toEqual(plan);
+    expect(mocks.parse).toHaveBeenCalledOnce();
+    const options = mocks.parse.mock.calls[0][0];
+    expect(options.text.format.name).toBe("selection_intent");
+    expect(options.input[0].content[0].text).toContain("approximate focus includes background");
+    mocks.parse.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { output_parsed: { ...intent, color: null } }, request_id: "invalid-intent" }) });
+    await expect(new OpenAIEditIntentPlanner("test-key").plan({ ...await plannerRequest(), automatic: true })).rejects.toThrow();
+  });
+
 });

@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import type { EditBoundaryPolicy } from "@/shared/edit-boundary";
 import { useEditorStore } from "../store";
-import type { EditType, FakeScenario, GeometryEditType, SelectionMode, TransformInput } from "../types";
+import type { FakeScenario, GeometryEditType, SelectionMode, TransformInput } from "../types";
 import { TransformInspector } from "./TransformInspector";
 import { ExtendInspector } from "./ExtendInspector";
 import { SizePositionInspector } from "./SizePositionInspector";
@@ -16,13 +16,6 @@ import { TextInspector } from "./TextInspector";
 import { WatermarkInspector } from "./WatermarkInspector";
 import type { ProviderCapabilities, WorkspaceWorkflow } from "./workspace-types";
 import type { WorkspacePhase } from "./workspace-phase";
-
-const editModes: Array<{ value: EditType; label: string; description: string; execution: "Local" | "AI"; accessibleLabel: string }> = [
-  { value: "recolor", label: "Recolor", description: "Preserve texture", execution: "Local", accessibleLabel: "Recolor" },
-  { value: "remove", label: "Remove", description: "Rebuild background", execution: "AI", accessibleLabel: "Remove" },
-  { value: "replace", label: "Replace", description: "Add new content", execution: "AI", accessibleLabel: "Replace" },
-  { value: "restyle", label: "Restyle", description: "Change appearance", execution: "AI", accessibleLabel: "Restyle" },
-];
 
 export function EditorInspector({
   phase,
@@ -68,7 +61,6 @@ export function EditorInspector({
     tool: editor.tool,
     brushSize: editor.brushSize,
     maskSoftness: editor.maskSoftness,
-    editType: editor.editType,
     prompt: editor.prompt,
     references: editor.references,
     referencesLoading: editor.referencesLoading,
@@ -84,7 +76,6 @@ export function EditorInspector({
     error: editor.error,
     setBrushSize: editor.setBrushSize,
     setMaskSoftness: editor.setMaskSoftness,
-    setEditType: editor.setEditType,
     setPrompt: editor.setPrompt,
     setColor: editor.setColor,
     setFakeScenario: editor.setFakeScenario,
@@ -120,11 +111,11 @@ export function EditorInspector({
       <div className="inspector-enter flex h-full min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain p-4">
         <div className="grid gap-3">
           <InspectorHeading eyebrow="Review" title="Compare the result" />
-          {state.references.length > 0 && (state.editType === "replace" || state.editType === "restyle") && <ReferenceImagePicker images={state.references} onChange={state.setReferences} disabled />}
+          {state.references.length > 0 && <ReferenceImagePicker images={state.references} onChange={state.setReferences} disabled />}
           <p className="text-xs leading-relaxed text-muted">Accept the proposal to add one immutable version, or discard it without changing history.</p>
         </div>
-        {state.preview?.method === "generative" && (state.preview.type === "replace" || state.preview.type === "restyle") && state.preview.parameters.canRefine && <form className="grid gap-2 border-t border-line pt-3" aria-label="Refine preview" onSubmit={event => { event.preventDefault(); void onRefine(refinementPrompt).then(success => { if (success) setRefinementPrompt(""); }); }}>
-          <label className="grid gap-1.5 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" value={refinementPrompt} onChange={event => setRefinementPrompt(event.target.value)} placeholder="Make the replacement smaller…" maxLength={2000} disabled={processing} className="workspace-field min-h-20 resize-y p-2 text-xs font-normal" /></label>
+        {state.preview && (state.preview.type === "recolor" || state.preview.type === "remove" || state.preview.type === "replace" || state.preview.type === "restyle") && state.preview.parameters.canRefine && <form className="grid gap-2 border-t border-line pt-3" aria-label="Refine preview" onSubmit={event => { event.preventDefault(); void onRefine(refinementPrompt).then(success => { if (success) setRefinementPrompt(""); }); }}>
+          <label className="grid gap-1.5 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" value={refinementPrompt} onChange={event => setRefinementPrompt(event.target.value)} placeholder="Make it darker, or change another detail…" maxLength={2000} disabled={processing} className="workspace-field min-h-20 resize-y p-2 text-xs font-normal" /></label>
           <button type="submit" data-testid="refine-edit-preview" disabled={processing || aiUnavailable || !refinementPrompt.trim()} className="workspace-action min-h-10 text-xs">{processing ? "Refining…" : `Generate refinement${cloudCredits ? " · 1 credit" : ""}`}</button>
           <p className="text-[11px] leading-relaxed text-muted">Refines this preview using the same references and selection. History changes when you accept.</p>
         </form>}
@@ -174,67 +165,22 @@ export function EditorInspector({
     <div className="inspector-enter flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
         <div className="sticky top-0 z-10 flex items-center justify-between bg-paper py-5">
-          <InspectorHeading eyebrow="Select & edit" title={processing ? "Generating" : phase === "failed" ? "Request failed" : hasSelection ? "Edit selected area" : "Choose an edit"} />
+          <InspectorHeading eyebrow="Select & edit" title={processing ? "Generating" : phase === "failed" ? "Request failed" : hasSelection ? "Edit selected area" : "Select an area"} />
           <span className={cn("size-2 rounded-full", phase === "selected" ? "bg-acid ring-1 ring-ink" : processing ? "animate-pulse bg-acid" : phase === "failed" ? "bg-accent" : "bg-line")} aria-hidden="true" />
         </div>
 
-        <section className="grid gap-3 border-t border-line py-3" aria-labelledby="edit-operation-label">
-          <div className="grid gap-1">
-            <span id="edit-operation-label" className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Edit operation</span>
-            <p className="text-[12px] leading-relaxed text-muted">{localOnly ? "Recolor the selected area locally." : "Recolor runs locally. Remove, Replace, and Restyle generate AI previews."}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-1 bg-surface p-1" role="radiogroup" aria-label="Edit operation">
-            {editModes.filter((mode) => !localOnly || mode.execution === "Local").map((mode) => (
-              <button
-                key={mode.value}
-                type="button"
-                role="radio"
-                disabled={processing}
-                aria-checked={state.editType === mode.value}
-                aria-label={mode.accessibleLabel}
-                className={cn("grid min-h-12 content-center gap-0.5 px-2 text-left text-muted outline-none hover:bg-white/70 hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30", state.editType === mode.value && "bg-ink text-paper hover:bg-ink hover:text-acid")}
-                onClick={() => state.setEditType(mode.value)}
-              >
-                <span className="flex items-center justify-between gap-1 text-[12px] font-bold"><span>{mode.label}</span><span className={cn("font-mono text-[8px] uppercase tracking-[.08em]", state.editType === mode.value ? "text-acid" : "text-muted")}>{mode.execution}</span></span>
-                <span className={cn("font-mono text-[9px] uppercase tracking-[.04em]", state.editType === mode.value ? "text-paper/65" : "text-muted")}>{mode.description}</span>
-              </button>
-            ))}
-          </div>
-
-          {state.editType === "recolor" ? (
-            <label className="flex h-11 items-center gap-3 bg-surface px-1.5 font-mono text-[12px]">
-              <input aria-label="Recolor selection" className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0" type="color" value={state.color} onChange={(event) => state.setColor(event.target.value)} />
-              <Palette className="size-3.5 text-muted" /><span>{state.color.toUpperCase()}</span>
-            </label>
-          ) : (
-            <label className="grid gap-1.5 text-[12px] font-medium text-muted">
-              <span>{state.editType === "replace" ? "Describe the replacement" : state.editType === "restyle" ? "Describe the new style" : "Removal context (optional)"}</span>
-              <textarea
-                disabled={processing}
-                aria-label="Edit instruction"
-                className="min-h-24 resize-y bg-surface p-2.5 text-xs leading-relaxed text-ink outline-none placeholder:text-muted/55 focus:ring-2 focus:ring-ink/30"
-                value={state.prompt}
-                placeholder={state.editType === "replace" ? "Add an object that belongs in the scene…" : state.editType === "restyle" ? "Change the material or visual style…" : "Describe what should continue behind it…"}
-                onChange={(event) => state.setPrompt(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                    event.preventDefault();
-                    onGenerate();
-                  }
-                }}
-              />
-            </label>
-          )}
+        <section className="grid gap-3 border-t border-line py-3" aria-labelledby="edit-instruction-label">
+          <label className="grid gap-1.5 text-[12px] font-medium text-muted">
+            <span id="edit-instruction-label" className="font-mono text-[10px] uppercase tracking-[.12em]">Describe the change</span>
+            <textarea disabled={processing || localOnly} aria-label="Edit instruction" maxLength={2000}
+              className="min-h-24 resize-y bg-surface p-2.5 text-xs leading-relaxed text-ink outline-none placeholder:text-muted/55 focus:ring-2 focus:ring-ink/30 disabled:opacity-45"
+              value={state.prompt} placeholder="Make it blue, remove the object, or add something…"
+              onChange={event => state.setPrompt(event.target.value)}
+              onKeyDown={event => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); if (!processing && !aiUnavailable && !localOnly && hasSelection && state.prompt.trim()) onGenerate(); } }} />
+          </label>
+          <p className="text-[12px] leading-relaxed text-muted">{localOnly ? "Prompt editing is unavailable. Other local tools and export remain available." : "Select the area you want to change. Describe the result and review it before accepting."}</p>
+          <ReferenceImagePicker images={state.references} onChange={state.setReferences} onBusyChange={state.setReferencesLoading} disabled={processing || localOnly} />
         </section>
-
-        {(state.editType === "replace" || state.editType === "restyle") && <ReferenceImagePicker images={state.references} onChange={state.setReferences} onBusyChange={state.setReferencesLoading} disabled={processing} />}
-
-        {state.paintSession && (
-          <div className="grid gap-2 border-l-2 border-acid bg-[#edf5c4] p-3 text-[12px] leading-relaxed text-ink">
-            <span>Paint is still pending. Apply or discard it before running a selection edit.</span>
-            <div className="flex gap-2"><button type="button" className="h-8 bg-ink px-2 font-bold text-paper" onClick={state.commitPaintSession}>Apply paint</button><button type="button" className="h-8 px-2 font-bold hover:bg-white/60" onClick={state.discardPaintSession}>Discard</button></div>
-          </div>
-        )}
 
         <section className="grid gap-3 border-t border-line py-3" aria-label="Selection area">
           <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">Selection area</span>
@@ -271,7 +217,7 @@ export function EditorInspector({
           </details>
         ) : null}
 
-        {state.editType !== "recolor" && (
+        {!localOnly && (
           <details className="border-t border-line py-3" open={advancedOpen} onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}>
             <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-[10px] uppercase tracking-[.12em] text-muted hover:text-ink [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><Shield className="size-3.5" />Advanced</span><ChevronDown className={cn("size-3.5 transition-transform", advancedOpen && "rotate-180")} /></summary>
             <div className="grid gap-3 pt-3">
@@ -318,13 +264,9 @@ export function EditorInspector({
       </div>
 
       <div className="border-t border-line p-3">
-        {state.editType === "recolor" ? (
-          <button type="button" data-testid="apply-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-45" disabled={Boolean(state.paintSession)} onClick={onGenerate}><Sparkles className="size-4" />Preview color</button>
-        ) : (
-          <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-45" disabled={state.referencesLoading || aiUnavailable || processing || Boolean(state.paintSession)} onClick={onGenerate}>
-            {processing ? <><Sparkles className="size-4 animate-pulse" />Processing…</> : <><WandSparkles className="size-4" />{cloudCredits ? "Generate preview · 1 credit" : "Generate preview"}</>}
-          </button>
-        )}
+        <button type="button" data-testid="generate-edit" className="flex h-10 w-full items-center justify-center gap-2 bg-acid text-xs font-bold text-ink outline-none hover:bg-ink hover:text-acid focus-visible:ring-2 focus-visible:ring-ink/30 disabled:pointer-events-none disabled:opacity-45" disabled={state.referencesLoading || aiUnavailable || localOnly || processing || !hasSelection || !state.prompt.trim() || Boolean(state.paintSession)} onClick={onGenerate}>
+          {processing ? <><Sparkles className="size-4 animate-pulse" />Processing…</> : <><WandSparkles className="size-4" />{cloudCredits ? "Preview change · 1 credit" : "Preview change"}</>}
+        </button>
       </div>
     </div>
   );
