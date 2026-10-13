@@ -4,6 +4,9 @@ export interface AssetGeneratorRequest {
   mode: "mark" | "image";
   prompt: string;
   referenceImages?: Uint8Array[];
+  inputImagePng?: Uint8Array;
+  previousResponseId?: string;
+  refinementPrompt?: string;
   count: 1;
   width: number;
   height: number;
@@ -20,6 +23,7 @@ export interface RawAssetCandidate {
 export interface AssetGeneratorResult {
   candidates: RawAssetCandidate[];
   providerRequestId: string;
+  conversationResponseId?: string;
   usage?: unknown;
 }
 

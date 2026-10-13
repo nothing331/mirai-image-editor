@@ -1,10 +1,19 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { confirmedProviderRejection, numericProviderUsage } from "./attempts";
+import { confirmedProviderRejection, numericProviderUsage, stageBudget } from "./attempts";
 import { decodeAiMask, validateAiDimensions } from "./editing";
 import { cloudAiEditSchema } from "@/shared/cloud-ai";
 
 describe("AI admission boundaries", () => {
+  it("reserves both image and language ceilings for a conversational preview", () => {
+    process.env.MIRAI_AI_IMAGE_STAGE_MICROUSD = "100";
+    process.env.MIRAI_AI_TEXT_STAGE_MICROUSD = "20";
+    try {
+      expect(stageBudget("image", true, true)).toBe(120);
+      expect(stageBudget("image", true, false)).toBe(100);
+      expect(stageBudget("image", false, true)).toBe(0);
+    } finally { delete process.env.MIRAI_AI_IMAGE_STAGE_MICROUSD; delete process.env.MIRAI_AI_TEXT_STAGE_MICROUSD; }
+  });
   it("keeps timeout, network and server outcomes uncertain", () => {
     for (const status of [undefined, 408, 409, 500, 503]) expect(confirmedProviderRejection({ diagnostics: { status } })).toBe(false);
     expect(confirmedProviderRejection(new Error("network"))).toBe(false);

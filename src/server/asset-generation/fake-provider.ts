@@ -15,6 +15,7 @@ export class FakeAssetGenerator implements AssetGenerator {
 }
 
 async function renderCandidate(request: AssetGeneratorRequest): Promise<Buffer> {
+  if (request.mode === "image" && request.inputImagePng) return sharp(request.inputImagePng).modulate({ brightness: 0.8, saturation: 0.9 }).png().toBuffer();
   if (request.mode === "image") {
     const width = request.width;
     const height = request.height;

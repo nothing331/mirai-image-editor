@@ -9,6 +9,8 @@ export type ProviderScenario = "success" | "slow" | "retryable-error" | "fatal-e
 export interface ImageEditRequest {
   imagePng: Uint8Array;
   referenceImages?: Uint8Array[];
+  previousResponseId?: string;
+  refinementPrompt?: string;
   maskPng?: Uint8Array;
   width: number;
   height: number;
@@ -23,6 +25,7 @@ export interface ImageEditRequest {
 export interface ProviderCandidate {
   candidatePng: Uint8Array;
   providerRequestId: string;
+  conversationResponseId?: string;
   usage?: unknown;
 }
 

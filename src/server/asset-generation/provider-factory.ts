@@ -1,3 +1,4 @@
+import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
 import { parsePositiveInteger } from "@/server/ai/provider-factory";
 import type { AssetGenerationCapabilities, AssetGenerationProviderName } from "@/shared/asset-generation";
 import type { AssetGenerator } from "./contracts";
@@ -14,6 +15,7 @@ export function assetGenerationCapabilities(): AssetGenerationCapabilities {
   return {
     provider,
     model: provider === "openai" ? (process.env.OPENAI_ASSET_GENERATION_MODEL ?? "gpt-image-2") : "fake-asset-generator",
+    conversationModel: configuredImageConversationModel(),
     quality: "low",
     candidateCount: 1,
     markSize: { width: 1024, height: 1024 },

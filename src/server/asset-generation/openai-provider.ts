@@ -1,9 +1,11 @@
-import OpenAI, { toFile } from "openai";
+import { configuredImageConversationModel, generateConversationImage } from "@/server/ai/openai-image-conversation";
+import { ImageProviderError } from "@/server/ai/contracts";
+import OpenAI from "openai";
 import type { ImageEditDiagnosticSink, RequestDiagnosticError } from "@/shared/request-diagnostics";
 import type { AssetGenerator, AssetGeneratorRequest, AssetGeneratorResult } from "./contracts";
 import { AssetGenerationProviderError } from "./contracts";
 
-/** Keeps the OpenAI Images API and its credentials behind the app-owned asset generator contract. */
+/** Keeps OpenAI generation endpoints and credentials behind the app-owned asset generator contract. */
 export class OpenAIAssetGenerator implements AssetGenerator {
   private readonly client: OpenAI;
 
@@ -16,6 +18,15 @@ export class OpenAIAssetGenerator implements AssetGenerator {
     try {
       await diagnostics?.beginProviderCall("asset-generator", "openai", this.model);
       await diagnostics?.event("provider-call", "Calling the OpenAI image generation provider.", { candidateCount: request.count });
+      if (request.mode === "image") {
+        await diagnostics?.metadata({ providerInstruction: request.prompt, configuration: { transport: "responses", conversationModel: configuredImageConversationModel(), imageModel: this.model, quality: request.quality, maxOutputTokens: 4096, maxToolCalls: 1 } });
+        if (request.inputImagePng) await diagnostics?.artifact("provider-input.png", request.inputImagePng, "image/png");
+        const result = await generateConversationImage(this.client, { prompt: request.prompt, imageModel: this.model, quality: request.quality, size: `${request.width}x${request.height}`, mainImage: request.inputImagePng, references: request.referenceImages, previousResponseId: request.previousResponseId });
+        providerCompleted = true;
+        await diagnostics?.artifact("provider-response.json", new TextEncoder().encode(JSON.stringify({ providerRequestId: result.providerRequestId, responseId: result.conversationResponseId, usage: result.usage })), "application/json");
+        await diagnostics?.completeProviderCall("asset-generator", result.providerRequestId, flattenUsage(result.usage));
+        return { ...result, candidates: [{ ordinal: 0, png: result.candidatePng }] };
+      }
       const size = `${request.width}x${request.height}` as OpenAI.Images.ImageGenerateParams["size"];
       const options = {
         model: this.model,
@@ -25,9 +36,7 @@ export class OpenAIAssetGenerator implements AssetGenerator {
         quality: request.quality,
         output_format: "png" as const,
       };
-      const call = request.referenceImages?.length
-        ? this.client.images.edit({ ...options, image: await Promise.all(request.referenceImages.map((image, index) => toFile(image, `reference-${index + 1}.png`, { type: "image/png" }))) })
-        : this.client.images.generate(options);
+      const call = this.client.images.generate(options);
       const { data: response, request_id: providerRequestId } = await call.withResponse();
       providerCompleted = true;
       const candidates = (response.data ?? []).flatMap((candidate, ordinal) => candidate.b64_json
@@ -47,7 +56,7 @@ export class OpenAIAssetGenerator implements AssetGenerator {
       await diagnostics?.completeProviderCall("asset-generator", providerRequestId, flattenUsage(response.usage));
       return { usage: response.usage, candidates, providerRequestId: providerRequestId ?? `openai-unreported-${crypto.randomUUID()}` };
     } catch (error) {
-      const providerError = error instanceof AssetGenerationProviderError ? error : new AssetGenerationProviderError(
+      const providerError = error instanceof AssetGenerationProviderError ? error : error instanceof ImageProviderError ? new AssetGenerationProviderError(error.message, error.retryable, error.diagnostics) : new AssetGenerationProviderError(
         error instanceof Error ? error.message : "OpenAI asset generation failed.",
         isRetryableStatus(error instanceof OpenAI.APIError ? error.status : undefined),
         error instanceof OpenAI.APIError ? {

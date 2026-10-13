@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createAdminSupabaseClient } from "@/server/supabase/admin-client";
 import { reserveOriginalUpload, uploadOriginalBytes, finalizeOriginalUpload } from "@/server/assets/original-assets";
+import { changeProjectLifecycle } from "@/server/cloud-projects/cloud-lifecycle";
 import { createCloudProject } from "@/server/cloud-projects/cloud-projects";
 import { commitCloudEdit, readCloudVersionBytes, listCloudHistory, selectCloudVersion } from "@/server/cloud-projects/cloud-edit-history";
 import { generateCloudEdit, generateCloudExtend, planCloudExtend, prepareAiAcceptance } from "./editing";
@@ -52,6 +53,56 @@ describe.runIf(enabled)("Wave D cloud AI with actual Postgres and private Storag
     return { projectId, command: { requestKey: randomUUID(), assetId: randomUUID(), inputVersionId: versionId, outputVersionId, replaceFuture: false, outputDataUrl: "data:image/png;base64,AAAA", maskAlphaBase64: "AAAA", maskWidth: 1, maskHeight: 1,
       operation: { id: randomUUID(), inputVersionId: versionId, outputVersionId, maskId: randomUUID(), type, method: "generative", status: "accepted", parameters: { diagnosticRequestId: resultId } } } };
   }
+
+
+  it("refines owned protected previews without accepting intermediate versions or repurchasing duplicates", async () => {
+    const fixture = await editFixture();
+    const { project, source } = fixture;
+    const input = { ...fixture.input, boundaryPolicy: "protected" as const, references: [{ name: "chair.png", dataUrl: `data:image/png;base64,${source.toString("base64")}` }] };
+    const before = await aiUsage(ownerId);
+    const first = await generateCloudEdit(ownerId, input);
+    expect(first.canRefine).toBe(true);
+    expect(first.referenceNames).toEqual(["chair.png"]);
+    const refinement = { ...input, requestId: randomUUID(), refinement: { parentRequestId: input.requestId, prompt: "Make the replacement darker" } };
+    const next = await generateCloudEdit(ownerId, refinement);
+    expect(next.refinementPrompts).toEqual(["Make the replacement darker"]);
+    expect(await generateCloudEdit(ownerId, refinement)).toEqual(next);
+    expect((await aiUsage(ownerId)).spent).toBe(before.spent + 2);
+    await expect(generateCloudEdit(foreignId, { ...refinement, requestId: randomUUID() })).rejects.toThrow();
+    await expect(generateCloudEdit(ownerId, { ...refinement, requestId: randomUUID(), projectId: randomUUID() })).rejects.toThrow();
+    const finalInput = { ...input, requestId: randomUUID(), refinement: { parentRequestId: refinement.requestId, prompt: "Keep the texture" } };
+    const final = await generateCloudEdit(ownerId, finalInput);
+    expect(final.refinementPrompts).toEqual(["Make the replacement darker", "Keep the texture"]);
+    expect(final.referenceNames).toEqual(["chair.png"]);
+    expect((await listCloudHistory(ownerId, project.id)).versions).toHaveLength(1);
+    const { command } = commit(project.id, project.currentVersionId, finalInput.requestId, "replace");
+    await commitCloudEdit(ownerId, project.id, command);
+    const pixels = await sharp(await readCloudVersionBytes(ownerId, project.id, command.outputVersionId)).ensureAlpha().raw().toBuffer();
+    const originalPixels = await sharp(source).ensureAlpha().raw().toBuffer();
+    expect(pixels.subarray(4)).toEqual(originalPixels.subarray(4));
+    expect((await listCloudHistory(ownerId, project.id)).versions).toHaveLength(2);
+    expect((await aiUsage(ownerId)).spent).toBe(before.spent + 3);
+    await changeProjectLifecycle(ownerId, project.id, "trash");
+  });
+
+  it("continues creation in the owned session and attaches only the final original", async () => {
+    const session = await createAiSession(ownerId);
+    const creation = { mode: "image" as const, prompt: "A mountain", treatment: "auto" as const, format: "instagram-post" as const };
+    const firstId = randomUUID();
+    const first = await generateCloudOriginal(ownerId, { requestId: firstId, sessionId: session.id, creation });
+    const nextInput = { requestId: randomUUID(), sessionId: session.id, creation: { ...creation, refinement: { parentRequestId: firstId, prompt: "Darker sky" } } };
+    const next = await generateCloudOriginal(ownerId, nextInput);
+    expect(next.refinementPrompts).toEqual(["Darker sky"]);
+    expect(JSON.stringify(next.candidates)).not.toEqual(JSON.stringify(first.candidates));
+    expect(await generateCloudOriginal(ownerId, nextInput)).toEqual(next);
+    await expect(generateCloudOriginal(foreignId, { ...nextInput, requestId: randomUUID() })).rejects.toThrow();
+    const attached = await attachCloudOriginal(ownerId, nextInput.requestId, "Refined mountain");
+    const project = attached as { id: string; projectId?: string };
+    const history = await listCloudHistory(ownerId, project.id ?? project.projectId!);
+    expect(history.versions).toHaveLength(1);
+    expect(history.versions[0].operationType).toBeNull();
+    await changeProjectLifecycle(ownerId, project.id, "trash");
+  });
 
   it("retains the complete review candidate, recovers one result, and accepts exactly once", async () => {
     const { project, source, input } = await editFixture();
