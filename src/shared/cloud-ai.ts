@@ -9,7 +9,7 @@ export const aiUsageSchema = z.object({ unlimited: z.boolean().default(false), g
 export type AiUsage = z.infer<typeof aiUsageSchema>;
 export const cloudAiEditSchema = z.object({
   requestId: z.uuid(), projectId: z.uuid(), inputVersionId: z.uuid(),
-  operation: z.enum(["remove", "replace", "restyle", "transform"]),
+  operation: z.enum(["auto", "remove", "replace", "restyle", "transform"]),
   boundaryPolicy: z.enum(["review", "protected"]), prompt: z.string().trim().max(2000),
   references: referenceImagesSchema.optional(),
   refinement: previewRefinementSchema.optional(),

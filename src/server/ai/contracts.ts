@@ -11,6 +11,7 @@ export interface ImageEditRequest {
   referenceImages?: Uint8Array[];
   previousResponseId?: string;
   refinementPrompt?: string;
+  conversational?: boolean;
   maskPng?: Uint8Array;
   width: number;
   height: number;

@@ -37,7 +37,7 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
       const baseInstruction = request.refinementPrompt
         ? `${buildRefinementInstruction(request.refinementPrompt)} ${request.boundaryPolicy === "protected" ? "Keep changes inside the supplied focus mask." : "Use the supplied focus as an approximate selection; preserve unrelated scene content."}`
         : buildEditInstruction(request.operation, request.prompt, selection, request.boundaryPolicy, request.plan);
-      const instruction = [baseInstruction, request.referenceImages?.length ? `The first supplied image is the canvas to edit. The remaining images are user references. ${referenceImageInstruction(request.referenceImages.length)}` : ""].filter(Boolean).join("\n\n");
+      const instruction = [baseInstruction, request.conversational && request.plan && request.operation !== "replace" ? buildPlannedContext(request.plan) : "", request.referenceImages?.length ? `The first supplied image is the canvas to edit. The remaining images are user references. ${referenceImageInstruction(request.referenceImages.length)}` : ""].filter(Boolean).join("\n\n");
       const requestedOutputSize = request.operation === "transform" ? resolveTransformOutputSize(providerWidth, providerHeight) : null;
       await diagnostics?.event("provider-preparation", providerMask ? "Prepared resized provider image, transparency mask, and instruction." : "Prepared resized provider image and complete-image instruction without an inpainting mask.", { providerWidth, providerHeight, providerMaskSent: Boolean(providerMask), requestedOutputSize });
       await diagnostics?.artifact("provider-input.png", providerImage, "image/png");
@@ -45,11 +45,11 @@ export class OpenAIImageEditProvider implements ImageEditProvider {
       await diagnostics?.metadata({
         providerInstruction: instruction,
         providerDimensions: { width: providerWidth, height: providerHeight },
-        configuration: { model: this.model, quality: this.quality, maxInputEdge: this.maxInputEdge, conversationModel: request.operation === "replace" || request.operation === "restyle" ? configuredImageConversationModel() : null, transport: request.operation === "replace" || request.operation === "restyle" ? "responses" : "images", outputFormat: "png", providerMaskSent: Boolean(providerMask), requestedOutputSize },
+        configuration: { model: this.model, quality: this.quality, maxInputEdge: this.maxInputEdge, conversationModel: (request.conversational || request.operation === "replace" || request.operation === "restyle") ? configuredImageConversationModel() : null, transport: (request.conversational || request.operation === "replace" || request.operation === "restyle") ? "responses" : "images", outputFormat: "png", providerMaskSent: Boolean(providerMask), requestedOutputSize },
       });
       await diagnostics?.beginProviderCall("image-editor", "openai", this.model);
       await diagnostics?.event("provider-call", "Calling the OpenAI image-edit provider.");
-      const conversational = request.operation === "replace" || request.operation === "restyle";
+      const conversational = request.conversational || request.operation === "replace" || request.operation === "restyle";
       const conversation = conversational ? await generateConversationImage(this.client, { prompt: instruction, imageModel: this.model, quality: this.quality, size: requestedOutputSize ?? "auto", mainImage: providerImage, references: request.referenceImages, mask: providerMask ?? undefined, previousResponseId: request.previousResponseId }) : null;
       const direct = conversation ? null : await this.client.images.edit({
         model: this.model,

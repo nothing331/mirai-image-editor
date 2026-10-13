@@ -140,9 +140,10 @@ function validateOutsideMask(input: Uint8Array, output: Uint8Array, mask: Uint8A
 
 export async function commitCloudEdit(ownerId: string, projectId: string, raw: unknown) {
   const input = editCommitSchema.parse(raw);
-  const generative = input.operation.method === "generative";
-  if (!generative && "diagnosticRequestId" in input.operation.parameters) fail("invalid", "Local edits cannot claim an AI result.");
-  if (generative) {
+  if (input.operation.type === "recolor" && input.operation.method !== "local") fail("invalid", "Recolor uses local pixel processing.");
+  const usesStoredAiResult = input.operation.method === "generative" || input.operation.type === "recolor" && typeof input.operation.parameters.diagnosticRequestId === "string";
+  if (!usesStoredAiResult && "diagnosticRequestId" in input.operation.parameters) fail("invalid", "Local edits cannot claim an AI result.");
+  if (usesStoredAiResult) {
     const receipt = await createAdminSupabaseClient().from("cloud_commit_receipts").select("*")
       .eq("owner_id", ownerId).eq("project_id", projectId).eq("request_key", input.requestKey).maybeSingle();
     if (receipt.error) fail("unavailable", "The save receipt could not be checked.");
@@ -150,15 +151,15 @@ export async function commitCloudEdit(ownerId: string, projectId: string, raw: u
       const operation = await createAdminSupabaseClient().from("cloud_edit_operations").select("kind,method,parameters")
         .eq("id", receipt.data.operation_id).eq("owner_id", ownerId).eq("project_id", projectId).single();
       if (operation.error || receipt.data.operation_id !== input.operation.id || receipt.data.input_version_id !== input.inputVersionId
-        || receipt.data.output_version_id !== input.outputVersionId || operation.data.method !== "generative"
+        || receipt.data.output_version_id !== input.outputVersionId || operation.data.method !== input.operation.method
         || operation.data.kind !== input.operation.type || operation.data.parameters.diagnosticRequestId !== input.operation.parameters.diagnosticRequestId) fail("conflict", "This save request belongs to another edit.");
       // Return the durable acknowledgement even after its temporary candidate has expired.
       await getCloudProject(ownerId, projectId);
       return receipt.data;
     }
   }
-  if (!generative && ["remove", "replace", "restyle", "extend"].includes(input.operation.type)) fail("invalid", "This operation requires a stored AI result.");
-  const ai = generative ? await prepareAiAcceptance(ownerId, projectId, input.inputVersionId, input.operation) : null;
+  if (!usesStoredAiResult && ["remove", "replace", "restyle", "extend"].includes(input.operation.type)) fail("invalid", "This operation requires a stored AI result.");
+  const ai = usesStoredAiResult ? await prepareAiAcceptance(ownerId, projectId, input.inputVersionId, input.operation) : null;
   if (ai) {
     input.outputDataUrl = ai.outputDataUrl;
     input.maskAlphaBase64 = ai.maskAlphaBase64;
@@ -180,7 +181,7 @@ export async function commitCloudEdit(ownerId: string, projectId: string, raw: u
   if (["crop", "resize", "rotate", "flip", "transform"].includes(input.operation.type) && mask.some((alpha) => alpha !== 255)) {
     fail("invalid", "Geometry edits require a full source-image mask.");
   }
-  if ((!generative || input.operation.parameters.boundaryPolicy === "protected") && outputImage.width === sourceVersion.width && outputImage.height === sourceVersion.height) {
+  if ((input.operation.method === "local" || input.operation.parameters.boundaryPolicy === "protected") && outputImage.width === sourceVersion.width && outputImage.height === sourceVersion.height) {
     const source = await decodedPixels(await versionBytes(ownerId, projectId, input.inputVersionId));
     validateOutsideMask(source.pixels, outputImage.pixels, mask, source.width, source.height);
   }
