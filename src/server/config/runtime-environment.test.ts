@@ -8,6 +8,23 @@ afterEach(() => {
 });
 
 describe("runtime environment", () => {
+  it("explains why changing both Render providers without enabling AI fails", () => {
+    try {
+      readRuntimeEnvironment({ ...stagingEnvironment(), IMAGE_EDIT_PROVIDER: "openai", ASSET_GENERATION_PROVIDER: "openai", OPENAI_API_KEY: "private-key-must-not-appear" });
+      expect.fail("unsafe configuration must fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RuntimeEnvironmentError);
+      expect((error as Error).message).toContain("changing provider names alone does not enable AI");
+      expect((error as Error).message).not.toContain("private-key-must-not-appear");
+    }
+  });
+  it("explains literal boolean and spending units without weakening the guards", () => {
+    expect(() => readRuntimeEnvironment({ MIRAI_AI_ENABLED: '"true"' })).toThrow("without quotes");
+    const configuration = { ...stagingEnvironment(), MIRAI_AUTH_ENABLED: "true", MIRAI_OWNER_EMAILS: "owner@example.com", SUPABASE_SECRET_KEY: "test-only-secret-placeholder", MIRAI_AI_ENABLED: "true", IMAGE_EDIT_PROVIDER: "openai", ASSET_GENERATION_PROVIDER: "openai", OPENAI_API_KEY: "test-only-key" };
+    expect(() => readRuntimeEnvironment(configuration)).toThrow("must not be used to bypass it");
+    expect(() => readRuntimeEnvironment({ ...configuration, MIRAI_AI_HOST_QUALIFIED: "true", MIRAI_AI_IMAGE_STAGE_MICROUSD: "0.1" })).toThrow("not decimal dollars");
+    expect(readRuntimeEnvironment({ ...configuration, MIRAI_AI_HOST_QUALIFIED: "true", MIRAI_AI_IMAGE_STAGE_MICROUSD: "1000000", MIRAI_AI_TEXT_STAGE_MICROUSD: "100000" }).aiEnabled).toBe(true);
+  });
   it("preserves a safe local default with fake providers", () => {
     const configuration = readRuntimeEnvironment({});
 
