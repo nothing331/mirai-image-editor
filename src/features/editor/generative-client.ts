@@ -1,3 +1,4 @@
+import type { ReferenceImage } from "@/shared/reference-images";
 import { alphaBase64, postCloudAi } from "@/features/cloud-projects/cloud-ai-client";
 import { compositeCandidate } from "./composite";
 import { decodeImage, pixelsToDataUrl } from "./image-data";
@@ -12,6 +13,10 @@ interface GenerativeCandidate {
   diagnosticRequestId: string;
   candidateAnalysis: CandidateAnalysis;
   resolvedInstruction: string | null;
+  references?: ReferenceImage[];
+  referenceNames?: string[];
+  canRefine?: boolean;
+  refinementPrompts?: string[];
   transformFidelityAssessment?: TransformFidelityAssessment | null;
 }
 
@@ -31,6 +36,10 @@ export class GenerativeRequestError extends Error {
 export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnapshot): Promise<GenerativeCandidate> {
   const response = snapshot.cloud ? await sendCloudGenerativeRequest(snapshot) : await sendLocalGenerativeRequest(snapshot);
   const payload = await response.json() as {
+    references?: ReferenceImage[];
+    referenceNames?: string[];
+    canRefine?: boolean;
+    refinementPrompts?: string[];
     candidateBase64?: string;
     providerRequestId?: string;
     projectId?: string;
@@ -66,6 +75,10 @@ export async function requestGenerativeCandidate(snapshot: GenerativeRequestSnap
     providerRequestId: payload.providerRequestId,
     diagnosticRequestId: responseRequestId,
     candidateAnalysis: payload.candidateAnalysis,
+    references: payload.references,
+    referenceNames: payload.referenceNames,
+    canRefine: payload.canRefine,
+    refinementPrompts: payload.refinementPrompts,
     resolvedInstruction: payload.resolvedInstruction ?? null,
     transformFidelityAssessment: payload.transformFidelityAssessment ?? null,
   };
@@ -88,7 +101,7 @@ async function sendCloudGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
     requestId: snapshot.requestId, projectId: snapshot.projectId, inputVersionId: snapshot.inputVersion.id,
     operation: snapshot.operation, boundaryPolicy: snapshot.operation === "transform" ? "review" : snapshot.boundaryPolicy,
     prompt: snapshot.operation === "transform" ? snapshot.userPrompt : snapshot.prompt,
-    ...(snapshot.operation !== "transform" ? { references: snapshot.references ?? [] } : {}),
+    ...(snapshot.operation !== "transform" ? { references: snapshot.references ?? [], refinement: snapshot.refinement } : {}),
     ...(snapshot.operation === "transform" ? { presetId: snapshot.presetId, presetVersion: snapshot.presetVersion, preservationMode: snapshot.preservationMode }
       : { selectionMaskBase64: alphaBase64(snapshot.selectionMask.data), providerMaskBase64: alphaBase64(snapshot.providerMask.data) }),
   };
@@ -98,6 +111,11 @@ async function sendCloudGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
 async function sendLocalGenerativeRequest(snapshot: GenerativeRequestSnapshot) {
   const form = new FormData();
   if (snapshot.operation !== "transform" && snapshot.references?.length) form.set("references", JSON.stringify(snapshot.references));
+  if (snapshot.operation !== "transform" && snapshot.refinement) {
+    form.set("refinement", JSON.stringify(snapshot.refinement));
+    form.set("scenario", snapshot.scenario);
+    return fetch("/api/image-edits", { method: "POST", headers: { "x-project-id": snapshot.projectId, "x-request-id": snapshot.requestId }, body: form });
+  }
   const sourcePng = pixelsToDataUrl(snapshot.inputVersion.pixels, snapshot.inputVersion.width, snapshot.inputVersion.height);
   form.set("image", new File([await (await fetch(sourcePng)).blob()], "image.png", { type: "image/png" }));
   if (snapshot.operation === "transform") {

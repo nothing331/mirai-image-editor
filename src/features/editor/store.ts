@@ -96,6 +96,7 @@ interface EditorState {
   planExtend: (input: ExtendInput) => Promise<boolean>;
   generateExtend: () => Promise<boolean>;
   retryGenerativePreview: () => Promise<boolean>;
+  refineGenerativePreview: (prompt: string) => Promise<boolean>;
   acceptPreview: () => boolean;
   restoreCloudAiPreview: (preview: EditPreview) => void;
   discardPreview: () => void;
@@ -283,6 +284,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       || draft.pendingAcceptance && draft.pendingAcceptance.input.id !== current.id) return false;
     set({ localDraft: draft.localDraft, localDraftDirty: Boolean(draft.localDraft),
       paintSession: draft.paintSession, selectionMask: draft.selectionMask,
+      references: draft.preview?.referenceImages ?? [],
       preview: draft.preview, pendingAcceptance: draft.pendingAcceptance,
       overlayAssets: draft.overlayAssets, error: null });
     return true;
@@ -570,6 +572,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   requestGenerativePreview: async () => {
     const state = get();
+    if (state.generativeState.status === "processing") return false;
     if (state.referencesLoading) { set({ error: "Wait for reference images to finish preparing." }); return false; }
     const input = state.versions.find((version) => version.id === state.currentVersionId);
     if (state.localDraft) {
@@ -654,6 +657,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
     return executeGenerativeRequest(snapshot);
   },
+  refineGenerativePreview: async (prompt) => {
+    const state = get();
+    const preview = state.preview;
+    const input = getCurrentVersion(state);
+    if (state.generativeState.status === "processing" || state.pendingAcceptance || !input || !preview
+      || preview.method !== "generative" || (preview.type !== "replace" && preview.type !== "restyle")
+      || !preview.parameters.canRefine || preview.inputVersionId !== input.id || !prompt.trim() || prompt.trim().length > 2000) return false;
+    const snapshot: GenerativeRequestSnapshot = {
+      projectId: state.projectId!, cloud: state.acceptanceMode === "cloud", requestId: crypto.randomUUID(), retryOfRequestId: null,
+      inputVersion: { ...input, pixels: new Uint8ClampedArray(input.pixels) }, operation: preview.type,
+      selectionId: state.selectionId ?? crypto.randomUUID(), selectionMask: state.selectionMask ?? preview.mask,
+      providerMask: { ...preview.mask, data: new Uint8ClampedArray(preview.mask.data) }, boundaryPolicy: preview.parameters.boundaryPolicy,
+      prompt: preview.parameters.prompt, references: state.references.map(image => ({ ...image })), scenario: state.fakeScenario,
+      refinement: { parentRequestId: preview.parameters.diagnosticRequestId, prompt: prompt.trim() },
+    };
+    return executeGenerativeRequest(snapshot);
+  },
   retryGenerativePreview: async () => {
     const state = get();
     if (state.generativeState.status !== "failed" || !state.generativeState.retryable) return false;
@@ -731,10 +751,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       extendState: { status: "planned" as const, input: { presetId: preview.parameters.presetId, presetVersion: preview.parameters.presetVersion, strategy: preview.parameters.strategy, userPrompt: preview.parameters.userPrompt }, analysis: preview.parameters.analysis, plan: preview.parameters.plan, error: null },
       extendAnalysisCache: { ...state.extendAnalysisCache, [preview.inputVersionId]: preview.parameters.analysis },
     } : {};
-    set({ ...recoveredExtend, preview, localDraft: null, error: null, lastRequestId: "diagnosticRequestId" in preview.parameters ? preview.parameters.diagnosticRequestId : null });
+    set({ ...recoveredExtend, preview, references: preview.referenceImages ?? [], localDraft: null, error: null, lastRequestId: "diagnosticRequestId" in preview.parameters ? preview.parameters.diagnosticRequestId : null });
   },
   acceptPreview: () => {
     const state = get();
+    if (state.generativeState.status === "processing") return false;
     if (state.pendingAcceptance) {
       set({ error: "Save or discard the pending edit before accepting another." });
       return false;
@@ -769,7 +790,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set(stageOrAppendAcceptedEdit(state, input, output, operation, preview.mask, preserveSelection));
     return true;
   },
-  discardPreview: () => set({ preview: null, generativeState: idleGenerativeState, error: null }),
+  discardPreview: () => { if (get().generativeState.status !== "processing") set({ preview: null, generativeState: idleGenerativeState, error: null }); },
   canUndo: () => {
     const state = get();
     return state.currentVersionId !== null && state.currentVersionId !== state.originalVersionId;
@@ -810,7 +831,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
 /** Executes an immutable request snapshot and ignores responses superseded by a newer request. */
 async function executeGenerativeRequest(snapshot: GenerativeRequestSnapshot): Promise<boolean> {
-  useEditorStore.setState({ generativeState: { status: "processing", snapshot, error: null, retryable: false }, lastRequestId: snapshot.requestId, preview: null, error: null });
+  const retainedPreview = snapshot.operation !== "transform" && snapshot.refinement ? useEditorStore.getState().preview : null;
+  useEditorStore.setState({ generativeState: { status: "processing", snapshot, error: null, retryable: false }, lastRequestId: snapshot.requestId, preview: retainedPreview, error: null });
   try {
     const candidate = await requestGenerativeCandidate(snapshot);
     const state = useEditorStore.getState();
@@ -835,8 +857,12 @@ async function executeGenerativeRequest(snapshot: GenerativeRequestSnapshot): Pr
       };
     } else {
       preview = {
+        referenceImages: candidate.references ?? snapshot.references,
         id: crypto.randomUUID(), inputVersionId: snapshot.inputVersion.id, type: snapshot.operation, method: "generative",
         parameters: {
+          referenceNames: candidate.referenceNames,
+          canRefine: candidate.canRefine,
+          refinementPrompts: candidate.refinementPrompts,
           prompt: snapshot.prompt,
           providerRequestId: candidate.providerRequestId,
           diagnosticRequestId: candidate.diagnosticRequestId,

@@ -1,3 +1,6 @@
+import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
+import { refineSelectionPreview } from "@/server/ai/refine-preview";
+import { PreviewConversationError } from "@/server/ai/preview-conversation";
 import { prepareReferenceImages } from "@/server/ai/reference-images";
 import "server-only";
 import sharp from "sharp";
@@ -49,6 +52,23 @@ async function maskPng(alpha: Uint8Array, width: number, height: number) {
 
 export async function generateCloudEdit(ownerId: string, raw: unknown) {
   const input = cloudAiEditSchema.parse(raw);
+  if (input.refinement) {
+    const parentAttempt = await ownedAttempt(ownerId, input.refinement.parentRequestId);
+    if (parentAttempt.project_id !== input.projectId || parentAttempt.input_version_id !== input.inputVersionId || parentAttempt.workflow !== input.operation || parentAttempt.status !== "ready") throw new PreviewConversationError("This preview belongs to another edit or is no longer available.");
+    const parent = await readAiResult(parentAttempt);
+    if (!parent.acceptance || !parent.conversation?.edit || input.boundaryPolicy !== parent.conversation.edit.boundaryPolicy) throw new PreviewConversationError("Keep the original edit settings when refining this preview.");
+    await aiSourceInfo(ownerId, input.projectId, input.inputVersionId);
+    return runAiAttempt({ ownerId, requestId: input.requestId, projectId: input.projectId, inputVersionId: input.inputVersionId, workflow: input.operation,
+      payload: input, stages: ["image"], conversational: true, real: configuredProviderName() === "openai" }, async (attempt) => {
+      const source = await aiSource(ownerId, input.projectId, input.inputVersionId);
+      const workingParent = { ...parent, conversation: { ...parent.conversation!, edit: { ...parent.conversation!.edit!, sourceBase64: Buffer.from(source.png).toString("base64") } } };
+      const refined = await refineSelectionPreview(workingParent, input.refinement!, { projectId: input.projectId, requestId: input.requestId }, undefined, undefined,
+        request => attempt.stage("image", () => createImageEditProvider().edit(request)));
+      refined.conversation.edit!.sourceBase64 = "";
+      return { ...refined, acceptance: { ...parent.acceptance!, parameters: { ...parent.acceptance!.parameters, providerRequestId: refined.response.providerRequestId,
+        diagnosticRequestId: input.requestId, candidateAnalysis: refined.response.candidateAnalysis, canRefine: true, refinementPrompts: refined.conversation.refinementPrompts } } };
+    });
+  }
   const referenceImages = await prepareReferenceImages(input.references);
   if (referenceImages.length && input.operation !== "replace" && input.operation !== "restyle") throw new CloudProjectError("invalid", "Reference images are supported for Replace and Restyle.");
   if (input.operation !== "remove" && !input.prompt && !input.presetId) throw new CloudProjectError("invalid", "Describe the requested change.");
@@ -61,6 +81,7 @@ export async function generateCloudEdit(ownerId: string, raw: unknown) {
   if (input.operation === "transform") buildTransformInstruction(transform);
   return runAiAttempt({ ownerId, requestId: input.requestId, projectId: input.projectId, inputVersionId: input.inputVersionId,
     workflow: input.operation, payload: input, real: configuredProviderName() === "openai",
+    conversational: input.operation === "replace" || input.operation === "restyle",
     stages: input.operation === "transform" ? ["transform-plan", "image", "transform-fidelity"] : input.operation === "replace" ? ["replace-plan", "image"] : ["image"],
   }, async (attempt) => {
     const source = await aiSource(ownerId, input.projectId, input.inputVersionId);
@@ -83,9 +104,16 @@ export async function generateCloudEdit(ownerId: string, raw: unknown) {
     const parameters: Record<string, unknown> = input.operation === "transform"
       ? { ...transform, resolvedInstruction: instruction, providerRequestId: result.providerRequestId, diagnosticRequestId: input.requestId, candidateAnalysis, transformFidelityAssessment: assessment }
       : { prompt: input.prompt, providerRequestId: result.providerRequestId, diagnosticRequestId: input.requestId, boundaryPolicy: input.boundaryPolicy, candidateAnalysis };
+    const conversation = input.operation === "replace" || input.operation === "restyle" ? {
+      responseId: result.conversationResponseId ?? null, languageModel: configuredImageConversationModel(), provider: configuredProviderName(), imageModel: configuredProviderName() === "openai" ? process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2" : "fake-image-editor",
+      width: source.width, height: source.height, references: input.references ?? [], refinementPrompts: [],
+      edit: { operation: input.operation, boundaryPolicy: input.boundaryPolicy, prompt: input.prompt, sourceBase64: "",
+        selectionMaskBase64: Buffer.from(selectionMaskPng).toString("base64"), providerMaskBase64: Buffer.from(providerMaskPng).toString("base64") }
+    } : undefined;
     return {
-      response: { candidateBase64: Buffer.from(result.candidatePng).toString("base64"), providerRequestId: result.providerRequestId, candidateAnalysis, transformFidelityAssessment: assessment, resolvedInstruction: instruction, imageGenerationAttempted: true, projectId: input.projectId },
-      acceptance: { maskBase64: mask.toString("base64"), maskWidth: source.width, maskHeight: source.height, width: source.width, height: source.height, parameters },
+      conversation,
+      response: { references: input.references ?? [], referenceNames: (input.references ?? []).map(image => image.name), canRefine: Boolean(conversation), refinementPrompts: [], candidateBase64: Buffer.from(result.candidatePng).toString("base64"), providerRequestId: result.providerRequestId, candidateAnalysis, transformFidelityAssessment: assessment, resolvedInstruction: instruction, imageGenerationAttempted: true, projectId: input.projectId },
+      acceptance: { maskBase64: mask.toString("base64"), maskWidth: source.width, maskHeight: source.height, width: source.width, height: source.height, parameters: { ...parameters, referenceNames: (input.references ?? []).map(image => image.name), canRefine: Boolean(conversation), refinementPrompts: [] } },
     };
   });
 }

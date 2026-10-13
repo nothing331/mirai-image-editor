@@ -310,6 +310,40 @@ describe("filled selection preview and acceptance", () => {
     expect(useEditorStore.getState().operations).toHaveLength(1);
   });
 
+
+  it("keeps refinement drafts out of history and preserves the previous preview on failure", async () => {
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    useEditorStore.getState().setEditType("replace");
+    useEditorStore.getState().setPrompt("A chair");
+    const response = { pixels: new Uint8ClampedArray(original.pixels), dataUrl: "data:image/png;base64,first", providerRequestId: "first", diagnosticRequestId: crypto.randomUUID(), candidateAnalysis, resolvedInstruction: null, canRefine: true, refinementPrompts: [] };
+    vi.mocked(requestGenerativeCandidate).mockResolvedValueOnce(response);
+    expect(await useEditorStore.getState().requestGenerativePreview()).toBe(true);
+    const first = useEditorStore.getState().preview;
+    let reject!: (error: Error) => void;
+    vi.mocked(requestGenerativeCandidate).mockReturnValueOnce(new Promise((_, fail) => { reject = fail; }));
+    const pending = useEditorStore.getState().refineGenerativePreview("Make it darker");
+    expect(useEditorStore.getState().preview).toBe(first);
+    expect(await useEditorStore.getState().requestGenerativePreview()).toBe(false);
+    expect(requestGenerativeCandidate).toHaveBeenCalledTimes(2);
+    expect(useEditorStore.getState().acceptPreview()).toBe(false);
+    expect(useEditorStore.getState().operations).toHaveLength(0);
+    reject(new GenerativeRequestError("failed", true));
+    expect(await pending).toBe(false);
+    expect(useEditorStore.getState().preview).toBe(first);
+    vi.mocked(requestGenerativeCandidate).mockResolvedValueOnce({ ...response, dataUrl: "data:image/png;base64,refined", diagnosticRequestId: crypto.randomUUID(), refinementPrompts: ["Make it darker"] });
+    expect(await useEditorStore.getState().retryGenerativePreview()).toBe(true);
+    const last = vi.mocked(requestGenerativeCandidate).mock.calls.at(-1)![0];
+    expect(last.operation !== "transform" && last.refinement).toEqual({ parentRequestId: response.diagnosticRequestId, prompt: "Make it darker" });
+    expect(useEditorStore.getState().operations).toHaveLength(0);
+    expect(useEditorStore.getState().acceptPreview()).toBe(true);
+    expect(useEditorStore.getState().versions).toHaveLength(2);
+    expect(useEditorStore.getState().operations).toHaveLength(1);
+    useEditorStore.getState().undo();
+    expect(useEditorStore.getState().currentVersionId).toBe(original.id);
+    useEditorStore.getState().redo();
+    expect(useEditorStore.getState().versions.at(-1)?.dataUrl).toBe("data:image/png;base64,refined");
+  });
+
   it("retries an immutable snapshot after a retryable failure", async () => {
     useEditorStore.getState().fillSelection(firstPixelContour);
     useEditorStore.getState().setEditType("remove");
@@ -333,6 +367,9 @@ describe("filled selection preview and acceptance", () => {
     const resolvers: Array<(value: { pixels: Uint8ClampedArray; dataUrl: string; providerRequestId: string; diagnosticRequestId: string; candidateAnalysis: typeof candidateAnalysis; resolvedInstruction: null }) => void> = [];
     vi.mocked(requestGenerativeCandidate).mockImplementation(() => new Promise((resolve) => resolvers.push(resolve)));
     const older = useEditorStore.getState().requestGenerativePreview();
+    useEditorStore.getState().loadImage({ ...original, id: "new-project-original" });
+    useEditorStore.getState().fillSelection(firstPixelContour);
+    useEditorStore.getState().setEditType("remove");
     const newer = useEditorStore.getState().requestGenerativePreview();
     resolvers[0]({ pixels: new Uint8ClampedArray(original.pixels), dataUrl: "data:old", providerRequestId: "old", diagnosticRequestId: "request-old", candidateAnalysis, resolvedInstruction: null });
     expect(await older).toBe(false);

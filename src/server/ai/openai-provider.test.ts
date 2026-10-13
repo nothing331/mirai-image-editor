@@ -2,12 +2,13 @@
 import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ edit: vi.fn(), toFile: vi.fn(async (value) => value) }));
+const mocks = vi.hoisted(() => ({ edit: vi.fn(), responses: vi.fn(), toFile: vi.fn(async (value) => value) }));
 
 vi.mock("openai", () => ({
   default: class MockOpenAI {
     static APIError = class APIError extends Error {};
     images = { edit: mocks.edit };
+    responses = { create: mocks.responses };
   },
   toFile: mocks.toFile,
 }));
@@ -15,7 +16,7 @@ vi.mock("openai", () => ({
 import { buildEditInstruction, OpenAIImageEditProvider, resolveTransformOutputSize, supportsInputFidelity } from "./openai-provider";
 
 describe("OpenAIImageEditProvider", () => {
-  beforeEach(() => mocks.edit.mockReset());
+  beforeEach(() => { mocks.edit.mockReset(); mocks.responses.mockReset(); });
 
   it("keeps SDK input and output inside the adapter and normalizes dimensions", async () => {
     const input = await sharp({ create: { width: 2, height: 3, channels: 4, background: "blue" } }).png().toBuffer();
@@ -29,6 +30,14 @@ describe("OpenAIImageEditProvider", () => {
     expect(await sharp(providerInput).metadata()).toMatchObject({ width: 1, height: 2 });
     expect(await sharp(result.candidatePng).metadata()).toMatchObject({ width: 2, height: 3 });
     expect(result.providerRequestId).toBe("openai-request-1");
+  });
+
+
+  it("retains the direct-provider fallback when a successful response has no request header", async () => {
+    const input = await sharp({ create: { width: 2, height: 2, channels: 4, background: "blue" } }).png().toBuffer();
+    mocks.edit.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { data: [{ b64_json: input.toString("base64") }] }, request_id: null }) });
+    const result = await new OpenAIImageEditProvider("test-key").edit({ imagePng: input, maskPng: input, width: 2, height: 2, operation: "remove", boundaryPolicy: "review", prompt: "" });
+    expect(result.providerRequestId).toMatch(/^openai-unreported-/);
   });
 
   it("sends input fidelity only to model families that support it", async () => {
@@ -90,15 +99,15 @@ describe("OpenAIImageEditProvider", () => {
   it("keeps the canvas first and reference images after it with the mask on the canvas", async () => {
     const input = await sharp({ create: { width: 4, height: 3, channels: 4, background: "blue" } }).png().toBuffer();
     const reference = await sharp({ create: { width: 2, height: 5, channels: 4, background: "red" } }).png().toBuffer();
-    mocks.edit.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { data: [{ b64_json: input.toString("base64") }] }, request_id: "reference-edit" }) });
+    mocks.responses.mockReturnValue({ withResponse: vi.fn().mockResolvedValue({ data: { id: "resp-edit", status: "completed", output: [{ type: "image_generation_call", status: "completed", result: input.toString("base64") }] }, request_id: "reference-edit" }) });
     await new OpenAIImageEditProvider("test-key").edit({ imagePng: input, maskPng: input, referenceImages: [reference], width: 4, height: 3, operation: "replace", boundaryPolicy: "protected", prompt: "Use reference 1" });
-    const options = mocks.edit.mock.calls[0][0];
-    expect(options.image).toHaveLength(2);
-    expect(await sharp(options.image[0]).metadata()).toMatchObject({ width: 4, height: 3 });
-    expect(Buffer.from(options.image[1])).toEqual(reference);
-    expect(options).toHaveProperty("mask");
-    expect(options.prompt).toContain("first supplied image is the canvas");
-    expect(options.prompt).toContain("strict edit boundary");
+    const options = mocks.responses.mock.calls[0][0];
+    const images = options.input[0].content.filter((part: { type: string }) => part.type === "input_image");
+    expect(images).toHaveLength(2);
+    expect(await sharp(Buffer.from(images[0].image_url.split(",")[1], "base64")).metadata()).toMatchObject({ width: 4, height: 3 });
+    expect(Buffer.from(images[1].image_url.split(",")[1], "base64")).toEqual(reference);
+    expect(options.tools[0]).toHaveProperty("input_image_mask");
+    expect(options.input[0].content.at(-1).text).toContain("strict edit boundary");
   });
 
 });

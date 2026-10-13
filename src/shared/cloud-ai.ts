@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { previewRefinementSchema } from "./preview-refinement";
 import { referenceImagesSchema } from "./reference-images";
 import { assetCreationRequestSchema } from "./asset-generation";
 import { extendPresets } from "./extend-presets";
@@ -11,6 +12,7 @@ export const cloudAiEditSchema = z.object({
   operation: z.enum(["remove", "replace", "restyle", "transform"]),
   boundaryPolicy: z.enum(["review", "protected"]), prompt: z.string().trim().max(2000),
   references: referenceImagesSchema.optional(),
+  refinement: previewRefinementSchema.optional(),
   selectionMaskBase64: z.string().max(6_000_000).optional(),
   providerMaskBase64: z.string().max(6_000_000).optional(),
   presetId: z.enum(transformPresets.map((preset) => preset.id)).nullable().optional(),

@@ -632,6 +632,25 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
     await dialog.getByTestId("generate-assets").click();
     expect((await creationRequest).postDataJSON().references).toHaveLength(1);
     await expect(dialog.getByTestId("asset-candidate-1")).toBeVisible();
+    await dialog.getByLabel("Add reference images").setInputFiles({ name: "next-image.png", mimeType: "image/png", buffer });
+    await expect(dialog.getByAltText("Reference 2: next-image.png")).toBeVisible();
+    const originalPreview = await dialog.getByTestId("asset-candidate-1").getByRole("img").getAttribute("src");
+    await dialog.getByLabel("Refinement instruction").fill("Make the sky darker");
+    const refinementRequest = page.waitForRequest(request => request.url().endsWith("/api/asset-generations") && request.method() === "POST");
+    await dialog.getByTestId("refine-created-image").click();
+    const refinementPayload = (await refinementRequest).postDataJSON();
+    expect(refinementPayload.refinement.prompt).toBe("Make the sky darker");
+    expect(refinementPayload.references).toHaveLength(1);
+    await expect(dialog.getByTestId("refine-created-image")).toBeDisabled();
+    await expect.poll(() => dialog.getByTestId("asset-candidate-1").getByRole("img").getAttribute("src")).not.toBe(originalPreview);
+    if (viewport.width > 1024) {
+      const previewBounds = await dialog.getByTestId("asset-candidate-1").boundingBox();
+      const footerBounds = await dialog.locator("footer").boundingBox();
+      expect(previewBounds!.y + previewBounds!.height).toBeLessThanOrEqual(footerBounds!.y);
+      const titleBounds = await dialog.getByRole("heading", { name: "Create with AI", exact: true }).boundingBox();
+      expect(titleBounds!.y).toBeGreaterThanOrEqual((await dialog.locator("section.editor-dialog").boundingBox())!.y);
+    }
+    await page.screenshot({ path: `/tmp/mirai-creation-refinement-${viewport.width}.png` });
     await dialog.getByTestId("use-generated-asset").click();
     await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
     await page.getByTestId("open-lasso-edit").click();
@@ -647,7 +666,24 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
     expect(JSON.stringify(await diagnostic.json())).toContain("reference-1.png");
     await expect(page.getByTestId("preview-comparison")).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove reference 1" })).toBeDisabled();
+    const firstPreview = await page.getByAltText("Generated preview").getAttribute("src");
+    await page.getByLabel("Refinement instruction").fill("Make the replacement smaller");
+    await page.getByTestId("refine-edit-preview").click();
+    await expect.poll(() => page.getByAltText("Generated preview").getAttribute("src")).not.toBe(firstPreview);
+    await expect(page.getByText("0 accepted edits", { exact: true })).toBeVisible();
+    const retained = await page.getByAltText("Generated preview").getAttribute("src");
+    await page.route("**/api/image-edits", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Refinement temporarily unavailable", retryable: true }) }), { times: 1 });
+    await page.getByLabel("Refinement instruction").fill("Make it darker");
+    await page.getByTestId("refine-edit-preview").click();
+    await expect(page.getByTestId("editor-inspector").getByRole("alert")).toContainText("Refinement temporarily unavailable");
+    expect(await page.getByAltText("Generated preview").getAttribute("src")).toBe(retained);
+    await page.getByRole("button", { name: "Retry same refinement" }).click();
+    await expect(page.getByLabel("Refinement instruction")).toHaveValue("");
+    await page.screenshot({ path: `/tmp/mirai-refinement-${viewport.width}.png` });
     await page.getByTestId("accept-preview").click();
+    await expect(page.getByText("1 accepted edit", { exact: true })).toBeVisible();
+    await page.keyboard.press("Control+z");
+    await page.keyboard.press("Control+Shift+z");
     await expect(page.getByText("1 accepted edit", { exact: true })).toBeVisible();
   });
 }

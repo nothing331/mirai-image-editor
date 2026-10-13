@@ -1,3 +1,6 @@
+import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
+import { refineCreationPreview } from "@/server/asset-generation/refine-preview";
+import { PreviewConversationError } from "@/server/ai/preview-conversation";
 import { prepareReferenceImages } from "@/server/ai/reference-images";
 import { referenceImageInstruction } from "@/shared/reference-images";
 import "server-only";
@@ -16,6 +19,16 @@ import { validateAiDimensions } from "./editing";
 export async function generateCloudOriginal(ownerId: string, raw: unknown) {
   const input = cloudCreationSchema.parse(raw);
   const creation = input.creation;
+  if (creation.mode === "image" && creation.refinement) {
+    const parentAttempt = await ownedAttempt(ownerId, creation.refinement.parentRequestId);
+    if (parentAttempt.workflow !== "creation" || parentAttempt.creation_session_id !== input.sessionId || parentAttempt.status !== "ready") throw new PreviewConversationError("This preview belongs to another creation session or is no longer available.");
+    const parent = await readAiResult(parentAttempt);
+    return runAiAttempt({ ownerId, requestId: input.requestId, sessionId: input.sessionId, workflow: "creation", payload: input, stages: ["image"], conversational: true, real: configuredAssetGenerationProvider() === "openai" }, async (attempt) => {
+      const refined = await refineCreationPreview(parent, creation.refinement!, { projectId: input.sessionId, requestId: input.requestId }, undefined,
+        request => attempt.stage("image", () => createAssetGenerator().generate(request)));
+      return { response: { ...refined.response }, conversation: refined.conversation };
+    });
+  }
   const referenceImages = await prepareReferenceImages(creation.mode === "image" ? creation.references : []);
   const dimensions = creation.mode === "image" ? resolveImageFormat(creation.format) : { width: 1024, height: 1024 };
   validateAiDimensions(dimensions.width, dimensions.height);
@@ -23,7 +36,7 @@ export async function generateCloudOriginal(ownerId: string, raw: unknown) {
   const matteColor = creation.mode === "mark" ? chooseMatteColor(colors) : null;
   const basePrompt = creation.mode === "mark" ? buildAssetGenerationPrompt(creation.brief, matteColor!) : buildImageGenerationPrompt(creation.prompt, creation.treatment, resolveImageFormat(creation.format));
   const prompt = [basePrompt, referenceImageInstruction(referenceImages.length)].filter(Boolean).join("\n\n");
-  return runAiAttempt({ ownerId, requestId: input.requestId, sessionId: input.sessionId, workflow: "creation", payload: input, stages: ["image"], real: configuredAssetGenerationProvider() === "openai" }, async (attempt) => {
+  return runAiAttempt({ ownerId, requestId: input.requestId, sessionId: input.sessionId, workflow: "creation", payload: input, stages: ["image"], conversational: creation.mode === "image", real: configuredAssetGenerationProvider() === "openai" }, async (attempt) => {
     const result = await attempt.stage("image", () => createAssetGenerator().generate({ mode: creation.mode, referenceImages, prompt, count: 1, ...dimensions, quality: "low", matteColor, colors }));
     if (result.candidates.length !== 1) aiError("invalid candidate count");
     const png = result.candidates[0].png;
@@ -32,7 +45,9 @@ export async function generateCloudOriginal(ownerId: string, raw: unknown) {
     validateAiDimensions(normalized.width, normalized.height);
     if (normalized.width !== dimensions.width || normalized.height !== dimensions.height) aiError("invalid candidate dimensions");
     const capabilities = assetGenerationCapabilities();
-    return { response: { creation, projectId: input.sessionId, requestId: input.requestId, provider: capabilities.provider, providerRequestId: result.providerRequestId, model: capabilities.model, quality: "low", mode: creation.mode, format: creation.format, ...dimensions, prompt, candidates: [{ id: input.requestId, candidateBase64: Buffer.from(normalized.png).toString("base64"), width: normalized.width, height: normalized.height, ...(normalized.transparency ? { transparency: normalized.transparency } : {}) }], warnings: normalized.transparency && normalized.transparency.status !== "clean" ? ["This mark may need a background cleanup pass."] : [], imageGenerationAttempted: true } };
+    const conversation = creation.mode === "image" ? { responseId: result.conversationResponseId ?? null, languageModel: configuredImageConversationModel(), provider: capabilities.provider, imageModel: capabilities.model,
+      width: dimensions.width, height: dimensions.height, references: creation.references ?? [], refinementPrompts: [], creation } : undefined;
+    return { conversation, response: { canRefine: creation.mode === "image", refinementPrompts: [], creation, projectId: input.sessionId, requestId: input.requestId, provider: capabilities.provider, providerRequestId: result.providerRequestId, model: capabilities.model, quality: "low", mode: creation.mode, format: creation.format, ...dimensions, prompt, candidates: [{ id: input.requestId, candidateBase64: Buffer.from(normalized.png).toString("base64"), width: normalized.width, height: normalized.height, ...(normalized.transparency ? { transparency: normalized.transparency } : {}) }], warnings: normalized.transparency && normalized.transparency.status !== "clean" ? ["This mark may need a background cleanup pass."] : [], imageGenerationAttempted: true } };
   });
 }
 

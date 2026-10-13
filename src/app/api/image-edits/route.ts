@@ -1,3 +1,8 @@
+import { referenceImagesSchema, type ReferenceImage } from "@/shared/reference-images";
+import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
+import { readLocalPreview, saveLocalPreview, PreviewConversationError } from "@/server/ai/preview-conversation";
+import { refineSelectionPreview } from "@/server/ai/refine-preview";
+import { previewRefinementSchema } from "@/shared/preview-refinement";
 import { prepareReferenceImages, ReferenceImageValidationError } from "@/server/ai/reference-images";
 import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
 import { randomUUID } from "node:crypto";
@@ -19,6 +24,7 @@ export async function GET() {
   const provider = configuredProviderName();
   return Response.json({
     provider,
+    conversationModel: configuredImageConversationModel(),
     plannerModel: provider === "openai" ? configuredPlannerModel() : "fake-intent-planner",
     imageModel: provider === "openai" ? (process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2") : "fake-image-editor",
     fakeScenarios: provider === "fake",
@@ -39,8 +45,19 @@ export async function POST(request: Request) {
 
   try {
     const form = await request.formData();
-    let references: unknown;
-    try { references = JSON.parse(String(form.get("references") ?? "[]")); }
+    if (form.has("refinement")) {
+      let refinement: import("@/shared/preview-refinement").PreviewRefinement;
+      try { refinement = previewRefinementSchema.parse(JSON.parse(String(form.get("refinement")))); }
+      catch { throw new RequestValidationError("Describe the refinement and choose a valid previous preview."); }
+      const parent = await readLocalPreview(projectId, refinement.parentRequestId);
+      const refined = await refineSelectionPreview(parent, refinement, { projectId, requestId }, diagnostics ?? undefined,
+        providerName === "fake" ? String(form.get("scenario") ?? "success") as ProviderScenario : undefined, input => { imageGenerationAttempted = true; return createImageEditProvider().edit(input, diagnostics ?? undefined); });
+      await saveLocalPreview(projectId, requestId, refined.conversation, refined.response);
+      await diagnostics?.succeed(refined.response.providerRequestId);
+      return diagnosticResponse(refined.response, 200, requestId);
+    }
+    let references: ReferenceImage[];
+    try { references = referenceImagesSchema.parse(JSON.parse(String(form.get("references") ?? "[]")) ?? []); }
     catch { throw new RequestValidationError("Check the reference images."); }
     const referenceImages = await prepareReferenceImages(references);
     const image = form.get("image");
@@ -226,7 +243,10 @@ export async function POST(request: Request) {
       previewSource: boundaryPolicy === "protected" ? "protected-composite" : "full-candidate",
     });
     await diagnostics?.succeed(result.providerRequestId);
-    return diagnosticResponse({
+    const response = {
+      references, referenceNames: references.map(image => image.name),
+      canRefine: operation === "replace" || operation === "restyle",
+      refinementPrompts: [],
       candidateBase64: Buffer.from(result.candidatePng).toString("base64"),
       providerRequestId: result.providerRequestId,
       candidateAnalysis,
@@ -235,10 +255,17 @@ export async function POST(request: Request) {
       resolvedInstruction: resolvedTransformInstruction ?? undefined,
       projectId,
       requestId,
-    }, 200, requestId);
+    };
+    if (operation === "replace" || operation === "restyle") {
+      await saveLocalPreview(projectId, requestId, { responseId: result.conversationResponseId ?? null, languageModel: configuredImageConversationModel(), provider: providerName,
+        imageModel: providerName === "openai" ? process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2" : "fake-image-editor",
+        width: imageMetadata.width, height: imageMetadata.height, references, refinementPrompts: [],
+        edit: { operation, boundaryPolicy, prompt, sourceBase64: Buffer.from(imagePng).toString("base64"), selectionMaskBase64: Buffer.from(selectionMaskPng).toString("base64"), providerMaskBase64: Buffer.from(maskPng).toString("base64") } }, response);
+    }
+    return diagnosticResponse(response, 200, requestId);
   } catch (error) {
     const retryable = error instanceof ImageProviderError && error.retryable;
-    const status = (error instanceof RequestValidationError || error instanceof ReferenceImageValidationError) ? 400 : retryable ? 503 : 500;
+    const status = (error instanceof RequestValidationError || error instanceof ReferenceImageValidationError || error instanceof PreviewConversationError) ? 400 : retryable ? 503 : 500;
     if (imageGenerationAttempted && error instanceof ImageProviderError && error.diagnostics?.providerRequestId) {
       await diagnostics?.metadata({ providerRequestId: error.diagnostics.providerRequestId });
     }

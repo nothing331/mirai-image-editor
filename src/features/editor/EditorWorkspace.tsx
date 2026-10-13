@@ -52,6 +52,7 @@ export function EditorWorkspace() {
     planExtend: state.planExtend,
     generateExtend: state.generateExtend,
     retryGenerativePreview: state.retryGenerativePreview,
+    refineGenerativePreview: state.refineGenerativePreview,
     discardPreview: state.discardPreview,
     undo: state.undo,
     redo: state.redo,
@@ -155,16 +156,18 @@ export function EditorWorkspace() {
   }, [editor, phase, selectExtend, selectTool, selectTransform]);
 
   /** Confirms a paid request before allowing it to reach the real provider. */
-  function authorizeProviderRequest(label: string, pipeline: "direct" | "replace-planned" | "transform-validated" | "extend-low"): boolean {
+  function authorizeProviderRequest(label: string, pipeline: "direct" | "replace-planned" | "transform-validated" | "extend-low" | "conversation"): boolean {
     if (providerCapabilities?.provider !== "openai") return true;
-    const requestDescription = pipeline === "transform-validated"
+    const requestDescription = pipeline === "conversation"
+      ? "a paid image-conversation request with language-model processing and one generated image"
+      : pipeline === "transform-validated"
       ? "source planning, one paid OpenAI image request, and semantic fidelity validation"
       : pipeline === "extend-low"
         ? "one paid OpenAI image extension request using the approved Smart Reframe plan"
       : pipeline === "replace-planned"
-        ? "context planning and, if planning succeeds, one paid OpenAI image request"
+        ? "context planning and, if planning succeeds, a paid image conversation with language-model processing and one generated image"
         : "one paid OpenAI image request without a planner call";
-    const plannerDescription = pipeline === "direct" || pipeline === "extend-low" ? "" : `Vision model: ${providerCapabilities.plannerModel}\n`;
+    const plannerDescription = pipeline === "conversation" ? `Conversation model: ${providerCapabilities.conversationModel ?? "configured server model"}\n` : pipeline === "direct" || pipeline === "extend-low" ? "" : `Vision model: ${providerCapabilities.plannerModel}\n`;
     const quality = pipeline === "extend-low" ? "low" : providerCapabilities.quality;
     return window.confirm(`${label} will run ${requestDescription}.\n\n${plannerDescription}Image model: ${providerCapabilities.imageModel}\nQuality: ${quality}\nMaximum input edge: ${providerCapabilities.maxInputEdge}px`);
   }
@@ -175,12 +178,12 @@ export function EditorWorkspace() {
       return;
     }
     const ready = editor.selectionMask && maskHasSelection(editor.selectionMask) && (editor.editType === "remove" || editor.prompt.trim().length > 0);
-    if (!ready || authorizeProviderRequest("Generate preview", editor.editType === "replace" ? "replace-planned" : "direct")) await editor.requestGenerativePreview();
+    if (!ready || authorizeProviderRequest("Generate preview", editor.editType === "replace" ? "replace-planned" : editor.editType === "restyle" ? "conversation" : "direct")) await editor.requestGenerativePreview();
   }
 
   async function handleRetryPreview(): Promise<boolean> {
     const operation = editor.generativeState.snapshot?.operation;
-    const pipeline = operation === "transform" ? "transform-validated" : operation === "replace" ? "replace-planned" : "direct";
+    const pipeline = editor.generativeState.snapshot?.operation !== "transform" && editor.generativeState.snapshot?.refinement ? "conversation" : operation === "transform" ? "transform-validated" : operation === "replace" ? "replace-planned" : operation === "restyle" ? "conversation" : "direct";
     if (!authorizeProviderRequest("Retry preview", pipeline)) return false;
     return editor.retryGenerativePreview();
   }
@@ -274,7 +277,7 @@ export function EditorWorkspace() {
         requestId: candidate.response.requestId,
         creationMode: candidate.request.mode,
         ...(markBrief ? { assetType: markBrief.assetType, style: markBrief.style, colorMode: markBrief.colorMode } : {}),
-        ...(candidate.request.mode === "image" ? { treatment: candidate.request.treatment } : {}),
+        ...(candidate.request.mode === "image" ? { treatment: candidate.request.treatment, referenceNames: candidate.request.references?.map(image => image.name), refinementPrompts: candidate.response.refinementPrompts } : {}),
         description,
         colors: markBrief?.colors ?? [],
         format: candidate.request.format,
@@ -335,7 +338,7 @@ export function EditorWorkspace() {
                   onGenerateExtend={handleGenerateExtend}
                   extendPreviewAdjustmentOpen={isAdjustingExtendPreview}
                   onReturnToExtendComparison={handleReturnToExtendComparison}
-                  onRetry={handleRetryPreview}
+                  onRefine={async prompt => authorizeProviderRequest("Refine preview", "conversation") ? editor.refineGenerativePreview(prompt) : false} onRetry={handleRetryPreview}
                   onOpenDiagnostics={() => setDiagnosticsOpen(true)}
                 />
               </div>

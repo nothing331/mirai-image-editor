@@ -1,3 +1,4 @@
+import { PreviewConversationError } from "@/server/ai/preview-conversation";
 import { ReferenceImageValidationError } from "@/server/ai/reference-images";
 import "server-only";
 import { authorizedProjectOwner, projectResponse } from "@/server/cloud-projects/http";
@@ -34,5 +35,5 @@ export async function cloudAiPost(request: Request, workflow: "edit" | "extend-p
       : workflow === "extend" ? await generateCloudExtend(owner, raw)
       : await generateCloudOriginal(owner, raw);
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
-  } catch (cause) { return projectResponse(cause instanceof ReferenceImageValidationError ? new CloudProjectError("invalid", cause.message) : cause); }
+  } catch (cause) { return projectResponse((cause instanceof ReferenceImageValidationError || cause instanceof PreviewConversationError) ? new CloudProjectError("invalid", cause.message) : cause); }
 }

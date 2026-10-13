@@ -1,3 +1,5 @@
+import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
+import type { PreviewConversation } from "@/server/ai/preview-conversation";
 import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -15,6 +17,7 @@ export interface AiAttempt {
   result_key: string; expires_at: string; lease_until: string; accepted_project_id: string | null;
 }
 export interface StoredAiResult {
+  conversation?: PreviewConversation;
   response: Record<string, unknown>;
   acceptance?: {
     maskBase64: string; maskWidth: number; maskHeight: number;
@@ -82,30 +85,33 @@ export function numericProviderUsage(usage: unknown): Record<string, number> {
   return safe;
 }
 
-export function stageBudget(stage: AiStage, real: boolean): number {
+export function stageBudget(stage: AiStage, real: boolean, conversational = false): number {
   if (!real) return 0;
   const raw = stage === "image" ? process.env.MIRAI_AI_IMAGE_STAGE_MICROUSD : process.env.MIRAI_AI_TEXT_STAGE_MICROUSD;
   const cost = Number(raw);
   if (!Number.isSafeInteger(cost) || cost <= 0) aiError("global AI budget missing");
-  return cost;
+  const total = cost + (stage === "image" && conversational ? stageBudget("replace-plan", real) : 0);
+  if (!Number.isSafeInteger(total)) aiError("global AI budget invalid");
+  return total;
 }
 
-function stageConfiguration(stage: AiStage, workflow: AiWorkflow, real: boolean) {
+function stageConfiguration(stage: AiStage, workflow: AiWorkflow, real: boolean, conversational = false) {
   const model = stage !== "image"
     ? stage === "extend-analysis" ? process.env.OPENAI_EXTEND_PLANNER_MODEL ?? "gpt-5.6-luna" : process.env.OPENAI_EDIT_PLANNER_MODEL ?? "gpt-5-nano-2025-08-07"
     : workflow === "creation" ? process.env.OPENAI_ASSET_GENERATION_MODEL ?? "gpt-image-2"
       : workflow === "extend" ? process.env.OPENAI_EXTEND_IMAGE_MODEL ?? "gpt-image-2" : process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2";
-  return { version: 1, provider: real ? "openai" : "fake", model: real ? model : "fake",
+  return { version: 1, transport: conversational && stage === "image" ? "responses" : "direct", conversationModel: conversational && stage === "image" ? configuredImageConversationModel() : null, provider: real ? "openai" : "fake", model: real ? model : "fake",
     quality: stage === "image" ? ["creation", "extend"].includes(workflow) ? "low" : process.env.OPENAI_IMAGE_QUALITY ?? "medium" : null,
-    timeoutMs: 60_000, automaticRetries: 0, maxOutputTokens: stage === "image" ? null : 4096,
-    spendingPolicy: "stage-ceiling-v1", ceilingMicrousd: stageBudget(stage, real) };
+    timeoutMs: 60_000, automaticRetries: 0, maxOutputTokens: stage === "image" && !conversational ? null : 4096,
+    maxToolCalls: conversational && stage === "image" ? 1 : null,
+    spendingPolicy: "stage-ceiling-v1", ceilingMicrousd: stageBudget(stage, real, conversational) };
 }
 
 export class PaidAttempt {
-  constructor(readonly attempt: AiAttempt, private readonly real: boolean) {}
+  constructor(readonly attempt: AiAttempt, private readonly real: boolean, private readonly conversational = false) {}
   async stage<T>(stage: AiStage, work: () => Promise<T>): Promise<T> {
     const client = createAdminSupabaseClient();
-    const started = await client.rpc("mirai_start_ai_stage", { target_owner: this.attempt.owner_id, target_id: this.attempt.id, target_stage: stage, target_cost: stageBudget(stage, this.real), target_configuration: stageConfiguration(stage, this.attempt.workflow, this.real) });
+    const started = await client.rpc("mirai_start_ai_stage", { target_owner: this.attempt.owner_id, target_id: this.attempt.id, target_stage: stage, target_cost: stageBudget(stage, this.real, this.conversational), target_configuration: stageConfiguration(stage, this.attempt.workflow, this.real, this.conversational) });
     if (started.error) aiError(started.error.message);
     let value: T;
     try { value = await work(); }
@@ -128,7 +134,7 @@ export class PaidAttempt {
 /** Reserves before any provider call and persists a private result before acknowledging success. */
 export async function runAiAttempt(input: {
   ownerId: string; requestId: string; projectId?: string; inputVersionId?: string; sessionId?: string;
-  workflow: AiWorkflow; payload: unknown; stages: AiStage[]; real: boolean;
+  workflow: AiWorkflow; payload: unknown; stages: AiStage[]; real: boolean; conversational?: boolean;
 }, execute: (attempt: PaidAttempt) => Promise<StoredAiResult>): Promise<Record<string, unknown>> {
   const client = createAdminSupabaseClient();
   const digest = createHash("sha256").update(JSON.stringify(input.payload)).digest("hex");
@@ -143,12 +149,12 @@ export async function runAiAttempt(input: {
   const executorId = crypto.randomUUID();
   const admitted = await client.rpc("mirai_admit_ai", { target_owner: input.ownerId, target_id: input.requestId,
     target_project: input.projectId ?? null, target_input: input.inputVersionId ?? null, target_session: input.sessionId ?? null,
-    target_executor: executorId, target_workflow: input.workflow, target_digest: digest, target_budget: input.stages.reduce((sum, stage) => sum + stageBudget(stage, input.real), 0) });
+    target_executor: executorId, target_workflow: input.workflow, target_digest: digest, target_budget: input.stages.reduce((sum, stage) => sum + stageBudget(stage, input.real, input.conversational), 0) });
   if (admitted.error) aiError(admitted.error.message);
   const attempt = admitted.data as AiAttempt;
   if (attempt.executor_id !== executorId) return (await readAiResult(attempt)).response;
   try {
-    const result = await execute(new PaidAttempt(attempt, input.real));
+    const result = await execute(new PaidAttempt(attempt, input.real, input.conversational));
     result.response.requestId = attempt.id;
     const bytes = Buffer.from(JSON.stringify(result));
     if (bytes.length > (input.workflow === "extend-analysis" ? 65536 : 41943040)) throw new CloudProjectError("invalid", "The AI result exceeds the supported storage envelope.");

@@ -417,7 +417,7 @@ export function CloudEditorWorkspace({ ownerId, projectId, projectName, original
               onGenerateTransform={async (input) => { if ((input.presetId === "monochrome" && !input.userPrompt.trim()) || ai.available) return editor.requestTransformPreview(input); return false; }}
               onPlanExtend={(input) => { const state = useEditorStore.getState(); return ai.available || Boolean(state.currentVersionId && state.extendAnalysisCache[state.currentVersionId]) ? state.planExtend(input) : Promise.resolve(false); }}
               onGenerateExtend={() => ai.available ? useEditorStore.getState().generateExtend() : Promise.resolve(false)} extendPreviewAdjustmentOpen={extendPreviewAdjustmentOpen}
-              onReturnToExtendComparison={() => setExtendPreviewAdjustmentOpen(false)} onRetry={() => useEditorStore.getState().retryGenerativePreview()} onOpenDiagnostics={() => {}} />
+              onReturnToExtendComparison={() => setExtendPreviewAdjustmentOpen(false)} onRefine={prompt => useEditorStore.getState().refineGenerativePreview(prompt)} onRetry={() => useEditorStore.getState().retryGenerativePreview()} onOpenDiagnostics={() => {}} />
           </div>}
         </aside>
         <CanvasFrame cloudMode cloudStatusLabel={cloudStatusLabel} busyAction={status === "loading" ? "open" : null} onUpload={() => {}} onGenerateAsset={() => {}}

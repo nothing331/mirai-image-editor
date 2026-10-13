@@ -1,3 +1,6 @@
+import { configuredImageConversationModel } from "@/server/ai/openai-image-conversation";
+import { readLocalPreview, saveLocalPreview, PreviewConversationError } from "@/server/ai/preview-conversation";
+import { refineCreationPreview } from "@/server/asset-generation/refine-preview";
 import { prepareReferenceImages, ReferenceImageValidationError } from "@/server/ai/reference-images";
 import { referenceImageInstruction } from "@/shared/reference-images";
 import { cloudAiMode, cloudAiPost } from "@/server/cloud-ai/http";
@@ -30,6 +33,13 @@ export async function POST(request: Request) {
   try {
     const parsed = assetCreationRequestSchema.safeParse(await request.json());
     if (!parsed.success) throw new RequestValidationError(parsed.error.issues[0]?.message ?? "Check the creation request.");
+    if (parsed.data.mode === "image" && parsed.data.refinement) {
+      const parent = await readLocalPreview(projectId, parsed.data.refinement.parentRequestId);
+      const refined = await refineCreationPreview(parent, parsed.data.refinement, { projectId, requestId }, diagnostics ?? undefined, input => { imageGenerationAttempted = true; return createAssetGenerator().generate(input, diagnostics ?? undefined); });
+      await saveLocalPreview(projectId, requestId, refined.conversation, refined.response);
+      await diagnostics?.succeed(refined.response.providerRequestId);
+      return diagnosticResponse(refined.response, 200, requestId);
+    }
     const referenceImages = await prepareReferenceImages(parsed.data.mode === "image" ? parsed.data.references : []);
     const creation = await prepareCreation(parsed.data);
     creation.prompt = [creation.prompt, referenceImageInstruction(referenceImages.length)].filter(Boolean).join("\n\n");
@@ -107,10 +117,16 @@ export async function POST(request: Request) {
       warnings,
       imageGenerationAttempted,
     };
+    if (parsed.data.mode === "image") {
+      response.canRefine = true;
+      response.refinementPrompts = [];
+      await saveLocalPreview(projectId, requestId, { responseId: result.conversationResponseId ?? null, languageModel: configuredImageConversationModel(), provider: capabilities.provider, imageModel: capabilities.model,
+        width: response.candidates[0].width, height: response.candidates[0].height, references: parsed.data.references ?? [], refinementPrompts: [], creation: parsed.data }, response);
+    }
     return diagnosticResponse(response, 200, requestId);
   } catch (error) {
     const retryable = error instanceof AssetGenerationProviderError && error.retryable;
-    const status = (error instanceof RequestValidationError || error instanceof ReferenceImageValidationError) ? 400 : retryable ? 503 : 500;
+    const status = (error instanceof RequestValidationError || error instanceof ReferenceImageValidationError || error instanceof PreviewConversationError) ? 400 : retryable ? 503 : 500;
     if (error instanceof AssetGenerationProviderError && error.diagnostics?.providerRequestId) {
       await diagnostics?.metadata({ providerRequestId: error.diagnostics.providerRequestId });
     }

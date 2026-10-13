@@ -28,6 +28,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
     currentVersionId: editor.currentVersionId,
     operations: editor.operations,
     preview: editor.preview,
+    processing: editor.generativeState.status === "processing",
     pendingAcceptance: editor.pendingAcceptance,
     localDraft: editor.localDraft,
     selectionMask: editor.selectionMask,
@@ -65,6 +66,7 @@ export function CanvasFrame({ busyAction, onUpload, onGenerateAsset, extendSelec
             transformPreview={state.preview.type === "transform"}
             extendPreview={state.preview.type === "extend"}
             scopeMismatch={state.preview.method === "generative" && (state.preview.type === "remove" || state.preview.type === "replace" || state.preview.type === "restyle") ? isReplaceScopeMismatch(state.preview.type, state.preview.parameters.boundaryPolicy, state.preview.parameters.candidateAnalysis) : false}
+            processing={state.processing}
             acceptanceBlocked={state.preview.method === "generative" && state.preview.type === "transform" ? blocksTransformAcceptance(state.preview.parameters.preservationMode, state.preview.parameters.transformFidelityAssessment) : false}
             onAccept={state.acceptPreview}
             onDiscard={onDiscardPreview ?? state.discardPreview}
@@ -113,7 +115,8 @@ function ProjectLoadingOverlay() {
 }
 
 /** Shows the immutable base and unaccepted candidate before history advances. */
-function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy, candidateAnalysis, transformFidelityAssessment, transformPreview, extendPreview, scopeMismatch, acceptanceBlocked, onAccept, onDiscard, onAdjustTransform, onAdjustExtend }: {
+function PreviewComparison({ processing, baseLabel, originalUrl, previewUrl, boundaryPolicy, candidateAnalysis, transformFidelityAssessment, transformPreview, extendPreview, scopeMismatch, acceptanceBlocked, onAccept, onDiscard, onAdjustTransform, onAdjustExtend }: {
+  processing: boolean;
   baseLabel: string;
   originalUrl: string;
   previewUrl: string;
@@ -154,8 +157,8 @@ function PreviewComparison({ baseLabel, originalUrl, previewUrl, boundaryPolicy,
         <div className="flex justify-end gap-2">
           {transformPreview && <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustTransform}><SlidersHorizontal className="size-4" />Adjust</button>}
           {extendPreview && <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onAdjustExtend}><SlidersHorizontal className="size-4" />Adjust frame</button>}
-          <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" onClick={onDiscard}><X className="size-4" />Discard</button>
-          <button type="button" data-testid="accept-preview" className="flex h-10 items-center gap-2 rounded-md bg-acid px-4 text-xs font-bold text-ink outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-acid disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/40" disabled={acceptanceBlocked} onClick={onAccept}><Check className="size-4" />Accept edit</button>
+          <button type="button" className="flex h-10 items-center gap-2 rounded-md px-3 text-xs font-bold text-white/75 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white" disabled={processing} onClick={onDiscard}><X className="size-4" />Discard</button>
+          <button type="button" data-testid="accept-preview" className="flex h-10 items-center gap-2 rounded-md bg-acid px-4 text-xs font-bold text-ink outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-acid disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/40" disabled={processing || acceptanceBlocked} onClick={onAccept}><Check className="size-4" />Accept edit</button>
         </div>
       </div>
     </div>

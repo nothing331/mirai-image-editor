@@ -17,6 +17,7 @@ export interface ProviderCapabilities {
   fakeScenarios: boolean;
   plannerModel: string;
   imageModel: string;
+  conversationModel?: string;
   quality: string | null;
   maxInputEdge: number | null;
 }
