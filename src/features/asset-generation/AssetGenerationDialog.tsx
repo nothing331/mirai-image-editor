@@ -7,7 +7,7 @@ import { discardCloudAiPreview } from "@/features/cloud-projects/cloud-ai-client
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Box, Brush, Camera, Check, ImageIcon, LoaderCircle, PenLine, Shapes, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Box, Brush, Camera, Check, Download, ImageIcon, LoaderCircle, PenLine, Shapes, Sparkles, X } from "lucide-react";
 import {
   assetCreationRequestSchema,
   assetStyles,
@@ -219,6 +219,19 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
     }
   }
 
+  function downloadPreview() {
+    if (!candidate || referencesLoading || status !== "idle") return;
+    try {
+      const link = document.createElement("a");
+      link.href = candidateDataUrl(candidate.candidateBase64);
+      link.download = `mirai-image-${candidate.width}x${candidate.height}.png`;
+      document.body.appendChild(link);
+      try { link.click(); } finally { link.remove(); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The image could not be downloaded. Try again.");
+    }
+  }
+
   const choiceLabel = choice === "logo-mark" ? "logo mark" : choice;
   const candidateLabel = candidate?.request.mode === "mark"
     ? candidate.request.brief.assetType === "logo-mark" ? "logo mark" : "icon"
@@ -233,35 +246,43 @@ export function AssetGenerationDialog({ open, onClose, onUseCandidate, cloudSess
     <div className="fixed inset-0 z-50 grid bg-black/65 p-2 backdrop-blur-[3px] sm:p-5" role="dialog" aria-modal="true" aria-labelledby="asset-generator-title">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close AI creator" onClick={status === "idle" ? closeDialog : undefined} />
       <section className={cn("editor-dialog asset-dialog-enter relative m-auto grid h-full max-h-[900px] min-h-0 w-full overflow-clip rounded-xl border border-line bg-paper shadow-2xl", imageReview ? "max-w-[1400px] grid-rows-[auto_minmax(0,1fr)_auto]" : "max-w-[1180px] grid-rows-[auto_auto_minmax(0,1fr)_auto]")}>
-        <header className="flex items-start justify-between gap-4 border-b border-line bg-paper px-4 py-3 text-ink sm:px-6 sm:py-4">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className={cn("flex justify-between border-b border-line bg-paper text-ink", imageReview ? "items-center gap-2 px-3 py-3 sm:px-5" : "items-start gap-4 px-4 py-3 sm:px-6 sm:py-4")}>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {imageReview && <button type="button" aria-label="Create another image" title="Create another image" disabled={referencesLoading || status !== "idle"} className="grid size-9 shrink-0 place-items-center rounded-md text-muted outline-none transition-colors hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-30" onClick={() => setShowCreationBrief(true)}><ArrowLeft className="size-4" /></button>}
             <div>
-            <p className={cn("font-mono text-[11px] uppercase tracking-[.2em] text-muted", imageReview && "hidden sm:block")}>Mirai / New original</p>
-            <h2 id="asset-generator-title" className={cn("font-bold tracking-[-.04em]", imageReview ? "text-base sm:mt-1 sm:text-xl" : "mt-1 text-xl sm:text-2xl")}>Create with AI</h2>
+            <p className={cn("font-mono text-[11px] uppercase tracking-[.2em] text-muted", imageReview && "hidden")}>Mirai / New original</p>
+            {imageReview && <span aria-hidden="true" className="text-sm font-semibold sm:hidden">Preview</span>}
+            <h2 id="asset-generator-title" className={cn("font-bold tracking-[-.04em]", imageReview ? "sr-only sm:not-sr-only sm:text-base" : "mt-1 text-xl sm:text-2xl")}>Create with AI</h2>
             {!imageReview && <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">Create a logo mark, icon, or complete image. One low-quality result per request.</p>}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {candidate?.request.mode === "image" && showCreationBrief && <button type="button" disabled={referencesLoading || status !== "idle"} className="workspace-quiet-action px-2 text-xs" onClick={() => setShowCreationBrief(false)}>Return to image</button>}
-            {imageReview && useCandidateButton}
+            {imageReview && <>
+              <span className="group relative flex">
+                <button type="button" aria-label="Download image" disabled={referencesLoading || status !== "idle"} onClick={downloadPreview} className="flex h-10 items-center justify-center gap-2 rounded-md border border-line px-2.5 text-xs font-semibold outline-none transition-colors hover:border-ink hover:bg-surface focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed disabled:opacity-35 sm:px-3"><Download className="size-4" /><span className="hidden sm:inline">Download</span></button>
+                <span role="tooltip" className="pointer-events-none absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs text-paper opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 sm:hidden">Download image</span>
+              </span>
+              {useCandidateButton}
+            </>}
             <button type="button" aria-label="Close" className="grid size-9 place-items-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-30" disabled={referencesLoading || status !== "idle"} onClick={closeDialog}><X className="size-4" /></button>
           </div>
         </header>
 
         {imageReview && candidate ? <>
-          <div data-testid="creation-review-stage" className="relative min-h-0 bg-workspace p-3 sm:p-5" aria-busy={status === "refining"}>
+          <div data-testid="creation-review-stage" className="relative min-h-0 bg-stage p-3 sm:p-6" aria-busy={status === "refining"}>
             <div key={candidate.id} data-testid="asset-candidate-1" className="preview-enter relative h-full w-full">
               <Image src={candidateDataUrl(candidate.candidateBase64)} alt="Generated image" fill sizes="(max-width: 1400px) 100vw, 1400px" unoptimized className="object-contain" />
             </div>
             {status === "refining" && <p role="status" className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-md border border-line bg-paper px-3 py-2 text-xs font-semibold"><LoaderCircle className="size-4 animate-spin" />Refining image…</p>}
           </div>
-          <footer data-testid="creation-review-composer" className="max-h-[45dvh] overflow-y-auto border-t border-line bg-paper px-4 py-3 sm:px-6 sm:py-4">
-            {candidate.response.canRefine && <form aria-label="Refine image" className="mx-auto grid max-w-4xl gap-3" onSubmit={event => { event.preventDefault(); void generate(refinementPrompt); }}>
-              <ReferenceImagePicker compact label="Refinement references" images={references} onChange={setReferences} onBusyChange={setReferencesLoading} disabled={status !== "idle"} />
-              <div className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <label className="grid gap-1 text-xs font-bold">Refine image<textarea aria-label="Refinement instruction" rows={2} value={refinementPrompt} maxLength={2000} disabled={referencesLoading || status !== "idle"} placeholder="Describe what to change. You can use reference 1…" className="workspace-field min-h-16 resize-none py-2 font-normal" onChange={event => setRefinementPrompt(event.target.value)} /></label>
-                <button type="submit" data-testid="refine-created-image" disabled={referencesLoading || status !== "idle" || !capabilities || !cloudAiAvailable || !refinementPrompt.trim()} className="workspace-action h-11 px-3 text-xs">{status === "refining" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{status === "refining" ? "Refining…" : `Generate refinement${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}</button>
+          <footer data-testid="creation-review-composer" className="max-h-[40dvh] overflow-y-auto border-t border-line bg-paper px-3 py-3 sm:px-6 sm:py-4">
+            {candidate.response.canRefine && <form aria-label="Refine image" className="mx-auto max-w-4xl rounded-lg border border-line bg-paper transition-colors focus-within:border-ink" onSubmit={event => { event.preventDefault(); void generate(refinementPrompt); }}>
+              <label className="sr-only" htmlFor="creation-refinement">Refinement instruction</label>
+              <textarea id="creation-refinement" rows={2} value={refinementPrompt} maxLength={2000} disabled={referencesLoading || status !== "idle"} placeholder="What would you like to change?" className="block min-h-14 w-full resize-none rounded-t-lg bg-transparent px-3 py-2.5 text-sm leading-5 text-ink outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/30 disabled:opacity-60" onChange={event => setRefinementPrompt(event.target.value)} />
+              <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-2">
+                <ReferenceImagePicker compact label="Refinement references" images={references} onChange={setReferences} onBusyChange={setReferencesLoading} disabled={status !== "idle"} />
+                <button type="submit" data-testid="refine-created-image" disabled={referencesLoading || status !== "idle" || !capabilities || !cloudAiAvailable || !refinementPrompt.trim()} className="workspace-action min-h-10 shrink-0 px-3 text-xs transition-colors">{status === "refining" ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{status === "refining" ? "Refining…" : `Refine image${cloudSessionId && !cloudUnlimited ? " · 1 credit" : ""}`}</button>
               </div>
             </form>}
             {error && <p role="alert" className="mx-auto mt-3 max-w-4xl rounded-md border-l-4 border-accent bg-[#fff0eb] p-3 text-xs leading-relaxed text-[#8f1d10]">{error}</p>}

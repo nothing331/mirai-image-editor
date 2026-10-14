@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 }, { width: 375, height: 568 }]) {
   test(`workspace keeps intake and review actions reachable at ${viewport.width} × ${viewport.height}`, async ({ page }) => {
@@ -107,6 +108,7 @@ test("AI creator applies a treatment and destination format to one complete imag
   await expect(dialog.getByTestId("asset-candidate-2")).toHaveCount(0);
   await expect(dialog.getByTestId("transform-source-input")).toHaveCount(0);
 
+  await expectPreviewDownload(page, dialog, "mirai-image-720x1280.png");
   const previewBeforeBrief = await generated.getByRole("img").getAttribute("src");
   await dialog.getByRole("button", { name: "Create another image", exact: true }).click();
   await expect(dialog.getByRole("tablist")).toBeVisible();
@@ -165,6 +167,14 @@ test("focused creation review keeps a wide image and three references usable on 
   await expect(dialog.getByLabel("Refinement instruction")).toBeFocused();
   await expect(dialog.getByTestId("refine-created-image")).toBeInViewport();
   await expect(dialog.getByTestId("use-generated-asset")).toBeInViewport();
+  const downloadButton = dialog.getByRole("button", { name: "Download image", exact: true });
+  await expect(downloadButton).toBeInViewport();
+  await downloadButton.focus();
+  await expect(downloadButton).toBeFocused();
+  await expect(dialog.getByRole("tooltip")).toHaveCSS("opacity", "1");
+  await dialog.getByLabel("Refinement instruction").focus();
+  const header = dialog.locator("header");
+  expect(await header.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   const actionBounds = await dialog.getByTestId("refine-created-image").boundingBox();
   expect(actionBounds!.y + actionBounds!.height).toBeLessThanOrEqual(568);
   expect((await preview.boundingBox())!.height).toBeGreaterThan(140);
@@ -172,6 +182,29 @@ test("focused creation review keeps a wide image and three references usable on 
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: "/tmp/mirai-creation-review-short-phone.png", animations: "disabled" });
 });
+
+async function expectPreviewDownload(page: Page, dialog: Locator, filename: string) {
+  const preview = dialog.getByTestId("asset-candidate-1").getByRole("img");
+  const displayedDataUrl = await preview.getAttribute("src");
+  const mutations: string[] = [];
+  const trackMutation = (request: import("@playwright/test").Request) => {
+    if (request.method() !== "GET" && request.method() !== "HEAD") mutations.push(request.url());
+  };
+  page.on("request", trackMutation);
+  try {
+    const downloading = page.waitForEvent("download");
+    await dialog.getByRole("button", { name: "Download image", exact: true }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe(filename);
+    expect(await download.failure()).toBeNull();
+    expect(await readFile((await download.path())!)).toEqual(Buffer.from(displayedDataUrl!.split(",")[1], "base64"));
+    expect(mutations).toEqual([]);
+    await expect(preview).toHaveAttribute("src", displayedDataUrl!);
+    await expect(dialog).toBeVisible();
+  } finally {
+    page.off("request", trackMutation);
+  }
+}
 
 async function uploadTestImage(page: Page, width = 20, height = 20) {
   await page.getByTestId("file-input").evaluate(async (input: HTMLInputElement, dimensions) => {
@@ -712,12 +745,14 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
     await expect(dialog.getByLabel("Refinement instruction")).toBeDisabled();
     await expect(dialog.getByLabel("Add reference images")).toBeDisabled();
     await expect(dialog.getByTestId("use-generated-asset")).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Download image", exact: true })).toBeDisabled();
     await expect(dialog.getByRole("button", { name: "Create another image", exact: true })).toBeDisabled();
     await expect(dialog.getByTestId("asset-candidate-1").getByRole("img")).toHaveAttribute("src", originalPreview!);
     releaseRefinement();
     expect((await (await refinementResponse).json()).creation.references.map((reference: { name: string }) => reference.name)).toEqual(["fabric.png", "next-image.png"]);
     await page.unroute("**/api/asset-generations");
     await expect.poll(() => dialog.getByTestId("asset-candidate-1").getByRole("img").getAttribute("src")).not.toBe(originalPreview);
+    await expectPreviewDownload(page, dialog, "mirai-image-1024x1024.png");
     const previewBounds = await dialog.getByTestId("asset-candidate-1").boundingBox();
     const footerBounds = await dialog.getByTestId("creation-review-composer").boundingBox();
     expect(previewBounds!.y + previewBounds!.height).toBeLessThanOrEqual(footerBounds!.y);
@@ -730,6 +765,8 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 393, height: 727 
       const titleBounds = await dialog.getByRole("heading", { name: "Create with AI", exact: true }).boundingBox();
       expect(titleBounds!.y).toBeGreaterThanOrEqual((await dialog.locator("section.editor-dialog").boundingBox())!.y);
     }
+    await dialog.getByTestId("creation-review-stage").click({ position: { x: 2, y: 2 } });
+    await page.mouse.move(0, 0);
     await page.screenshot({ path: `/tmp/mirai-creation-refinement-${viewport.width}.png`, animations: "disabled" });
     await dialog.getByTestId("use-generated-asset").click();
     await expect(dialog).toHaveCount(0);
