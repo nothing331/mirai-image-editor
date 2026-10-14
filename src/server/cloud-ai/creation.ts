@@ -25,7 +25,7 @@ export async function generateCloudOriginal(ownerId: string, raw: unknown) {
     const parent = await readAiResult(parentAttempt);
     return runAiAttempt({ ownerId, requestId: input.requestId, sessionId: input.sessionId, workflow: "creation", payload: input, stages: ["image"], conversational: true, real: configuredAssetGenerationProvider() === "openai" }, async (attempt) => {
       const refined = await refineCreationPreview(parent, creation.refinement!, { projectId: input.sessionId, requestId: input.requestId }, undefined,
-        request => attempt.stage("image", () => createAssetGenerator().generate(request)));
+        request => attempt.stage("image", () => createAssetGenerator().generate(request)), creation.references);
       return { response: { ...refined.response }, conversation: refined.conversation };
     });
   }
