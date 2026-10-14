@@ -63,6 +63,7 @@ const questions = [
 
 interface ProductLandingProps {
   signedOut: boolean;
+  invitationMode?: boolean;
   destination: string;
   action: string;
   access: string;
@@ -70,6 +71,7 @@ interface ProductLandingProps {
 
 export function ProductLanding({
   signedOut,
+  invitationMode = false,
   destination,
   action,
   access,
@@ -91,8 +93,8 @@ export function ProductLanding({
         </nav>
         <div className={styles.headerActions}>
           <LandingMotion />
-          <Link href={signedOut ? "/sign-in?next=/projects" : destination} className={styles.headerAction}>
-            {signedOut ? "Sign in" : "Open Mirai"}
+          <Link href={signedOut ? invitationMode ? "/sign-in?next=/access" : "/sign-in?next=/projects" : destination} className={styles.headerAction}>
+            {signedOut ? "Sign in" : invitationMode ? "Check access" : "Open Mirai"}
             <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </Link>
         </div>
@@ -198,7 +200,7 @@ export function ProductLanding({
                 {question}
                 <span aria-hidden="true">+</span>
               </summary>
-              <p>{answer}</p>
+              <p>{answer}{invitationMode && question === "How do private-beta access and AI credits work?" ? " During the invitation launch, you can request access and check its status. The workspace remains closed even after approval until the product opens." : ""}</p>
             </details>
           ))}
         </div>
@@ -208,13 +210,13 @@ export function ProductLanding({
         <div data-reveal>
           <p className={styles.eyebrow}>INVITATION LAUNCH / EARLY ACCESS</p>
           <h2 id="get-started-title">Your next idea<br />starts here.</h2>
-          <p>Mirai is opening to a small group of early creators. Request access and help shape what comes next.</p>
+          <p>{invitationMode ? "Join the invitation list and check your request status. The workspace will open when Mirai launches." : "Mirai is opening to a small group of early creators. Request access and help shape what comes next."}</p>
         </div>
         <div className={styles.invitationOptions}>
           <div>
             <h3>New to Mirai?</h3>
             <p>Sign in with Google, then send an access request. You can check its status while you wait for approval.</p>
-            <Link href={destination} className={styles.finalAction}>{signedOut ? "Request early access" : "Continue to Mirai"}<ArrowUpRight className="size-5" aria-hidden="true" /></Link>
+            <Link href={destination} className={styles.finalAction}>{signedOut ? "Request early access" : invitationMode ? "Check access status" : "Continue to Mirai"}<ArrowUpRight className="size-5" aria-hidden="true" /></Link>
           </div>
           <span><ShieldCheck className="size-4" aria-hidden="true" />Your original stays untouched.</span>
         </div>

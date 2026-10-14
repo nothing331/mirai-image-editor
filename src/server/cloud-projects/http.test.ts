@@ -20,6 +20,13 @@ beforeEach(() => {
 afterEach(() => { process.env = { ...originalEnvironment }; });
 
 describe("P05 project HTTP boundary", () => {
+  it("closes project reads and writes before account admission during invitation mode", async () => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    const request = new Request("http://localhost:3000/api/cloud-projects");
+    await expect(authorizedProjectOwner(request, false)).rejects.toMatchObject({ code: "not-found" });
+    await expect(authorizedProjectOwner(request, true)).rejects.toMatchObject({ code: "not-found" });
+  });
+
   it("requires an active account and configured origin for mutations", async () => {
     const own = new Request("http://localhost:3000/api/cloud-projects", {
       method: "POST", headers: { origin: "http://localhost:3000" },

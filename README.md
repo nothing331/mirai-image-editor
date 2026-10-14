@@ -95,7 +95,14 @@ Wave A provides the explicit, fail-closed Render/Supabase runtime. Wave B adds c
 
 Use the [Wave A P02 runbook](./docs/cloud/WAVE_A_P02_RUNBOOK.md) for runtime and rollback operations, the [Wave B P03 runbook](./docs/cloud/WAVE_B_P03_RUNBOOK.md) for authentication, the [P06/P07 runbook](./docs/cloud/WAVE_B_P06_P07_RUNBOOK.md) for cloud editing/history, and the [Wave C runbook](./docs/cloud/WAVE_C_RUNBOOK.md) for personal-product migration and lifecycle verification, and the [Wave D runbook](./docs/cloud/WAVE_D_RUNBOOK.md) for credits, AI qualification and uncertain-outcome recovery.
 
+## Invitation-only launch
+
+Set the server-only `MIRAI_INVITATION_MODE=true` with authentication enabled, AI disabled, fake providers and no `OPENAI_API_KEY`, then redeploy. Visitors can view the landing, sign in with Google, request access, claim an invitation and check their status. Only owners can open `/admin/access`. All accounts, including approved members and owners, remain outside projects, editor, settings and product APIs until the flag is disabled. Approval and one-time credits remain recorded; changing the flag does not alter existing data.
+
+See the [invitation launch runbook](./docs/cloud/INVITATION_LAUNCH_RUNBOOK.md) for the exact routes, configuration and hosted checks. With the disposable local Supabase stack running, `npm run test:e2e:invitation` builds and tests this mode without paid providers or hosted data.
+
 ## Troubleshooting
+
 
 - **Unsupported Node.js version:** Run `nvm install` and `nvm use`, then confirm `node --version` reports `v24.19.0`.
 - **`npm ci` reports a lockfile mismatch:** Confirm `npm --version` reports `11.17.0`. Regenerate the lockfile only when intentionally updating dependencies.

@@ -1,6 +1,31 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AccountSnapshot } from "./account";
 import { authorizedAccountReturnPath, safeReturnPath } from "./return-path";
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe("invitation-mode account destinations", () => {
+  it.each(["/projects", "/projects/new", "/settings", "/welcome"])("sanitizes %s and product fallbacks", (path) => {
+    vi.stubEnv("MIRAI_INVITATION_MODE", "true");
+    expect(safeReturnPath(path)).toBe("/access");
+    expect(safeReturnPath(null, "/projects")).toBe("/access");
+  });
+
+  it.each(["pending", "active", "revoked"] as const)("keeps a %s member on access status after login", (status) => {
+    vi.stubEnv("MIRAI_INVITATION_MODE", "true");
+    expect(authorizedAccountReturnPath(account(status, "member"), "/projects")).toBe("/access");
+    expect(authorizedAccountReturnPath(account(status, "member"), "/admin/access")).toBe("/access");
+    expect(authorizedAccountReturnPath(account(status, "member"), "/access?invite=abc")).toBe("/access?invite=abc");
+  });
+
+  it("preserves invitation links and the owner's management destination", () => {
+    vi.stubEnv("MIRAI_INVITATION_MODE", "true");
+    expect(safeReturnPath("/access?invite=abc")).toBe("/access?invite=abc");
+    expect(safeReturnPath("/admin/access")).toBe("/admin/access");
+    expect(authorizedAccountReturnPath(account("active", "owner"), "/admin/access")).toBe("/admin/access");
+    expect(authorizedAccountReturnPath(account("active", "owner"), "/projects")).toBe("/access");
+  });
+});
 
 describe("safeReturnPath", () => {
   it.each([

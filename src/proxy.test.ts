@@ -1,11 +1,50 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { proxy } from "./proxy";
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete process.env.CLOUD_SPIKE_ISOLATED_DEPLOYMENT;
   delete process.env.MIRAI_APP_MODE;
   delete process.env.MIRAI_AUTH_ENABLED;
+  delete process.env.MIRAI_INVITATION_MODE;
+});
+
+describe("invitation launch boundary", () => {
+  it("redirects through the public origin behind the hosting proxy", async () => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    vi.stubEnv("MIRAI_CANONICAL_URL", "https://mirai.example");
+    const response = await proxy(new NextRequest("http://localhost:10000/projects"));
+    expect(response.headers.get("location")).toBe("https://mirai.example/access");
+  });
+
+  it.each(["/", "/sign-in", "/access?invite=abc", "/auth/callback?code=abc", "/admin/access", "/api/health/live", "/api/health/ready"])("preserves %s", async (path) => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    expect((await proxy(new NextRequest(`https://example.com${path}`))).headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each(["/projects", "/projects/new", "/projects/project-id", "/settings", "/welcome", "/account-deletion", "/unknown"])("redirects %s to access status", async (path) => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    const response = await proxy(new NextRequest(`https://example.com${path}?next=/projects`));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://example.com/access");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it.each(["/api/cloud-projects", "/api/original-uploads", "/api/ai/usage", "/api/image-edits", "/api/asset-generations", "/api/image-extends/plan", "/api/image-extends/generate", "/api/account/export", "/api/internal/assets-cleanup", "/api/request-logs/image.png", "/projects"])("rejects direct mutations at %s", async (path) => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    const response = await proxy(new NextRequest(`https://example.com${path}`, { method: "POST" }));
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    await expect(response.json()).resolves.toEqual({ error: "Not found." });
+  });
+
+  it("preserves invitation Server Action requests and normal routing when disabled", async () => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    expect((await proxy(new NextRequest("https://example.com/access", { method: "POST" }))).headers.get("x-middleware-next")).toBe("1");
+    process.env.MIRAI_INVITATION_MODE = "false";
+    expect((await proxy(new NextRequest("https://example.com/projects"))).headers.get("x-middleware-next")).toBe("1");
+  });
 });
 
 describe("cloud foundation API isolation", () => {

@@ -8,6 +8,20 @@ afterEach(() => {
 });
 
 describe("runtime environment", () => {
+  it("accepts invitation mode with authentication and AI disabled", () => {
+    expect(readRuntimeEnvironment(invitationEnvironment()).invitationMode).toBe(true);
+  });
+
+  it.each([
+    ["authentication disabled", { MIRAI_AUTH_ENABLED: "false" }, "requires MIRAI_AUTH_ENABLED=true"],
+    ["AI enabled", { MIRAI_AI_ENABLED: "true" }, "requires MIRAI_AI_ENABLED=false"],
+    ["real provider", { IMAGE_EDIT_PROVIDER: "openai" }, "requires fake providers"],
+    ["provider credential", { OPENAI_API_KEY: "test-placeholder" }, "no OPENAI_API_KEY"],
+    ["malformed flag", { MIRAI_INVITATION_MODE: "yes" }, "MIRAI_INVITATION_MODE"],
+  ])("rejects invitation mode with %s", (_label, changes, message) => {
+    expect(() => readRuntimeEnvironment({ ...invitationEnvironment(), ...changes })).toThrow(message);
+  });
+
   it("preserves a safe local default with fake providers", () => {
     const configuration = readRuntimeEnvironment({});
 
@@ -15,6 +29,7 @@ describe("runtime environment", () => {
       mode: "local",
       persistence: "local",
       aiEnabled: false,
+      invitationMode: false,
       auth: { enabled: false, ownerEmails: [] },
       imageEditProvider: "fake",
       assetGenerationProvider: "fake",
@@ -172,5 +187,15 @@ function stagingEnvironment(): Record<string, string> {
     MIRAI_READINESS_TIMEOUT_MS: "3000",
     NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test-key-12345",
+  };
+}
+
+function invitationEnvironment(): Record<string, string> {
+  return {
+    ...stagingEnvironment(),
+    MIRAI_INVITATION_MODE: "true",
+    MIRAI_AUTH_ENABLED: "true",
+    MIRAI_OWNER_EMAILS: "owner@example.com",
+    SUPABASE_SECRET_KEY: "server-only-secret-key-placeholder",
   };
 }

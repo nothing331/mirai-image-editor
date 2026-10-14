@@ -46,7 +46,7 @@ export async function claimInvitationAction(formData: FormData): Promise<void> {
     redirect("/access?error=invite");
   }
   revalidatePath("/access");
-  redirect("/welcome?approved=1");
+  redirect(readRuntimeEnvironment().invitationMode ? "/access?approved=1" : "/welcome?approved=1");
 }
 
 export async function approveAccessAction(requestId: string): Promise<void> {

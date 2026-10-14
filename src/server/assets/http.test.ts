@@ -27,6 +27,13 @@ beforeEach(() => {
 afterEach(() => { process.env = { ...originalEnvironment }; });
 
 describe("P04 HTTP access", () => {
+  it("closes uploads, asset reads and owner cleanup during invitation mode", async () => {
+    process.env.MIRAI_INVITATION_MODE = "true";
+    const request = new Request("http://localhost:3000/api/original-uploads");
+    await expect(authorizedAssetOwner(request, false)).rejects.toMatchObject({ code: "not-found" });
+    await expect(authorizedAssetOwner(request, false, "owner")).rejects.toMatchObject({ code: "not-found" });
+  });
+
   it("permits an authenticated local upload from the configured origin", async () => {
     const request = new Request("http://localhost:3000/api/original-uploads", {
       method: "POST", headers: { origin: "http://localhost:3000" },

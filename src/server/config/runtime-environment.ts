@@ -13,6 +13,7 @@ export interface RuntimeEnvironment {
   canonicalUrl: URL | null;
   allowedOrigins: string[];
   aiEnabled: boolean;
+  invitationMode: boolean;
   auth: {
     enabled: boolean;
     ownerEmails: string[];
@@ -58,6 +59,7 @@ export function readRuntimeEnvironment(
   const allowedOrigins = parseOrigins(environment.MIRAI_ALLOWED_ORIGINS, issues);
   const aiEnabled = parseBoolean("MIRAI_AI_ENABLED", environment.MIRAI_AI_ENABLED ?? "false", issues);
   const authEnabled = parseBoolean("MIRAI_AUTH_ENABLED", environment.MIRAI_AUTH_ENABLED ?? "false", issues);
+  const invitationMode = parseBoolean("MIRAI_INVITATION_MODE", environment.MIRAI_INVITATION_MODE ?? "false", issues);
   const ownerEmails = parseEmails(environment.MIRAI_OWNER_EMAILS, issues);
   const imageEditProvider = environment.IMAGE_EDIT_PROVIDER ?? "fake";
   const assetGenerationProvider = environment.ASSET_GENERATION_PROVIDER ?? "fake";
@@ -74,6 +76,14 @@ export function readRuntimeEnvironment(
 
   if (environment.NEXT_PUBLIC_SUPABASE_SECRET_KEY || environment.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
     issues.push("Supabase privileged keys must never use a NEXT_PUBLIC_ variable name");
+  }
+
+  if (invitationMode) {
+    if (!authEnabled) issues.push("MIRAI_INVITATION_MODE requires MIRAI_AUTH_ENABLED=true");
+    if (aiEnabled) issues.push("MIRAI_INVITATION_MODE requires MIRAI_AI_ENABLED=false");
+    if (imageEditProvider !== "fake" || assetGenerationProvider !== "fake" || environment.OPENAI_API_KEY) {
+      issues.push("MIRAI_INVITATION_MODE requires fake providers and no OPENAI_API_KEY");
+    }
   }
 
   if (authEnabled) {
@@ -147,6 +157,7 @@ export function readRuntimeEnvironment(
     canonicalUrl,
     allowedOrigins,
     aiEnabled,
+    invitationMode,
     auth: { enabled: authEnabled, ownerEmails },
     imageEditProvider,
     assetGenerationProvider,

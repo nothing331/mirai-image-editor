@@ -19,6 +19,9 @@ services:
         value: false
       - key: MIRAI_AUTH_ENABLED
         value: true
+      # Set true for the public invitation-only launch; redeploy after changing it.
+      - key: MIRAI_INVITATION_MODE
+        value: false
       - key: IMAGE_EDIT_PROVIDER
         value: fake
       - key: ASSET_GENERATION_PROVIDER

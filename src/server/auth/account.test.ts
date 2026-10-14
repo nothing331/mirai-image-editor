@@ -1,10 +1,29 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountAccessError, requireAccount, resolveCurrentAccount } from "./account";
 
 const accountId = "11111111-1111-4111-8111-111111111111";
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe("account authorization", () => {
+  it.each(["member", "owner"] as const)("blocks product eligibility for an approved %s in invitation mode", async (role) => {
+    vi.stubEnv("MIRAI_INVITATION_MODE", "true");
+    await expect(requireAccount("eligible", fakeClient({ status: "active", role })))
+      .rejects.toMatchObject({ reason: "invitation-only" });
+    vi.stubEnv("MIRAI_INVITATION_MODE", "false");
+    await expect(requireAccount("eligible", fakeClient({ status: "active", role })))
+      .resolves.toMatchObject({ profile: { status: "active" } });
+  });
+
+  it("keeps authenticated requests and owner administration available in invitation mode", async () => {
+    vi.stubEnv("MIRAI_INVITATION_MODE", "true");
+    await expect(requireAccount("authenticated", fakeClient({ status: "pending" }))).resolves.toBeDefined();
+    await expect(requireAccount("owner", fakeClient({ status: "active", role: "owner" }))).resolves.toBeDefined();
+    await expect(requireAccount("owner", fakeClient({ status: "active", role: "member" })))
+      .rejects.toMatchObject({ reason: "owner-required" });
+  });
+
   it("treats a missing verified claim as signed out", async () => {
     await expect(resolveCurrentAccount(fakeClient({ signedIn: false }))).resolves.toBeNull();
   });
